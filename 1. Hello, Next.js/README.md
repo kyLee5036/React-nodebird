@@ -4,6 +4,7 @@
 + [프로젝트 구조와 배우는 것들](#프로젝트-구조와-배우는-것들)
 + [next와 eslint 설치하기](#next와-eslint-설치하기)
 + [next 라우팅 시스템](#next-라우팅-시스템)
++ [ant design 적용하기](#ant-design-적용하기)
 
 
 ## 프로젝트 구조와 배우는 것들
@@ -235,4 +236,128 @@ const Home = () => {
 
 export default Home;
 ```
+
+
+## ant design 적용하기
+[위로 가기](#Hello-NextJS의-소스)
+
+<strong>ant design</strong>을 사용할 것이다. <br>
+이 외에도 부트스트랩, 시맨틱 디자인등 사용하는데 디자인이 비슷해서 커스텀 마이징을 한다.<br>
+
+사이트 : https://ant.design/ <br>
+
+관리자 페이지는 ant design가 의외로 편하다.<br>
+
+그리고 장점은 코드가 거의 리액트라서 편하다. 그리고 커스텀 마이징이랑 style-component도 같이 할 것이다.<br>
+참고로, Angular, Vue도 있다.<br>
+
+<pre><code>npm i antd</code></pre>
+
+### components폴더는 모든 페이지에 공통되는 컴포넌트
+먼저 레이아웃을 먼저 만들겠다. 그리고 내가 지정한 레이아웃은 페이지가 아니다. <br>
+<strong>모든 페이지에 공통되는 컴포넌트</strong>이다. <br>
+
+> pages 폴더명은 고정이지만, components 폴더는 이름 바꿔도 상관없다.
+
+components에다가 레이아웃을 넣을 것이다. <br>
+
+App.Layout.js에 상단메뉴를 넣을 것이다. <br>
+
+#### components/App.Layout.js
+```js
+import React from 'react';
+import { Menu, Input } from 'antd';
+
+const AppLayout = ({ children }) => {
+  return (
+    <div>
+      <Menu>
+        <Menu.Item key="home">노드버드</Menu.Item>
+        <Menu.Item key="profile">프로필</Menu.Item>
+         <Menu.Item key="mail">
+            <Input.Search enterButton/>{/* 검색창 */}
+        </Menu.Item>
+      </Menu>
+      {children} {/* children은 props이다. */}
+      {/* children은 props인데.. */}
+    </div>
+  );
+};
+
+export default AppLayout;
+```
+여기서 key의 역할은 <br>
+key는 서로 비슷한 컴포넌트가 여러 개 있을 때 업데이트 효율성을 위해 <br>
+컴포넌트에 이름을 붙여두는 것입니다. 필요한것만 업데이트할 수 있도록한다. <br>
+
+
+일단 화면구성을 해주고, <br>
+children은 props이다. children을 잘 활용해야만 화면 구성이 잘 된다.<br>
+
+#### pages/index.js
+```js
+import React from 'react';
+import Link from 'next/link';
+import AppLayout from '../components/App.Layout'
+
+const Home = () => {
+  return (
+    <>
+       <AppLayout> 
+       {/* children에 전달받아서 AppLayout을 사용할 수 있다. */}
+       {/* props를 전달할 때에는 태그 안에다가 */}
+       {/* 밑에처럼 전달할 수 있다. */}
+        <Link href="/about"><a>about</a></Link>  
+        <div>Hello, Next!</div>
+      </AppLayout>
+    </>
+  );
+};
+
+export default Home;
+```
+
+하지만 여기까지하면 css가 적용이 안된다. <br>
+antd를 사용할 때 css파일도 적용해줘야한다. css파일은 head부분의 넣는다. <br>
+next에서 head를 넣어준다. <br>
+
+#### pates/index.js
+```js
+import React from 'react';
+import Link from 'next/link';
+import AppLayout from '../components/App.Layout'
+import Head from 'next/head'; // 추가
+
+const Home = () => {
+  return (
+    <>
+      <Head> // 추가
+        <title>NodeBird</title> // 추가
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" /> // 추가
+      </Head> // 추가
+       <AppLayout> 
+        <Link href="/about"><a>about</a></Link>  
+        <div>Hello, Next!</div>
+      </AppLayout>
+    </>
+  );
+};
+
+export default Home;
+```
+
+여기서부터 잠깐 디자인 수정을 하겠다. <br>
+
+#### components/App.Layout.js
+```js
+<Menu mode="horizontal"> // 원래 style인데 왜? mode인가? ant-design에 양식에 따라 맞춰야한다.
+  <Menu.Item key="home">노드버드</Menu.Item>
+  <Menu.Item key="profile">프로필</Menu.Item>
+    <Menu.Item key="mail">
+      <Input.Search enterButton style={{ verticalAlign : 'middle' }} /> 
+      // 위 부분은 ant-design에 없어서 내가 직접 style을 추가 시켜주었다.
+  </Menu.Item>
+</Menu>
+```
+상황에 따라 쓰는 방식이 다르는 것도 참고해야한다!! (커스텀 마이징) <br>
 

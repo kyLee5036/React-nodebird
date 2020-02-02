@@ -5,6 +5,7 @@
 + [next와 eslint 설치하기](#next와-eslint-설치하기)
 + [next 라우팅 시스템](#next-라우팅-시스템)
 + [ant design 적용하기](#ant-design-적용하기)
++ [기본 페이지들 만들기](#기본-페이지들-만들기)
 
 
 ## 프로젝트 구조와 배우는 것들
@@ -165,6 +166,9 @@ index.js가 메인페이지가 된다. <br>
 next에서는 위에 import 생략해도 된다. (굉장히 편하네) <br>
 하지만 eslint에서 import하라고 나온다.. 그리고!! useState, useEffect...등등 <br>
 사용하기 위해서도 import를 해줘야한다. 결국엔 import를 해주자! <br>
+
+user/create.js, about.js 파일은 나중에 삭제해서 깃허브에 파일이 없다. <br>
+하지만, 기록은 남아있다. <br>
 
 #### pages/index.js
 ```js
@@ -360,4 +364,96 @@ export default Home;
 </Menu>
 ```
 상황에 따라 쓰는 방식이 다르는 것도 참고해야한다!! (커스텀 마이징) <br>
+
+
+
+## 기본 페이지들 만들기
+[위로가기](#Hello-NextJS)
+
+`user/create.js`, `about.js` 파일을 필요없어서 여기서부터 삭제하겠다. <br>
+
+#### pages/profile.js
+```js
+import React from 'react';
+
+const Profile = () => {
+  return (
+    <div>
+      내 프로필
+    </div>
+  )
+}
+
+export default Profile;
+```
+
+#### pages/signup.js
+```js
+import React from 'react';
+
+const Signup = () => {
+  return (
+    <div>
+      회원가입
+    </div>
+  )
+}
+
+export default Signup;
+```
+
+#### components/App.Layout.js
+```js
+import React from 'react';
+import { Menu, Input, Button } from 'antd';
+import Link from 'next/link'
+
+const AppLayout = ({ children }) => {
+  return (
+    <div>
+      <Menu mode="horizontal">
+        <Menu.Item key="home"><Link href="/"><a>노드버드</a></Link></Menu.Item>
+        <Menu.Item key="profile"><Link href="/profile"><a>프로필</a></Link></Menu.Item>
+         <Menu.Item key="mail">
+            <Input.Search enterButton style={{ verticalAlign : 'middle' }} />
+        </Menu.Item>
+      </Menu>
+      <Link href="/signup"><a><Button>회원가입</Button></a></Link> // 회원가입 버튼 추가
+      {children}
+    </div>
+  );
+};
+
+export default AppLayout;
+```
+
+하지만, 프로필페이지, 회원가입페이지는 App.Layout가 적용이 안되어있다. <br>
+AppLayout 적용을 `singup.js`, `profile.js` 전부 해줘야한다. <br>
+또한, css적용도 안 되어있다. <br>
+
+#### pages/profile.js (pages/signup.js는 profile.js랑 형태가 비슷하다. 그래서 생략)
+```js
+import React from 'react';
+import AppLayout from '../components/App.Layout'
+import Head from 'next/head';
+
+const Profile = () => {
+  return (
+    <>
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+      </Head>
+      <AppLayout>
+        <div>내 프로필</div>
+      </AppLayout>
+    </>
+  );
+};
+
+export default Profile;
+```
+
+profile.js, signup.js에 Head를 추가해주고, link해주면 CSS스타일 적용이 된다. <br>
+하지만 페이지가 500개라면, 전부 해주는 것이 귀찮아 진다. <br>
 

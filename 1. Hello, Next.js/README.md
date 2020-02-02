@@ -3,6 +3,7 @@
 
 + [프로젝트 구조와 배우는 것들](#프로젝트-구조와-배우는-것들)
 + [next와 eslint 설치하기](#next와-eslint-설치하기)
++ [next 라우팅 시스템](#next-라우팅-시스템)
 
 
 ## 프로젝트 구조와 배우는 것들
@@ -115,4 +116,123 @@ eslint설정 <br>
 > Tip ) dependencies, devDependencies 중에서 devDependencies에 몰아주는게 좋다. <br> 개발 할 때만 사용하기 떄문이다. 
 
  
+## next 라우팅 시스템
+[위로가기](#Hello-NextJS)
+
+새로운 디렉토리(폴더) pages를 만든다. <br>
+react에서 react-router를 많이 사용하는데, next는 next의 라우터가 있어서 react-router보다 쓰기 편하다. <br>
+그래서 react-router가 필요가 없다.<br>
+
+index.js가 메인페이지가 된다. <br>
+<pre><cdoe>npm i -g next</code></pre>
+명령어로 next를 써줘야한다. 3가지 방법 ( global(-g), npx, package.json에서 사용방법) <br>
+
+#### package.json (package.json에서 사용방법)
+```js
+{
+  "name": "react-nodebird-front",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev" : "next", // 추가
+    "build" : "next build", // 추가
+    "start" : "next start" // 추가
+  },
+  "author": "LEEKY",
+  "license": "MIT",
+  "dependencies": {
+    "next": "^9.2.1",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "nodemon": "^2.0.2",
+    "webpack": "^4.41.5",
+    "eslint-plugin-import": "^2.20.0",
+    "eslint-plugin-react": "^7.18.0",
+    "eslint-plugin-react-hooks": "^2.3.0"
+  }
+}
+```
+
+실행 방법 <br>
+<pre><cdoe>npm run dev</code></pre>
+
+여기서 `import React from 'react'` 를 안하는 이유는? <br>
+next에서는 위에 import 생략해도 된다. (굉장히 편하네) <br>
+하지만 eslint에서 import하라고 나온다.. 그리고!! useState, useEffect...등등 <br>
+사용하기 위해서도 import를 해줘야한다. 결국엔 import를 해주자! <br>
+
+#### pages/index.js
+```js
+import React from 'react';
+
+const Home = () => {
+  return (
+    <div>Hello, Next!</div>
+  );
+};
+
+export default Home;
+```
+
+여기에서 폴더 이름이 pages이유가 있다. <br>
+
+일단 폴더랑, js파일을 추가하겠다. <br>
+
+#### pages/user/create.js
+```js
+import React from 'react';
+
+const Create = () => {
+  return (
+    <div>유저를 만들어봅시다.</div>
+  )
+}
+
+export default Create;
+```
+
+
+#### pages/about.js
+```js
+import React from 'react';
+
+const about = () => {
+  return (
+    <div>about.</div>
+  )
+}
+
+export default about;
+```
+
+> about.js의 URL은 `localhost:3000/about` <br>
+> user/create.js의 URL은 `localhost:3000/user/create` <br>
+
+걍... 존나 편하다.... 레알로.. <br>
+라우터 체계는 next의 강점이다.. <br>
+그리고 서버 사이드 렌더링, 코드 스플릿트를 알아서 해주는 장점도 있다. <br>
+
+### link 추가
+
+#### pages/index.js
+
+```js
+import React from 'react';
+import Link from 'next/link'; // next에서 Link를 가져온다.
+
+const Home = () => {
+  return (
+    <>
+      <Link href="/about"><a>about</a></Link>  {/* Link 하는 방법 */}
+      <div>Hello, Next!</div>
+    </>
+  );
+};
+
+export default Home;
+```
 

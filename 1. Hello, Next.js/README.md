@@ -7,6 +7,7 @@
 + [ant design 적용하기](#ant-design-적용하기)
 + [기본 페이지들 만들기](#기본-페이지들-만들기)
 + [회원가입 폼 만들기](#회원가입-폼-만들기)
++ [회원가입 state와 custom hook](#회원가입-state와-custom-hook)
 
 
 ## 프로젝트 구조와 배우는 것들
@@ -559,7 +560,8 @@ const Signup = () => {
     setPasswordCheck(e.target.value);
   };
   const onChangeTerm = (e) => {
-    setTerm(e.target.value);
+    setTerm(e.target.checked); // 체크박스는 checked이다. // 체크되어 있으면 true로 된다.
+    
   };
 
 ...생략
@@ -594,3 +596,123 @@ const Signup = () => {
         </Form>
 ...생략
 ```
+
+
+
+## 회원가입 state와 custom hook
+[위로가기](#Hello-NextJS)
+
+
+```js
+const onSubmit = (e) => {
+  e.preventDefault();
+  console.log({id, nick, password, passwordCheck, term});
+};
+```
+이렇게 폼 검증해서 데이터가 제대로 들어오는지 확인하는 방법<br>
+preventDefault해줘야만 화면이 넘어가지않는다. (제출하지 않음)<br>
+
+> Tip) console.log을 지우기 귀찮으면 webpack을 사용해서 console.log를 지워 줄 수 있다.<br>
+
+
+여기서부터 검증로직을 하겠다<br>
+```js
+...생략
+  const [term, setTerm] = useState(false); // 약관 동의 (체크박스)
+  const [passwordError, setPasswordError] = useState(false); // 비밀번호 에러
+  const [termError, setTermError] = useState(false); // 약간 동의 안 할 경우
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    if ( password !== passwordCheck) {
+      return setPasswordError(true);
+    }
+    if (!term) {
+      setTermError(true);
+    }
+  };
+  const onChangeId = (e) => {
+    setId(e.target.value);
+  };
+  const onChangeNick = (e) => {
+    setNick(e.target.value);
+  };
+  const onChangePassword = (e) => {
+    setPassword(e.target.value);
+  };
+  const onChangePasswordCheck = (e) => {
+    setPasswordError(e.target.value !== password); // 비밀번호를 입력할 때 마다 바로바로 체크를 해주는 거임!!!!
+    setPasswordCheck(e.target.value);
+  };
+  const onChangeTerm = (e) => {
+    setTermError(false);
+    setTerm(e.target.checked);
+  };
+
+  return (
+    <>
+     ...생략
+            <label htmlFor="user-password-check">비밀번호체크</label>
+            <br />
+            <Input name="user-password-check" type="password" value={passwordCheck} required onChange={onChangePasswordCheck} />
+            { passwordError && <div style={{color : 'red'}}>비밀번호가 일치하지 않습니다.</div> }
+          </div>
+          <div>
+            <Checkbox name="user-term" value={term} onChange={onChangeTerm}>약관 동의</Checkbox>
+            { termError && <div style={{color : 'red'}}>약관에 동의하셔야 합니다.</div> }
+          </div>
+          <div style={{ marginTop : 10}}>
+            <Button type="primary" htmlType="submit">가입하기</Button>
+          </div>
+        </Form>
+      </AppLayout>
+    </>
+  );
+};
+
+export default Signup;
+```
+
+한 글자라도 비밀번호가 틀리면 에러가 나온다. <br>
+> `{ passwordError && <div style={{color : 'red'}}>비밀번호가 일치하지 않습니다.</div> }` <br>
+
+약간동의 체크를 안하면 에러가 나온다. <br>
+> `{ termError && <div style={{color : 'red'}}>약관에 동의하셔야 합니다.</div> }` <br>
+
+
+### Custom Hooks 
+
+Custom Hooks란? <br>
+Hook들과 일반 함수, 값을 조함해서 새로운 Hook을 만들어내기도 한다. <br>
+
+```js
+const useInput = (initValue = null) => {
+  const [value, setter] = useState(initValue);
+  const handler = (e) => {
+    setter(e.target.value);
+  }
+  return [value, handler];
+};
+```
+Custom Hooks의 위에 코드를 보면 기존의 Hooks(useState)을 사용해서 새로운 Hooks(useInput)을 만들어낸다. <br>
+반복되는 것을 없애기 위해서 사용했다. <br>
+
+
+```js
+// 커스텀 훅이다. 기존의 후을 사용해서 새로운 훅을 만들어낸다.
+const useInput = (initValue = null) => {
+  const [value, setter] = useState(initValue);
+  const handler = (e) => {
+    setter(e.target.value);
+  }
+  return [value, handler];
+};
+const [id, onChangeId] = useInput(''); // 사용예시 ( 이것만 코드에 적음 )
+const [password, onChangePassword] = useInput(''); // 사용예시 (이건 코드에 적지 않음)
+// 또한, 위에 코드 삭제했으니까 잘 보길...
+```
+근데 솔직히, Custom Hooks 만들기 힘들면 안 만들어 된다. 아이디어 생각하기가 힘들다. <br>
+노하우가 쌓여야 잘 할 수 있다. <br>
+
+useState는 항상 일반 함수, 조건문, 반복문 넣으면 안된다.  <br>
+하지만 예외가 있다. useState는 Custom Hooks만 된다. <br>

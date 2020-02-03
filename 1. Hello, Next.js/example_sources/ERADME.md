@@ -1,4 +1,4 @@
-# Hello NextJS의 소스
+# Hello NextJS
 
 + [프로젝트 구조와 배우는 것들](#프로젝트-구조와-배우는-것들)
 + [next와 eslint 설치하기](#next와-eslint-설치하기)
@@ -6,10 +6,11 @@
 + [ant design 적용하기](#ant-design-적용하기)
 + [기본 페이지들 만들기](#기본-페이지들-만들기)
 + [회원가입 폼 만들기](#회원가입-폼-만들기)
++ [회원가입 state와 custom hook](#회원가입-state와-custom-hook)
 
 
 ## next 라우팅 시스템
-[위로 가기](#Hello-NextJS의-소스)
+[위로 가기](#Hello-NextJS)
 
 #### pages/user/create.js
 ```js
@@ -55,7 +56,7 @@ export default about;
 ```
 
 ## ant design 적용하기
-[위로 가기](#Hello-NextJS의-소스)
+[위로 가기](#Hello-NextJS)
 
 
 #### components/App.Layout.js
@@ -108,7 +109,7 @@ export default Home;
 
 
 ## 기본 페이지들 만들기
-[위로 가기](#Hello-NextJS의-소스)
+[위로 가기](#Hello-NextJS)
 
 user/create.js, about.js 파일은 나중에 삭제해서 깃허브에 파일이 없다. <br>
 하지만, 기록은 남아있다. <br>
@@ -241,7 +242,7 @@ const Signup = () => {
     setPasswordCheck(e.target.value);
   };
   const onChangeTerm = (e) => {
-    setTerm(e.target.value);
+    setTerm(e.target.checked); // 체크박스는 checked이다. 
   };
 
   return (
@@ -287,4 +288,6 @@ const Signup = () => {
 export default Signup;
 ```
 
+## 회원가입 state와 custom hook
+[위로가기](#Hello-NextJS)
 

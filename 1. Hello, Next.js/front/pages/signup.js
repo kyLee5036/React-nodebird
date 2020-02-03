@@ -5,16 +5,23 @@ import { Form, Input, Checkbox, Button } from 'antd';
 
 const Signup = () => {
 
-  const [id, setId] = useState('');
   const [nick, setNick] = useState('');
   const [password, setPassword] = useState('');
   const [passwordCheck, setPasswordCheck] = useState('');
   const [term, setTerm] = useState(false); // 약관 동의 (체크박스)
+  const [passwordError, setPasswordError] = useState(false); // 비밀번호 에러
+  const [termError, setTermError] = useState(false); // 약간 동의 안 할 경우
 
-  const onSubmit = () => {};
-  const onChangeId = (e) => {
-    setId(e.target.value);
+  const onSubmit = (e) => {
+    e.preventDefault();
+    if ( password !== passwordCheck) {
+      return setPasswordError(true);
+    }
+    if (!term) {
+      setTermError(true);
+    }
   };
+  
   const onChangeNick = (e) => {
     setNick(e.target.value);
   };
@@ -22,11 +29,24 @@ const Signup = () => {
     setPassword(e.target.value);
   };
   const onChangePasswordCheck = (e) => {
+    setPasswordError(e.target.value !== password); // 비밀번호를 입력할 때 마다 바로바로 체크를 해주는 거임!!!!
     setPasswordCheck(e.target.value);
   };
   const onChangeTerm = (e) => {
-    setTerm(e.target.value);
+    setTermError(false);
+    setTerm(e.target.checked);
   };
+
+  // 커스텀 훅이다. 기존의 후을 사용해서 새로운 훅을 만들어낸다.
+  const useInput = (initValue = null) => {
+    const [value, setter] = useState(initValue);
+    const handler = (e) => {
+      setter(e.target.value);
+    }
+    return [value, handler];
+  };
+  const [id, onChangeId] = useInput(''); // 사용예시
+
 
   return (
     <>
@@ -55,11 +75,13 @@ const Signup = () => {
             <label htmlFor="user-password-check">비밀번호체크</label>
             <br />
             <Input name="user-password-check" type="password" value={passwordCheck} required onChange={onChangePasswordCheck} />
+            { passwordError && <div style={{color : 'red'}}>비밀번호가 일치하지 않습니다.</div> }
           </div>
           <div>
             <Checkbox name="user-term" value={term} onChange={onChangeTerm}>약관 동의</Checkbox>
+            { termError && <div style={{color : 'red'}}>약관에 동의하셔야 합니다.</div> }
           </div>
-          <div>
+          <div style={{ marginTop : 10}}>
             <Button type="primary" htmlType="submit">가입하기</Button>
           </div>
         </Form>

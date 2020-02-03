@@ -616,6 +616,8 @@ preventDefault해줘야만 화면이 넘어가지않는다. (제출하지 않음
 
 
 여기서부터 검증로직을 하겠다<br>
+
+#### pages/signup.js
 ```js
 ...생략
   const [term, setTerm] = useState(false); // 약관 동의 (체크박스)

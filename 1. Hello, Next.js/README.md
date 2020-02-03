@@ -6,6 +6,7 @@
 + [next 라우팅 시스템](#next-라우팅-시스템)
 + [ant design 적용하기](#ant-design-적용하기)
 + [기본 페이지들 만들기](#기본-페이지들-만들기)
++ [회원가입 폼 만들기](#회원가입-폼-만들기)
 
 
 ## 프로젝트 구조와 배우는 것들
@@ -457,3 +458,139 @@ export default Profile;
 profile.js, signup.js에 Head를 추가해주고, link해주면 CSS스타일 적용이 된다. <br>
 하지만 페이지가 500개라면, 전부 해주는 것이 귀찮아 진다. <br>
 
+## 회원가입 폼 만들기
+[위로가기](#Hello-NextJS)
+
+### label과 htmlFor의 의미
+label은 input의 이름을 적는 태그이다. <br>
+htmlFor에 input의 아이디나 네임을 적어 input과 연결한다. <br>
+
+### e.target.value에서 target의 의미 
+현재 이벤트가 발생하는 태그를 가리킨다. <br>
+
+#### pages/signup.js
+```js
+import React from 'react';
+import AppLayout from '../components/App.Layout'
+import Head from 'next/head';
+import { Form, Input, Checkbox, Button } from 'antd';
+
+const Signup = () => {
+
+  const onSubmit = () => {};
+  const onChangeId = () => {};
+  const onChangeNick = () => {};
+  const onChangePassword = () => {};
+  const onChangePasswordChk = () => {};
+  const onChangeTerm = () => {};
+
+  return (
+    <>
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+      </Head>
+      <AppLayout>
+        <Form onSubmit={onSubmit}>
+          <div>
+            <label htmlFor="user-id">아이디</label>
+            <br />
+            <Input name="user-id" required onChange={onChangeId} />
+          </div>
+          <div>
+            <label htmlFor="user-nick">닉네임</label>
+            <br />
+            <Input name="user-nick" required onChange={onChangeNick} />
+          </div>
+          <div>
+            <label htmlFor="user-pass">비밀번호</label>
+            <br />
+            <Input name="user-pass" type="password" required onChange={onChangePassword} />
+          </div>
+          <div>
+            <label htmlFor="user-pass-chk">비밀번호체크</label>
+            <br />
+            <Input name="user-pass-chk" type="password" required onChange={onChangePasswordChk} />
+          </div>
+          <div>
+            <Checkbox name="user-term" onChange={onChangeTerm}>약관 동의</Checkbox>
+          </div>
+          <div>
+            <Button type="primary" htmlType="submit">가입하기</Button>
+          </div>
+
+        </Form>
+      </AppLayout>
+    </>
+  );
+};
+
+export default Signup;
+```
+
+`<Button type="primary" htmlType="submit">가입하기</Button>` <br>
+여기에서 보면 `type="submit"`인데 ant-design에 문서에 의해서 `htmlType="submit"`을 해야한다. <br>
+
+이후부터 hooks를 오랜만에 사용하겠다. <br>
+
+위에서 까먹은게 있는데 value랑 onChange은 항상 짝을 이뤄야한다. <br>
+
+#### pages/signup.js
+```js
+...생략
+const Signup = () => {
+  const [id, setId] = useState('');
+  const [nick, setNick] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordCheck, setPasswordCheck] = useState('');
+  const [term, setTerm] = useState(false); // 약관 동의 (체크박스)
+
+  const onSubmit = () => {};
+  const onChangeId = (e) => {
+    setId(e.target.value);
+  };
+  const onChangeNick = (e) => {
+    setNick(e.target.value);
+  };
+  const onChangePassword = (e) => {
+    setPassword(e.target.value);
+  };
+  const onChangePasswordCheck = (e) => {
+    setPasswordCheck(e.target.value);
+  };
+  const onChangeTerm = (e) => {
+    setTerm(e.target.value);
+  };
+
+...생략
+      <AppLayout>
+        <Form onSubmit={onSubmit} style={{ padding : 10}} >
+          <div>
+            <label htmlFor="user-id">아이디</label>
+            <br />
+            <Input name="user-id" value={id} required onChange={onChangeId} />
+          </div>
+          <div>
+            <label htmlFor="user-nick">닉네임</label>
+            <br />
+            <Input name="user-nick" value={nick} required onChange={onChangeNick} />
+          </div>
+          <div>
+            <label htmlFor="user-password">비밀번호</label>
+            <br />
+            <Input name="user-password" type="password" value={password} required onChange={onChangePassword} />
+          </div>
+          <div>
+            <label htmlFor="user-password-check">비밀번호체크</label>
+            <br />
+            <Input name="user-password-check" type="password" value={passwordCheck} required onChange={onChangePasswordCheck} />
+          </div>
+          <div>
+            <Checkbox name="user-term" value={term} onChange={onChangeTerm}>약관 동의</Checkbox>
+          </div>
+          <div>
+            <Button type="primary" htmlType="submit">가입하기</Button>
+          </div>
+        </Form>
+...생략
+```

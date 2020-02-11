@@ -1,7 +1,7 @@
 # SNS 화면 만들기
 
-+[App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기)
-
++[App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기) <br>
++[prop-types](#prop-types) <br>
 
 ## App.js로 레이아웃 분리하기
 [위로가기](#SNS-화면-만들기)
@@ -140,4 +140,67 @@ const Signup = () => {
 };
 
 export default Signup;
+```
+
+## prop types 
+[위로가기](#SNS-화면-만들기)
+
+
+#### pages/_app.js
+```js
+import React from 'react';
+import Head from 'next/head';
+import PropTypes from 'prop-types';
+import AppLayout from '../components/App.Layout';
+
+const NodeBird = ({Component}) => {
+  return (
+    <>
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+      </Head>
+      <AppLayout>
+        <Component />
+      </AppLayout>
+    </>
+  );
+};
+
+NodeBird.prototype = {
+  Component : PropTypes.elementType // node는 js에 들어갈 수 있는 모든 것 (컴포넌트, 숫자, boolean, 함수 등등)
+  // elementType으로 수정해야한다.
+}
+
+export default NodeBird;
+```
+
+#### component/App.Layout.js
+```js
+import React from 'react';
+import { Menu, Input, Button } from 'antd';
+import Link from 'next/link'
+import PropTypes from 'prop-types';
+
+const AppLayout = ({ children }) => {
+  return (
+    <div>
+      <Menu mode="horizontal">
+        <Menu.Item key="home"><Link href="/"><a>노드버드</a></Link></Menu.Item>
+        <Menu.Item key="profile"><Link href="/profile"><a>프로필</a></Link></Menu.Item>
+         <Menu.Item key="mail">
+            <Input.Search enterButton style={{ verticalAlign : 'middle' }} />
+        </Menu.Item>
+      </Menu>
+      <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+      {children}
+    </div>
+  );
+};
+
+AppLayout.prototype = {
+  children: PropTypes.node,
+}
+
+export default AppLayout;
 ```

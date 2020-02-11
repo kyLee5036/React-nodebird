@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Form, Input, Checkbox, Button } from 'antd';
+import PropTypes from 'prop-types';
 
 const Signup = () => {
 

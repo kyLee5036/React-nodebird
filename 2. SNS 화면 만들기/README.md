@@ -1,7 +1,7 @@
 # SNS 화면 만들기
 
-+[App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기)
-
++[App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기) <br>
++[prop-types](#prop-types) <br>
 
 ## App.js로 레이아웃 분리하기
 [위로가기](#SNS-화면-만들기)
@@ -107,7 +107,7 @@ export default Home;
 ```
 위 처럼 공통된 부분 삭제한다. signup.js, profile.js는 생략한다.
 
-### Form태그 안에서의 리 리렌덩하기
+### Form태그 안에서의 리 렌더링하기
 
 중복되는 것( 같은 컴포넌트)가 들어있으면, 리 렌더링 다 같이된다. 그렇기 위해서는 위처럼 분리한다.<br>
 따른 컴포넌트를 분리해서 Form만 리 렌더링이 된다.<br>
@@ -161,3 +161,63 @@ export default Signup;
 페이스북도 이 정도록 지나치게 하지않는다. 참고로만 알아줘도 된다.<br>
 나쁜건은 아니지만, 시간이 지나치다.<br>
 
+
+## prop types 
+[위로가기](#SNS-화면-만들기)
+
+prop-types는 컴포넌트 아래에다가 prop들의 자료형을 적어준다. <br>
+렌더링이 될 때 부모로부터 올 바른 데이터형을 받았는지 확인된다. <br>
+prop-types를 하면 프로그래밍이 좀 더 안정적으로 된다. <br>
+
+<pre><code>npm i prop-types</code></pre>
+
+#### pages/_app.js
+```js
+import React from 'react';
+import Head from 'next/head';
+import PropTypes from 'prop-types'; // 추가
+
+const NodeBird = ({Component}) => {
+  return (
+    <>
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+      </Head>
+      <AppLayout>
+        <Component />
+      </AppLayout>
+    </>
+  );
+};
+
+// 이렇게 추가를 해준다.
+NodeBird.prototype = {
+  Component : PropTypes.elementType // node는 js에 들어갈 수 있는 모든 것 (컴포넌트, 숫자, boolean, 함수 등등)
+  // elementType로 수정
+}
+
+export default NodeBird;
+```
+
+자세한 내용은 링크를 걸어놓겠다. <br>
+https://github.com/facebook/prop-types <br>
+이렇게 하면 타입스크립트랑 비슷해진다. 하지만, 타입스크립트는 prop-types를 사용하지 않는다. <br>
+
+#### component/App.Layout.js
+```js
+import React from 'react';
+import { Menu, Input, Button } from 'antd';
+import Link from 'next/link'
+import PropTypes from 'prop-types'; // 추가
+
+const AppLayout = ({ children }) => {
+  ...생략
+};
+
+AppLayout.prototype = {
+  children: PropTypes.node,
+}
+
+export default AppLayout;
+```

@@ -3,18 +3,12 @@ import { Menu, Input, Button, Row, Col, Card, Avatar} from 'antd';
 import Link from 'next/link'
 import PropTypes from 'prop-types';
 
-// 가짜데이터 만들어주는 dummy를 만들어준다.
 const dummy = {
   nickname: 'LEEKY',
   Post: [],
   Followings: [],
   Followers: [],
 }
-
-
-// 실제 데이터가 없더라도 예상하면 만드는 것도 좋다.
-// 서버에서 이 형식으로 값을 전달하기 떄문에 이처럼 만들었다.
-
 
 const AppLayout = ({ children }) => {
   return (

@@ -226,13 +226,13 @@ export default AppLayout;
 ## antd 그리드 시스템
 [위로가기](#SNS-화면-만들기)
 
-_app.js의 내용을 추가하면 모든 페이지에 공통적으로 내용이 추가된다. 
+_app.js의 내용을 추가하면 모든 페이지에 공통적으로 내용이 추가된다. <br>
 
-이제 그리드 시스템을 사용할 것이다.
-https://ant.design/components/grid/ (링크 참고)
+이제 그리드 시스템을 사용할 것이다.<br>
+https://ant.design/components/grid/ (링크 참고)<br>
 
-Row Col가 있다.
-퍼블리싱할 때 쓰이는 방법이 있는데, 페이지가 있으면 가로를 먼저 나눈 다음에 세로로 나눈다. 
+Row Col가 있다.<br>
+퍼블리싱할 때 쓰이는 방법이 있는데, 페이지가 있으면 가로를 먼저 나눈 다음에 세로로 나눈다. <br>
 
 #### Component/App.Layout.js
 ```js
@@ -242,14 +242,14 @@ Row Col가 있다.
   <Col xs={24} md={6} >세번쨰</Col>
 </Row>
 ```
-소스분석 : 모바일은 전체화면으로, 중간화면은 6/12/6 사이즈 비율로 된다
+소스분석 : 모바일은 전체화면으로, 중간화면은 6/12/6 사이즈 비율로 된다. <br>
 
-전체화면이 24, 반은 12/12, 3등분은 8/8/8, 4등분은 6/6/6/6 (비율로 조절된다)
+전체화면이 24, 반은 12/12, 3등분은 8/8/8, 4등분은 6/6/6/6 (비율로 조절된다) <br>
 
-xs : 모바일(제일 작은 화면),
-sm : 작은 화면,
-md : 중간 화면
-lg : 큰 화면
+xs : 모바일(제일 작은 화면)<br>
+sm : 작은 화면<br>
+md : 중간 화면<br>
+lg : 큰 화면<br>
 
 #### Component/App.Layout.js
 ```js
@@ -281,12 +281,12 @@ const AppLayout = ({ children }) => {
   );
 };
 ```
-// dummy라는 데이터를 만드는 이유
-// 실무에서 협업을 하는데 백엔드, 프론트 나눠져있는데
-// 백엔드는 DB, API코드 등 만들고, 프론트는 화면, 서버로 받은 화면만드는데
-// 가끔 프론트쪽이 빠른 경우가 있는데 그럴 떄에는 서버로 받은 데이터가 아직없는데
-// 가짜같은 객체를 만들어줘서 예상을 한다.
-// 팁인데, dummy라는 객체를 많이 만들어줘서 예상하는 것도 좋다.
+### dummy라는 데이터를 만드는 이유
+실무에서 협업을 하는데 백엔드, 프론트 나눠져있는데<br>
+백엔드는 DB, API코드 등 만들고, 프론트는 화면, 서버로 받은 화면만드는데<br>
+가끔 프론트쪽이 빠른 경우가 있는데 그럴 떄에는 서버로 받은 데이터가 아직없는데<br>
+가짜같은 객체를 만들어줘서 예상을 한다.<br>
+팁인데, dummy라는 객체를 많이 만들어줘서 예상하는 것도 좋다.<br>
 
 #### Component/App.Layout.js
 ```js
@@ -311,12 +311,12 @@ const AppLayout = ({ children }) => {
         <Col xs={24} md={6} >
           <Card
             actions={[
-              <div key="twit">짹짹<br />{dummy.Post.legnth}</div>,
-              <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>,
-              <div key="follower">팔로워<br />{dummy.Followers.legnth}</div>,
+              <div key="twit">짹짹<br />{dummy.Post.legnth}</div>, // 추가
+              <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>, // 추가
+              <div key="follower">팔로워<br />{dummy.Followers.legnth}</div>, // 추가
             ]}>
             <Card.Meta 
-              avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
+              avatar={<Avatar>{dummy.nickname[0]}</Avatar>} 
               title={dummy.nickname}
             />
           </Card>
@@ -333,5 +333,5 @@ const AppLayout = ({ children }) => {
 };
 ```
 
-// 실제 데이터가 없더라도 예상하면 만드는 것도 좋다.
-// 서버에서 이 형식으로 값을 전달하기 떄문에 이처럼 만들었다.
+실제 데이터가 없더라도 예상하면 만드는 것도 좋다.<br>
+서버에서 이 형식으로 값을 전달하기 떄문에 이처럼 만들었다.<br>

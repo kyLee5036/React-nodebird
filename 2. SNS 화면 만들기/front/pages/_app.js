@@ -18,8 +18,7 @@ const NodeBird = ({Component}) => {
 };
 
 NodeBird.prototype = {
-  Component : PropTypes.elementType // node는 js에 들어갈 수 있는 모든 것 (컴포넌트, 숫자, boolean, 함수 등등)
-  // elementType으로 수정해야한다.
+  Component : PropTypes.elementType,
 }
 
 export default NodeBird;

@@ -1,7 +1,20 @@
 import React from 'react';
-import { Menu, Input, Button } from 'antd';
+import { Menu, Input, Button, Row, Col, Card, Avatar} from 'antd';
 import Link from 'next/link'
 import PropTypes from 'prop-types';
+
+// 가짜데이터 만들어주는 dummy를 만들어준다.
+const dummy = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+}
+
+
+// 실제 데이터가 없더라도 예상하면 만드는 것도 좋다.
+// 서버에서 이 형식으로 값을 전달하기 떄문에 이처럼 만들었다.
+
 
 const AppLayout = ({ children }) => {
   return (
@@ -13,8 +26,27 @@ const AppLayout = ({ children }) => {
             <Input.Search enterButton style={{ verticalAlign : 'middle' }} />
         </Menu.Item>
       </Menu>
-      <Link href="/signup"><a><Button>회원가입</Button></a></Link>
-      {children}
+      <Row>
+        <Col xs={24} md={6} >
+          <Card
+            actions={[
+              <div key="twit">짹짹<br />{dummy.Post.legnth}</div>,
+              <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>,
+              <div key="follower">팔로워<br />{dummy.Followers.legnth}</div>,
+            ]}>
+            <Card.Meta 
+              avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
+              title={dummy.nickname}
+            />
+          </Card>
+          <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+         
+        </Col> 
+        <Col xs={24} md={12} >
+          {children}
+        </Col>
+        <Col xs={24} md={6} >세번쨰</Col>
+      </Row>
     </div>
   );
 };

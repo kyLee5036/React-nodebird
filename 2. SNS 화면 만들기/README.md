@@ -1,7 +1,8 @@
 # SNS 화면 만들기
 
-+[App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기) <br>
-+[prop-types](#prop-types) <br>
++ [App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기) 
++ [prop-types](#prop-types) 
++ [antd 그리드 시스템](#antd-그리드-시스템)
 
 ## App.js로 레이아웃 분리하기
 [위로가기](#SNS-화면-만들기)
@@ -221,3 +222,116 @@ AppLayout.prototype = {
 
 export default AppLayout;
 ```
+
+## antd 그리드 시스템
+[위로가기](#SNS-화면-만들기)
+
+_app.js의 내용을 추가하면 모든 페이지에 공통적으로 내용이 추가된다. 
+
+이제 그리드 시스템을 사용할 것이다.
+https://ant.design/components/grid/ (링크 참고)
+
+Row Col가 있다.
+퍼블리싱할 때 쓰이는 방법이 있는데, 페이지가 있으면 가로를 먼저 나눈 다음에 세로로 나눈다. 
+
+#### Component/App.Layout.js
+```js
+<Row>
+  <Col xs={24} md={6} >첫번째</Col> 
+  <Col xs={24} md={12} >두번째</Col>
+  <Col xs={24} md={6} >세번쨰</Col>
+</Row>
+```
+소스분석 : 모바일은 전체화면으로, 중간화면은 6/12/6 사이즈 비율로 된다
+
+전체화면이 24, 반은 12/12, 3등분은 8/8/8, 4등분은 6/6/6/6 (비율로 조절된다)
+
+xs : 모바일(제일 작은 화면),
+sm : 작은 화면,
+md : 중간 화면
+lg : 큰 화면
+
+#### Component/App.Layout.js
+```js
+import { Menu, Input, Button, Row, Col, Card, Avatar} from 'antd';
+// 가짜데이터 만들어주는 dummy를 만들어준다.
+const dummy = {
+  nickname: 'LEEKY'
+}
+
+const AppLayout = ({ children }) => {
+  return (
+    ...생략
+    <Row>
+      <Col xs={24} md={6} > 
+        <Card>
+          <Card.Meta 
+            avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 아바타라는 antd를 사용
+            title={dummy.nickname} // 카드에 제목을 붙여준다.
+          />
+        </Card>
+        <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+      </Col> 
+      <Col xs={24} md={12} >
+        {children}
+      </Col>
+      <Col xs={24} md={6} >세번쨰</Col>
+    </Row>
+    ...생략
+  );
+};
+```
+// dummy라는 데이터를 만드는 이유
+// 실무에서 협업을 하는데 백엔드, 프론트 나눠져있는데
+// 백엔드는 DB, API코드 등 만들고, 프론트는 화면, 서버로 받은 화면만드는데
+// 가끔 프론트쪽이 빠른 경우가 있는데 그럴 떄에는 서버로 받은 데이터가 아직없는데
+// 가짜같은 객체를 만들어줘서 예상을 한다.
+// 팁인데, dummy라는 객체를 많이 만들어줘서 예상하는 것도 좋다.
+
+#### Component/App.Layout.js
+```js
+const dummy = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+}
+
+const AppLayout = ({ children }) => {
+  return (
+    <div>
+      <Menu mode="horizontal">
+        <Menu.Item key="home"><Link href="/"><a>노드버드</a></Link></Menu.Item>
+        <Menu.Item key="profile"><Link href="/profile"><a>프로필</a></Link></Menu.Item>
+         <Menu.Item key="mail">
+            <Input.Search enterButton style={{ verticalAlign : 'middle' }} />
+        </Menu.Item>
+      </Menu>
+      <Row>
+        <Col xs={24} md={6} >
+          <Card
+            actions={[
+              <div key="twit">짹짹<br />{dummy.Post.legnth}</div>,
+              <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>,
+              <div key="follower">팔로워<br />{dummy.Followers.legnth}</div>,
+            ]}>
+            <Card.Meta 
+              avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
+              title={dummy.nickname}
+            />
+          </Card>
+          <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+         
+        </Col> 
+        <Col xs={24} md={12} >
+          {children}
+        </Col>
+        <Col xs={24} md={6} >세번쨰</Col>
+      </Row>
+    </div>
+  );
+};
+```
+
+// 실제 데이터가 없더라도 예상하면 만드는 것도 좋다.
+// 서버에서 이 형식으로 값을 전달하기 떄문에 이처럼 만들었다.

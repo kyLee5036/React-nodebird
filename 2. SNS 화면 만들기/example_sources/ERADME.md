@@ -1,7 +1,10 @@
 # SNS 화면 만들기
 
-+[App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기) <br>
-+[prop-types](#prop-types) <br>
++ [App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기)
++ [prop-types](#prop-types)
++ [antd 그리드 시스템](#antd-그리드-시스템)
+
+
 
 ## App.js로 레이아웃 분리하기
 [위로가기](#SNS-화면-만들기)
@@ -204,3 +207,8 @@ AppLayout.prototype = {
 
 export default AppLayout;
 ```
+
+## antd 그리드 시스템
+[위로가기](#SNS-화면-만들기)
+
+

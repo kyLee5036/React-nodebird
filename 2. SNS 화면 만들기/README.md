@@ -3,6 +3,7 @@
 + [App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기) 
 + [prop-types](#prop-types) 
 + [antd 그리드 시스템](#antd-그리드-시스템)
++ [커스텀 훅 사용하기](#커스텀-훅-사용하기)
 
 ## App.js로 레이아웃 분리하기
 [위로가기](#SNS-화면-만들기)
@@ -335,3 +336,186 @@ const AppLayout = ({ children }) => {
 
 실제 데이터가 없더라도 예상하면 만드는 것도 좋다.<br>
 서버에서 이 형식으로 값을 전달하기 떄문에 이처럼 만들었다.<br> 
+
+
+## 커스텀 훅 사용하기
+[위로가기](#SNS-화면-만들기)
+
+로그인 폼을 만들어보겠다. <br>
+
+#### App.Layout.js
+```js
+...생략
+<Card.Meta 
+    avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
+    title={dummy.nickname}
+  />
+</Card>
+
+<Form>
+  <div>
+    <label htmlFor="user-id">아이디</label>
+    <br />
+    <Input name="user-id" value={userId} onChange={onChangeId} required />
+  </div>
+  <div>
+    <label htmlFor="user-password">비밀번호</label>
+    <br />
+    <Input name="user-password" type="password" value={password} onChange={onChangePassword} required />
+  </div>
+  <div>
+    <Button type="primary" htmlType="submit" loading={false}>로그인</Button>
+    <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+  </div>
+</Form>
+...생략
+```
+확인을 위해서 value, onChange 잠시 삭제를 하였다. <br>
+
+여기서 로그인하면 카드를 보여주고 로그인을 안하면 회원 폼을 보여주도록 하겠다. <br>
+일단 더미 데이터로 임시로 사용하겠다. <br>
+
+#### App.Layout.js
+```js
+const dummy = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+  isLoggedIn : true,
+}
+
+...생략
+<Row>
+  <Col xs={24} md={6} >
+    {dummy.isLoggedIn // 삼항 연연자를 사용하였다
+    ? <Card
+      actions={[
+        <div key="twit">짹짹<br />{dummy.Post.legnth}</div>,
+        <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>,
+        <div key="follower">팔로워<br />{dummy.Followers.legnth}</div>,
+      ]}>
+      <Card.Meta 
+        avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
+        title={dummy.nickname}
+      />
+    </Card> 
+    : 
+    <Form>
+      <div>
+        <label htmlFor="user-id">아이디</label>
+        <br />
+        <Input name="user-id" required />
+      </div>
+      <div>
+        <label htmlFor="user-password">비밀번호</label>
+        <br />
+        <Input name="user-password" type="password" required />
+      </div>
+      <div>
+        <Button type="primary" htmlType="submit" loading={false}>로그인</Button>
+        <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+      </div>
+    </Form>
+  }   
+  </Col> 
+  ...생략
+</Row>
+```
+isLoggedIn가 true면 프로필을 보여주고, false면 프로필 사진이 아니라 회원로그인 폼을 보여준다. <br>
+일단 서버 쪽에서 데이터를 안 주기 때문에 dummy로 하겠다. <br>
+
+컴포넌트 분리를 하겠다. <br>
+
+#### LoginForm.js
+```js
+import React from 'react'
+import { Form, Input, Button} from 'antd';
+
+const LoginForm = () => {
+  return (
+    <Form>
+      <div>
+        <label htmlFor="user-id">아이디</label>
+        <br />
+        <Input name="user-id" required />
+      </div>
+      <div>
+        <label htmlFor="user-password">비밀번호</label>
+        <br />
+        <Input name="user-password" type="password" required />
+      </div>
+      <div>
+        <Button type="primary" htmlType="submit" loading={false}>로그인</Button>
+        <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+      </div>
+    </Form>
+  )
+}
+
+export default LoginForm;
+```
+
+컴포넌트 분리하는 것에 좋은 조건은 조건문, 삼항연산자, 반복문 쓰기에 적합하다. <br>
+
+#### App.Layout.js
+
+```js
+<Col xs={24} md={6} >
+  {dummy.isLoggedIn 
+  ? <Card
+    actions={[
+      <div key="twit">짹짹<br />{dummy.Post.legnth}</div>,
+      <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>,
+      <div key="follower">팔로워<br />{dummy.Followers.legnth}</div>,
+    ]}>
+    <Card.Meta 
+      avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
+      title={dummy.nickname}
+    />
+  </Card> 
+  : 
+  <LoginForm />
+}   
+</Col> 
+```
+
+
+커스텀 훅으로 재사용을 하겠다. <br>
+```js
+...생략
+import {useInput} from '../pages/signup' // 모듈로 받아온다.
+
+const LoginForm = () => {
+  
+  const [id, onChangeId] = useInput('');
+  const [password, onChangePassword] = useState('');
+
+  const onsubmitForm = useCallback((e) => {
+    e.preventDefault();
+    console.log({id, password});
+  }, [id, password]); // 자식 컴포넌트 넘겨주는 것은 무조건 useCallback을 해준다.
+
+  return (
+    <Form onSubmit={onsubmitForm}>
+      <div>
+        <label htmlFor="user-id">아이디</label>
+        <br />
+        <Input name="user-id" value={id} onchange={onChangeId} required />
+      </div>
+      <div>
+        <label htmlFor="user-password">비밀번호</label>
+        <br />
+        <Input name="user-password" value={password} onChange={onChangePassword} type="password" required />
+      </div>
+      <div>
+        <Button type="primary" htmlType="submit" loading={false}>로그인</Button>
+        <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+      </div>
+    </Form>
+  )
+}
+
+export default LoginForm;
+```
+커스텀 훅을 사용해서 중복을 없앨 수 있다. 그리고 더미데이터로 미리 확인해주는 것도 좋다. <br>

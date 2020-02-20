@@ -1,13 +1,15 @@
 import React from 'react';
-import { Menu, Input, Button, Row, Col, Card, Avatar} from 'antd';
+import { Menu, Input, Row, Col, Card, Avatar} from 'antd';
 import Link from 'next/link'
 import PropTypes from 'prop-types';
+import LoginForm from './LoginForm';
 
 const dummy = {
   nickname: 'LEEKY',
   Post: [],
   Followings: [],
   Followers: [],
+  isLoggedIn : false,
 }
 
 const AppLayout = ({ children }) => {
@@ -22,7 +24,8 @@ const AppLayout = ({ children }) => {
       </Menu>
       <Row>
         <Col xs={24} md={6} >
-          <Card
+          {dummy.isLoggedIn 
+          ? <Card
             actions={[
               <div key="twit">짹짹<br />{dummy.Post.legnth}</div>,
               <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>,
@@ -32,9 +35,10 @@ const AppLayout = ({ children }) => {
               avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
               title={dummy.nickname}
             />
-          </Card>
-          <Link href="/signup"><a><Button>회원가입</Button></a></Link>
-         
+          </Card> 
+          : 
+          <LoginForm />
+        }   
         </Col> 
         <Col xs={24} md={12} >
           {children}

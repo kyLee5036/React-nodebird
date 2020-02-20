@@ -2,6 +2,15 @@ import React, { useState, useCallback } from 'react';
 import { Form, Input, Checkbox, Button } from 'antd';
 import PropTypes from 'prop-types';
 
+// 모듈을 만들어서 재 사용을 하겠다.
+export const useInput = (initValue = null) => {
+  const [value, setter] = useState(initValue);
+  const handler = useCallback((e) => {
+    setter(e.target.value);
+  }, []);
+  return [value, handler];
+};
+
 const Signup = () => {
 
   const [passwordCheck, setPasswordCheck] = useState('');
@@ -10,13 +19,6 @@ const Signup = () => {
   const [termError, setTermError] = useState(false); // 약간 동의 안 할 경우
 
   // 커스텀 훅이다. 기존의 후을 사용해서 새로운 훅을 만들어낸다.
-  const useInput = (initValue = null) => {
-    const [value, setter] = useState(initValue);
-    const handler = useCallback((e) => {
-      setter(e.target.value);
-    }, []);
-    return [value, handler];
-  };
   const [id, onChangeId] = useInput(''); // 사용예시
   const [nick, onChangeNick] = useInput('');
   const [password, onChangePassword] = useInput('');

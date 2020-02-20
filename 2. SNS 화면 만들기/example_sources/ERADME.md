@@ -3,7 +3,7 @@
 + [App.js로 레이아웃 분리하기](#App.js로-레이아웃-분리하기)
 + [prop-types](#prop-types)
 + [antd 그리드 시스템](#antd-그리드-시스템)
-
++ [커스텀 훅 사용하기](#커스텀-훅-사용하기)
 
 
 ## App.js로 레이아웃 분리하기
@@ -294,3 +294,129 @@ NodeBird.prototype = {
 
 export default NodeBird;
 ```
+
+## 커스텀 훅 사용하기
+[위로가기](#SNS-화면-만들기)
+
+#### components/App.Layout.js
+```js
+import React from 'react';
+import { Menu, Input, Row, Col, Card, Avatar} from 'antd';
+import Link from 'next/link'
+import PropTypes from 'prop-types';
+import LoginForm from './LoginForm';
+
+const dummy = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+  isLoggedIn : false,
+}
+
+const AppLayout = ({ children }) => {
+  return (
+    <div>
+      <Menu mode="horizontal">
+        <Menu.Item key="home"><Link href="/"><a>노드버드</a></Link></Menu.Item>
+        <Menu.Item key="profile"><Link href="/profile"><a>프로필</a></Link></Menu.Item>
+         <Menu.Item key="mail">
+            <Input.Search enterButton style={{ verticalAlign : 'middle' }} />
+        </Menu.Item>
+      </Menu>
+      <Row>
+        <Col xs={24} md={6} >
+          {dummy.isLoggedIn 
+          ? <Card
+            actions={[
+              <div key="twit">짹짹<br />{dummy.Post.legnth}</div>,
+              <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>,
+              <div key="follower">팔로워<br />{dummy.Followers.legnth}</div>,
+            ]}>
+            <Card.Meta 
+              avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
+              title={dummy.nickname}
+            />
+          </Card> 
+          : 
+          <LoginForm />
+        }   
+        </Col> 
+        <Col xs={24} md={12} >
+          {children}
+        </Col>
+        <Col xs={24} md={6} >세번쨰</Col>
+      </Row>
+    </div>
+  );
+};
+
+AppLayout.prototype = {
+  children: PropTypes.node,
+}
+
+export default AppLayout;
+```
+
+#### components/LoginForm.js
+```js
+import React, { useState, useCallback } from 'react'
+import { Form, Input, Button} from 'antd';
+import Link from 'next/link';
+import {useInput} from '../pages/signup'
+
+const LoginForm = () => {
+  
+  const [id, onChangeId] = useInput('');
+  const [password, onChangePassword] = useInput('');
+
+  const onsubmitForm = useCallback((e) => {
+    e.preventDefault();
+    console.log({id, password});
+  }, [id, password]); // 자식 컴포넌트 넘겨주는 것은 무조건 useCallback을 해준다.
+
+  return (
+    <Form onSubmit={onsubmitForm}>
+      <div>
+        <label htmlFor="user-id">아이디</label>
+        <br />
+        <Input name="user-id" value={id} onChange={onChangeId} required />
+      </div>
+      <div>
+        <label htmlFor="user-password">비밀번호</label>
+        <br />
+        <Input name="user-password" value={password} onChange={onChangePassword} type="password" required />
+      </div>
+      <div>
+        <Button type="primary" htmlType="submit" loading={false}>로그인</Button>
+        <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+      </div>
+    </Form>
+  )
+}
+
+export default LoginForm;
+```
+
+#### pages/signup.js
+```js
+import React, { useState, useCallback } from 'react';
+import { Form, Input, Checkbox, Button } from 'antd';
+import PropTypes from 'prop-types';
+
+// 모듈을 만들어서 재 사용을 하겠다. export를 사용해주기!!!
+export const useInput = (initValue = null) => {
+  const [value, setter] = useState(initValue);
+  const handler = useCallback((e) => {
+    setter(e.target.value);
+  }, []);
+  return [value, handler];
+};
+
+const Signup = () => {
+...생략
+};
+
+export default Signup;
+```
+

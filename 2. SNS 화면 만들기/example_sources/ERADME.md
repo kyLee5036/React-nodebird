@@ -6,6 +6,7 @@
 + [커스텀 훅 사용하기](#커스텀-훅-사용하기)
 + [메인 화면 만들기](#메인-화면-만들기)
 + [프로필 화면 만들기](#프로필-화면-만들기)
++ [컴포넌트 분리 하기](#컴포넌트-분리-하기)
 
 
 ## App.js로 레이아웃 분리하기
@@ -588,3 +589,310 @@ const Profile = () => {
 
 export default Profile;
 ```
+
+
+## 컴포넌트 분리 하기
+[위로가기](#SNS-화면-만들기)
+
+
+#### \front\pages\index.js
+```js
+import React from 'react';
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+
+const dummy = {
+  isLoggedIn : true,
+  imagePaths: [],
+  mainPosts: [{
+    User: {
+      id : 1,
+      nickname : 'LEEKY',
+    },
+    content: '첫번 째 게시글',
+    // img는 img예시로 넣어주었다. 저작권이 없는 거라서 괜찮음.
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+  }],
+}
+
+const Home = () => {
+  return (
+    <div>
+      {dummy.isLoggedIn && <PostForm /> }
+      {dummy.mainPosts.map((c) => {
+        // 게시글 나오는 화면
+        return (
+          <PostCard key={c} post={c} />
+        )
+      })}
+    </div>
+  );
+};
+
+export default Home;
+```
+
+
+#### \front\pages\profile.js
+```js
+import React from 'react';
+import {Form, Input, Button, List, Card, Icon} from 'antd';
+import NickNameEditForm from '../components/NickNameEditForm';
+
+const Profile = () => {
+  return (
+    <div>
+      <NickNameEditForm />
+
+      {/* 팔로워 목록 */}
+      <List
+        style={{ marginBottom: '20px'}}
+        grid={{ gutter:4, xs:2, md: 3}} // 아이템들에 간격을 해준다 (디자인)
+        size="small" // 사이즈는 작게 (디자인)
+        header={<div>팔로워 목록</div>} 
+        loadMore={<Button style={{width: '100%'}}>더 보기</Button>} // 더보기 버튼
+        bordered // 테두리 디자인 옵션
+        dataSource={['영이', '건이', '얏호']} // 실제 안에 들어 갈 데이터들
+        renderItem={ item => (
+          <List.Item style={{ marginTop: '20px'}}>
+            {/* 배열 안에 jsx를 사용할 떄에는 key를 꼭!! 넣어여한다. 밑에 키 안에 stop이 있다. */}
+            <Card actions={[<Icon type="stop" key="stop" />]}><Card.Meta description={item} /></Card>
+          </List.Item>
+        )}
+      />
+
+      {/* 팔로잉 목록 */}
+      <List
+        style={{ marginBottom: '20px'}}
+        grid={{ gutter:4, xs:2, md: 3}} // 아이템들에 간격을 해준다 (디자인)
+        size="small" // 사이즈는 작게 (디자인)
+        header={<div>팔로잉 목록</div>} 
+        loadMore={<Button style={{width: '100%'}}>더 보기</Button>} // 더보기 버튼
+        bordered // 테두리 디자인 옵션
+        dataSource={['영이', '건이', '얏호']} // 실제 안에 들어 갈 데이터들
+        renderItem={ item => (
+          <List.Item style={{ marginTop: '20px'}}>
+            {/* Card.Meta가 dataSource에 데이터를 사용하는 것 */}
+            <Card actions={[<Icon type="stop" key="stop" />]}><Card.Meta description={item} /></Card>
+          </List.Item>
+        )}
+      />
+    </div>
+  );
+};
+
+export default Profile;
+```
+
+
+#### \front\components\App.Layout.js
+```js
+import React from 'react';
+import { Menu, Input, Row, Col} from 'antd';
+import Link from 'next/link'
+import PropTypes from 'prop-types';
+import LoginForm from './LoginForm';
+import UserProfile from './UserProfile';
+
+const dummy = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+  isLoggedIn : false,
+}
+
+const AppLayout = ({ children }) => {
+  return (
+    <div>
+      <Menu mode="horizontal">
+        <Menu.Item key="home"><Link href="/"><a>노드버드</a></Link></Menu.Item>
+        <Menu.Item key="profile"><Link href="/profile"><a>프로필</a></Link></Menu.Item>
+         <Menu.Item key="mail">
+            <Input.Search enterButton style={{ verticalAlign : 'middle' }} />
+        </Menu.Item>
+      </Menu>
+      <Row gutter={10} >
+        <Col xs={24} md={6} >
+          {dummy.isLoggedIn 
+          ? <UserProfile />
+          : <LoginForm />
+        }   
+        </Col> 
+        <Col xs={24} md={12} >
+          {children}
+        </Col>
+        <Col xs={24} md={6} >
+          <Link href="https://github.com/KeonYoungLeee/React-nodebird" prefetch={false} ><a target="_blank">Made by LEEKY</a></Link>
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+AppLayout.prototype = {
+  children: PropTypes.node,
+}
+
+export default AppLayout;
+```
+
+
+#### \front\components\LoginForm.js
+```js
+....생략
+const LoginForm = () => {
+  ....생략
+      <div style={{marginTop: '10px'}}> //  이거 하나만 추가하면 된다...
+        <Button type="primary" htmlType="submit" loading={false}>로그인</Button>
+        <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+      </div>
+    </Form>
+  )
+}
+
+export default LoginForm;
+```
+
+
+#### \front\components\NickNameEditForm.js
+```js
+import React from 'react';
+import { Form, Input, Button } from 'antd';
+
+const NickNameEditForm = () => {
+  return (
+    <Form style={{ marginBottom: '20px', border: '1px solid #d9d9d9', padding: '20px' }}>
+      <Input addonBefore="닉네임" />
+      <Button type="primary">수정</Button>
+    </Form>
+  )
+}
+
+export default NickNameEditForm;
+```
+
+
+#### \front\components\PostCard.js
+```js
+import React from 'react';
+import { Card, Icon, Button, Avatar } from 'antd';
+import PropTypes from 'prop-types';
+
+const PostCard = ({post}) => {
+  return (
+    <Card
+      key={+post.createAt}
+      cover={post.img && <img alt="example" src={post.img} />}
+      actions={[
+        <Icon type="retweet" key="retweet" />,
+        <Icon type="heart" key="heart" />,
+        <Icon type="message" key="message" />,
+        <Icon type="ellipsis" key="ellipsis" />,
+      ]}
+      extra={<Button>팔로우</Button>}
+    >
+      {/* 카드 세부 정보  */}
+      <Card.Meta 
+        avatar={<Avatar>{post.User.nickname[0]}</Avatar>}
+        title={post.User.nickname}
+        description={post.content}
+      />
+    </Card>
+  )
+}
+
+PostCard.prototypes = {
+  post: PropTypes.shape({ // shape가 객체이다.
+    User : PropTypes.object,
+    content : PropTypes.string,
+    img: PropTypes.string,
+    createAt: PropTypes.object,  
+  }),
+}
+
+export default PostCard;
+```
+
+
+#### \front\components\PostForm.js
+```js
+import React from 'react';
+import { Form, Input, Button } from 'antd';
+
+const dummy = {
+  isLoggedIn : true,
+  imagePaths: [],
+  mainPosts: [{
+    User: {
+      id : 1,
+      nickname : 'LEEKY',
+    },
+    content: '첫번 째 게시글',
+    // img는 img예시로 넣어주었다. 저작권이 없는 거라서 괜찮음.
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+  }],
+}
+
+const PostForm = () => {
+  return (
+    <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data">
+      <Input.TextArea maxLength={140} placeholder="어떤 신기한 일이 있었나요?" />  
+      <div>
+        <input type="file" multiple hidden />
+        <Button>이미지 업로드</Button>
+        <Button type="primary" style={{ float : 'right'}} htmlType="submit">업로드</Button>
+      </div>
+      <div>
+        {dummy.imagePaths.map((v, i) => {
+          return (
+            <div key={v} style={{ display: 'inline-black' }}>
+              <img src={'http://localhost:3065/' + v} style={{ width : '200px' }} alt={v} />
+              <div>
+                <Button>제거</Button>
+              </div>
+            </div>
+          )
+        })}  
+      </div>  
+  </Form>
+  )
+}
+
+export default PostForm;
+```
+
+
+#### \front\components\UserProfile.js
+```js
+import React from 'react';
+
+const dummy = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+  isLoggedIn : false,
+}
+
+const UserProfile = () => {
+  return (
+    <Card
+      actions={[
+        <div key="twit">짹짹<br />{dummy.Post.legnth}</div>,
+        <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>,
+        <div key="follower">팔로워<br />{dummy.Followers.legnth}</div>,
+      ]}>
+      <Card.Meta 
+        avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
+        title={dummy.nickname}
+      />
+    </Card> 
+  )
+}
+
+export default UserProfile;
+```
+
+
+

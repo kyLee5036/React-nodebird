@@ -1,8 +1,9 @@
 import React from 'react';
-import { Menu, Input, Row, Col, Card, Avatar} from 'antd';
+import { Menu, Input, Row, Col} from 'antd';
 import Link from 'next/link'
 import PropTypes from 'prop-types';
 import LoginForm from './LoginForm';
+import UserProfile from './UserProfile';
 
 const dummy = {
   nickname: 'LEEKY',
@@ -25,25 +26,16 @@ const AppLayout = ({ children }) => {
       <Row gutter={10} >
         <Col xs={24} md={6} >
           {dummy.isLoggedIn 
-          ? <Card
-            actions={[
-              <div key="twit">짹짹<br />{dummy.Post.legnth}</div>,
-              <div key="following">팔로잉<br />{dummy.Followings.legnth}</div>,
-              <div key="follower">팔로워<br />{dummy.Followers.legnth}</div>,
-            ]}>
-            <Card.Meta 
-              avatar={<Avatar>{dummy.nickname[0]}</Avatar>} // 앞 급잘
-              title={dummy.nickname}
-            />
-          </Card> 
-          : 
-          <LoginForm />
+          ? <UserProfile />
+          : <LoginForm />
         }   
         </Col> 
         <Col xs={24} md={12} >
           {children}
         </Col>
-        <Col xs={24} md={6} >세번쨰</Col>
+        <Col xs={24} md={6} >
+          <Link href="https://github.com/KeonYoungLeee/React-nodebird" prefetch={false} ><a target="_blank">Made by LEEKY</a></Link>
+        </Col>
       </Row>
     </div>
   );

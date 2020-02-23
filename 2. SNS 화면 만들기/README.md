@@ -6,6 +6,8 @@
 + [커스텀 훅 사용하기](#커스텀-훅-사용하기)
 + [메인 화면 만들기](#메인-화면-만들기)
 + [프로필 화면 만들기](#프로필-화면-만들기)
++ [컴포넌트 분리 하기](#컴포넌트-분리-하기)
+
 
 ## App.js로 레이아웃 분리하기
 [위로가기](#SNS-화면-만들기)
@@ -718,3 +720,99 @@ https://ant.design/components/icon/ <br>
 
 
 
+## 컴포넌트 분리 하기
+[위로가기](#SNS-화면-만들기)
+
+여기서 컴포넌트 분리를 하겠다.<br>
+중요한게 있는데 분리를 하면 컴포넌트도 분리하기 때문에 컴포넌트 처리도 잘 해줘야한다.<br>
+
+
+#### \front\pages\index.js
+```js
+import React from 'react';
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+
+const dummy = {
+  isLoggedIn : true,
+  imagePaths: [],
+  mainPosts: [{
+    User: {
+      id : 1,
+      nickname : 'LEEKY',
+    },
+    content: '첫번 째 게시글',
+    // img는 img예시로 넣어주었다. 저작권이 없는 거라서 괜찮음.
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+  }],
+}
+
+const Home = () => {
+  return (
+    <div>
+      {dummy.isLoggedIn && <PostForm /> }
+      {dummy.mainPosts.map((c) => {
+        // 게시글 나오는 화면
+        return (
+          <PostCard key={c} post={c} /> 
+        )
+      })}
+    </div>
+  );
+};
+
+export default Home;
+```
+여기에 자세히 보면 부모의 props가 자식의 props에 값(c) 을 넘겨준다. <br>
+자식의 props는 post라고 정의했다. <br>
+자식의 props가 부모의 props을 넘겨받을 때에는 post로 넘겨받아야한다. <br>
+아.. 그냥 눈으로 보고 이런식으로 하자.. 설명 못하긌다..<br>
+
+PostCard에 보면 부모 props받을 떄에는 post를 작성해줘야한다. <br>
+
+#### \front\components\PostCard.js
+```js
+import React from 'react';
+import { Card, Icon, Button, Avatar } from 'antd';
+import PropTypes from 'prop-types';
+
+const PostCard = ({post}) => { // index.js에서의 부모 props를 받아온다.
+// 이전에 +c.createAt으로 되어있었는데 +post.createAt으로 해주었다 
+// post로 교체해주면 된다.
+  return (
+    <Card
+      key={+post.createAt}
+      cover={post.img && <img alt="example" src={post.img} />}
+      actions={[
+        <Icon type="retweet" key="retweet" />,
+        <Icon type="heart" key="heart" />,
+        <Icon type="message" key="message" />,
+        <Icon type="ellipsis" key="ellipsis" />,
+      ]}
+      extra={<Button>팔로우</Button>}
+    >
+      {/* 카드 세부 정보  */}
+      <Card.Meta 
+        avatar={<Avatar>{post.User.nickname[0]}</Avatar>}
+        title={post.User.nickname}
+        description={post.content}
+      />
+    </Card>
+  )
+}
+
+// props들을 정의해준다.
+PostCard.prototypes = { 
+  post: PropTypes.shape({ // shape가 객체이다.
+    User : PropTypes.object,
+    content : PropTypes.string,
+    img: PropTypes.string,
+    createAt: PropTypes.object,  
+  }),
+}
+
+export default PostCard;
+```
+
+router.js:442 Uncaught (in promise) Error: Invalid href passed to router: <br>
+Link 안에 `prefetch={false}`를 추가해주었다. <br>

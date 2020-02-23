@@ -14,7 +14,7 @@ const LoginForm = () => {
   }, [id, password]); // 자식 컴포넌트 넘겨주는 것은 무조건 useCallback을 해준다.
 
   return (
-    <Form onSubmit={onsubmitForm}>
+    <Form onSubmit={onsubmitForm} style={{ padding : '10px' }}>
       <div>
         <label htmlFor="user-id">아이디</label>
         <br />

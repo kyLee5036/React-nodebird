@@ -1,7 +1,7 @@
 # 리덕스 익히기
 
 + [redux 주요 개념 소개](#redux-주요-개념-소개)
-
++ [첫 리듀서 만들기](#첫-리듀서-만들기)
 
 
 ## redux 주요 개념 소개
@@ -46,4 +46,81 @@ React의 useState는 간단한 곳에 사용하고, 복잡한 곳(관리하기 �
 결국에는 안정성, state 통제하기 쉬워서 사용한다. <br>
 
 Tip) Redux는 Vue, React, Angular(?)에도 사용할 수 있다. <br>
+
+
+## 첫 리듀서 만들기
+[위로가기](#리덕스-익히기)
+
+리덕스를 사용하기 위해서 패키지를 몇 개 설치하겠다. <br>
+
+<pre><code>npm i redux react-redux</code></pre>
+
+react-redux를 설치하는 이유는 react랑 연결해주기 위해서 react-redux도 설치해줘야 한다. <br>
+
+reducers라는 폴더를 만들 것이다. <br>
+리덕스를 하면 단점이 코드량이 상당히 많지만, 예상치 못한 동작이 생길 일은 없다. <br>
+
+`\front\reducers` 안에 `index.js, post.js, user.js`를 생성한다. <br>
+
+> state 구조 잡는 건 경험이 많이 쌓여야 잘 잡을 수 있다.
+```js
+{
+  // user.js
+  isLoggedIn : false, 
+  user : { 
+    ...
+  },
+
+  // *********구별***********
+ 
+  // post.js 
+  mainPost: { 
+    ...
+  },
+} // -> store(관리)
+```
+
+store에 전부 넣으면 상당히 많아서, 쪼개서 나눈다. 대신에 route-store가 있어야한다. <br>
+<strong>index.js라는 router-store를 만들어주고</strong>, 그 중에서 post.js, user.js를 나누어 줄 것이다. <br>
+
+#### \front\reducers\user.js
+```js
+const intialState = { // 초기값
+  isLoggedIn : false,
+  user: {},
+}
+
+const LOG_IN = 'LOG_IN' // 액션의 이름
+const LOG_OUT = 'LOG_OUT';
+
+const loginAction = { // 실제 액션
+  type: LOG_IN,
+  data: { // 넣어 줄 액션
+    nickname: 'LEEKY',
+  }
+}
+
+const logoutAction = {
+  type: LOG_OUT,
+}
+
+const reudcer = (state = intialState, action) => {
+  switch(action.type) { // 기본적으로 switch으로 해준다.
+    case LOG_IN: { // 로그인 할 경우
+      return {
+        ...state,
+        isLoggedIn: true,
+        user: action.user,
+      }
+    }
+    case LOG_OUT: { // 로그아웃 할 경우
+      return {
+        ...state,
+        isLoggedIn: false, 
+        user: null, // user 목록들을 null로 해준다.
+      }
+    }
+  }
+}
+```
 

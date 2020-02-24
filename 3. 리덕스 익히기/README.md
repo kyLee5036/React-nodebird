@@ -3,6 +3,7 @@
 + [redux 주요 개념 소개](#redux-주요-개념-소개)
 + [첫 리듀서 만들기](#첫-리듀서-만들기)
 + [불변성과 리듀서 여러 개 합치기](#불변성과-리듀서-여러-개-합치기)
++ [redux와 react 연결하기](#redux와-react-연결하기)
 
 ## redux 주요 개념 소개
 [위로가기](#리덕스-익히기)
@@ -291,3 +292,119 @@ initalState도 하나로 묶여진다. <br>
 ```
 결국에는 합쳐서 이런 식으로 될 것이다.
 
+
+## redux와 react 연결하기
+[위로가기](#리덕스-익히기)
+
+react랑 연결을 할 것이다. <br>
+`\front\pages\_app.js` 레이아웃 역할을 하고 있다. 모든 페이지에 공통적으로 들어가 있다. <br>
+
+> app.js에 redux를 연결해줘야한다. <br>
+
+#### \front\pages\_app.js
+```js
+...생략
+import { Provider } from 'react-redux'; //  react-redux를 사용하기 위해서 Provider을 추가
+import reducer from '../reducers/index'; // reudcer 추가
+
+const NodeBird = ({Component, store}) => {
+  return (
+    // store가 redux의 state이다.
+    // Provider가 최상의 props이다.
+    <Provider store={store} >  // 추가
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+      </Head>
+      <AppLayout >
+        <Component />
+      </AppLayout>
+    </Provider> // 추가
+  );
+};
+...생략
+export default NodeBird;
+```
+
+react-redux에 붙이는거랑 next에 react-redux에 붙이는 거랑 달라서 next-redux-wrapper를 설치해야 한다. <br>
+<pre><code>npm i next-redux-wrapper</code></pre>
+
+하지만, 여기서 store가 구현이 안되어있다. <br>
+그러기 때문에, `next-redux-wrapper`를 사용한다. <br>
+
+#### \front\pages\_app.js
+```js
+import React from 'react';
+import Head from 'next/head';
+import PropTypes from 'prop-types';
+import WithRedux from 'next-redux-wrapper'; // widthRedux를 추가한다.
+import AppLayout from '../components/App.Layout';
+import { Provider } from 'react-redux'; 
+import reducer from '../reducers/index'; // 아직 사용 안함. 나중에 사용할 것임
+
+const NodeBird = ({Component, store}) => {
+  return (
+
+    <Provider store={store} > 
+      ...생략
+    </Provider>
+  );
+};
+...생략
+export default WithRedux()(NodeBird); // withRedux가 BodeBird를 감싸준다.
+```
+
+NodeBird에는 WithRedux라는게 NodeBird 컴포넌트에 props를 store 쪽에게 넣어주는 역할이다. <br>
+
+그냥.. 솔직히 이해를 못하면 외우면 된다. 왜냐하면 모든 프로젝트에서 똑같이 사용하기 떄문이다. <br>
+
+#### \front\pages\_app.js
+```js
+...생략
+import WithRedux from 'next-redux-wrapper';
+import AppLayout from '../components/App.Layout';
+import { Provider } from 'react-redux'; 
+import reducer from '../reducers/index'; // index의 reducer를 createStore에 넣어준다.
+import { createStore } from 'redux'; // 추가를 해준다
+
+const NodeBird = ({Component, store}) => {
+  return (
+
+    <Provider store={store} > // store을 구현 해주었다.
+      ...생략
+    </Provider>
+  );
+};
+
+NodeBird.prototype = {
+  Component : PropTypes.elementType,
+  store: PropTypes.object, // 추가
+}
+
+export default WithRedux((initalState, options) => {
+  // state랑 reducer가 합쳐지 있는 것이 store이다 
+  const store = createStore(reducer, initalState); // 기존적인 형 : reudx에 가지고 있다.
+  // 여기에다가 store 커스터마이징
+
+  return store; // 마지막에 store을 리턴해준다.
+})(NodeBird);
+```
+`/reudcer/index.js`의 app.js의 안에 reducer를 createStore에 넣어준다.
+
+여기서 개발자 툴에 보면 provider안에 밑에처럼 정의가 되어져있다.
+
+#### 결과확인
+```js
+{
+  "store": { 
+    "dispatch": "dispatch",
+    "subscribe": "subscribe",
+    "getState": "getState",
+    "replaceReducer": "replaceReducer"
+  },
+  "children": [
+    "<Head />",
+    "<AppLayout />"
+  ]
+}
+```

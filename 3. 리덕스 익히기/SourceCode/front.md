@@ -2,6 +2,7 @@
 
 + [redux 주요 개념 소개](#redux-주요-개념-소개) 
 + [첫 리듀서 만들기](#첫-리듀서-만들기)
++ [불변성과 리듀서 여러 개 합치기](#불변성과-리듀서-여러-개-합치기)
 
 
 ## redux 주요 개념 소개
@@ -51,6 +52,127 @@ const reudcer = (state = intialState, action) => {
         user: null,
       }
     }
+    default: {
+      return {
+        ...state,
+      };
+    }
   }
 }
+```
+
+## 불변성과 리듀서 여러 개 합치기
+[위로가기](#리덕스-익히기)
+
+#### \front\reducers\user.js
+```js
+export const intialState = { 
+  isLoggedIn : false,
+  user: {},
+}
+
+const LOG_IN = 'LOG_IN' 
+const LOG_OUT = 'LOG_OUT';
+
+const loginAction = { 
+  type: LOG_IN,
+  data: { 
+    nickname: 'LEEKY',
+  }
+}
+
+const logoutAction = {
+  type: LOG_OUT,
+}
+
+const reducer = (state = intialState, action) => {
+  switch(action.type) { 
+    case LOG_IN: {
+      return {
+        ...state,
+        isLoggedIn: true,
+        user: action.user,
+      };
+    }
+    case LOG_OUT: {
+      return {
+        ...state,
+        isLoggedIn: false,
+        user: null,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+}
+
+export default reducer;
+```
+
+#### \front\reducers\post.js
+```js
+export const initalState = {
+  mainPosts: [],
+};
+
+const ADD_POST = 'ADD_POST';
+const ADD_DUMMY = 'ADD_DUMMY';
+
+const addPost = {
+  type: ADD_POST,
+};
+
+const addDummy = {
+  type: ADD_DUMMY,
+  data: {
+    content: 'Hello',
+    userId: 1,
+    User: {
+      nickname: 'LEEKY'
+    }
+  }
+};
+
+const reducer = (state = initalState, action) => {
+  switch (action.type) {
+    case ADD_POST: {
+      return {
+        ...state,
+      };
+    }
+    case ADD_DUMMY: {
+      return {
+        ...state,
+        // 불변성 유지하기 위해서 사용 -> immer를 사용할 것이다 (나중에)
+        mainPosts: [action.data, ...state.mainPosts], 
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+export default reducer;
+```
+
+#### \front\reducers\index.js
+```js
+// 하나로 묶어줄 것이다.
+import { combineReducers } from 'redux'; // combineReducers가 redux를 하나로 묶어준다
+
+import user from './user';
+import post from './post';
+
+const rootReducer = combineReducers({
+  user,
+  post,
+});
+
+export default rootReducer;
 ```

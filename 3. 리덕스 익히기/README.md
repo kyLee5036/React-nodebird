@@ -2,7 +2,7 @@
 
 + [redux 주요 개념 소개](#redux-주요-개념-소개)
 + [첫 리듀서 만들기](#첫-리듀서-만들기)
-
++ [불변성과 리듀서 여러 개 합치기](#불변성과-리듀서-여러-개-합치기)
 
 ## redux 주요 개념 소개
 [위로가기](#리덕스-익히기)
@@ -108,7 +108,7 @@ const reudcer = (state = intialState, action) => {
   switch(action.type) { // 기본적으로 switch으로 해준다.
     case LOG_IN: { // 로그인 할 경우
       return {
-        ...state,
+        ...state, // ...는 spread 문법이다.
         isLoggedIn: true,
         user: action.user,
       }
@@ -120,7 +120,174 @@ const reudcer = (state = intialState, action) => {
         user: null, // user 목록들을 null로 해준다.
       }
     }
+    default: {
+      return {
+        ...state,
+      };
+    }
   }
 }
 ```
+
+## 불변성과 리듀서 여러 개 합치기
+[위로가기](#리덕스-익히기)
+
+post.js도 만들어 볼 것이다. <br>
+
+#### \front\reducers\post.js
+```js
+export const initalState = {
+  mainPosts: [],
+};
+
+const ADD_POST = 'ADD_POST';
+const ADD_DUMMY = 'ADD_DUMMY';
+
+const addPost = {
+  type: ADD_POST,
+};
+
+const addDummy = {
+  type: ADD_DUMMY,
+  data: {
+    content: 'Hello',
+    userId: 1,
+    User: {
+      nickname: 'LEEKY'
+    }
+  }
+};
+
+const reducer = (state = initalState, action) => {
+  switch (action.type) {
+    case ADD_POST: {
+      return {
+        ...state,
+      };
+    }
+    case ADD_DUMMY: {
+      return {
+        ...state,
+        // 불변성 유지하기 위해서 사용 -> immer를 사용할 것이다 (나중에)
+        mainPosts: [action.data, ...state.mainPosts], 
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+export default reducer;
+```
+
+#### \front\reducers\user.js
+```js
+export const intialState = { 
+  isLoggedIn : false,
+  user: {},
+}
+
+const LOG_IN = 'LOG_IN' 
+const LOG_OUT = 'LOG_OUT';
+
+const loginAction = { 
+  type: LOG_IN,
+  data: { 
+    nickname: 'LEEKY',
+  }
+}
+
+const logoutAction = {
+  type: LOG_OUT,
+}
+
+const reducer = (state = intialState, action) => {
+  switch(action.type) { 
+    case LOG_IN: {
+      return {
+        ...state,
+        isLoggedIn: true,
+        user: action.user,
+      };
+    }
+    case LOG_OUT: {
+      return {
+        ...state,
+        isLoggedIn: false,
+        user: null,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+}
+
+export default reducer;
+
+```
+
+#### \front\reducers\index.js
+```js
+// 하나로 묶어줄 것이다.
+import { combineReducers } from 'redux'; // combineReducers가 redux를 하나로 묶어준다
+
+import user from './user';
+import post from './post';
+
+const rootReducer = combineReducers({
+  user,
+  post,
+});
+
+export default rootReducer;
+```
+
+user reducer, post reducer가 있는데, root reducer로 묶어주었다. <br>
+initalState도 하나로 묶여진다. <br>
+
+> <strong>combineReducers</strong>가 redux를 하나로 묶어준다.
+
+쪼개어서 보이지만, 결국에는 하나로 합쳐진다.<br><br>
+
+`user.js`로 되었던 부분
+```js
+{
+  // user.js
+  isLoggedIn : false, 
+  user : { 
+    ...
+  },
+} // -> store(관리)
+```
+
+`post.js`로 되었던 부분
+```js
+{
+  // post.js 
+  mainPost: { 
+    ...
+  },
+} // -> store(관리)
+```
+
+`index.js` === (user.js + post.js)
+```js
+{
+  isLoggedIn : false, 
+  user : { 
+    ...
+  },
+
+  mainPost: { 
+    ...
+  },
+} // -> store(관리)
+```
+결국에는 합쳐서 이런 식으로 될 것이다.
 

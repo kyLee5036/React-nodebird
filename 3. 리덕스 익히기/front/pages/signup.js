@@ -14,12 +14,11 @@ export const useInput = (initValue = null) => {
 const Signup = () => {
 
   const [passwordCheck, setPasswordCheck] = useState('');
-  const [term, setTerm] = useState(false); // 약관 동의 (체크박스)
-  const [passwordError, setPasswordError] = useState(false); // 비밀번호 에러
-  const [termError, setTermError] = useState(false); // 약간 동의 안 할 경우
+  const [term, setTerm] = useState(false); 
+  const [passwordError, setPasswordError] = useState(false); 
+  const [termError, setTermError] = useState(false); 
 
-  // 커스텀 훅이다. 기존의 후을 사용해서 새로운 훅을 만들어낸다.
-  const [id, onChangeId] = useInput(''); // 사용예시
+  const [id, onChangeId] = useInput(''); 
   const [nick, onChangeNick] = useInput('');
   const [password, onChangePassword] = useInput('');
   

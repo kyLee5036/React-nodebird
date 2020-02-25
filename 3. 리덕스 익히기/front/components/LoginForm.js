@@ -11,7 +11,7 @@ const LoginForm = () => {
   const onsubmitForm = useCallback((e) => {
     e.preventDefault();
     console.log({id, password});
-  }, [id, password]); // 자식 컴포넌트 넘겨주는 것은 무조건 useCallback을 해준다.
+  }, [id, password]);
 
   return (
     <Form onSubmit={onsubmitForm} style={{ padding : '10px' }}>

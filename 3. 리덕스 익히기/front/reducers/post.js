@@ -30,7 +30,6 @@ const reducer = (state = initalState, action) => {
     case ADD_DUMMY: {
       return {
         ...state,
-        // 불변성 유지하기 위해서 사용 -> immer를 사용할 것이다 (나중에)
         mainPosts: [action.data, ...state.mainPosts], 
       };
     }

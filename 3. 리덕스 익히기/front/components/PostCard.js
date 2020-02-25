@@ -26,7 +26,7 @@ const PostCard = ({post}) => {
 }
 
 PostCard.prototypes = {
-  post: PropTypes.shape({ // shape가 객체이다.
+  post: PropTypes.shape({
     User : PropTypes.object,
     content : PropTypes.string,
     img: PropTypes.string,

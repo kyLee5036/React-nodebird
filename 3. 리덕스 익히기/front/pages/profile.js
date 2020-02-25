@@ -6,36 +6,31 @@ const Profile = () => {
   return (
     <div>
       <NickNameEditForm />
-
-      {/* 팔로워 목록 */}
       <List
         style={{ marginBottom: '20px'}}
-        grid={{ gutter:4, xs:2, md: 3}} // 아이템들에 간격을 해준다 (디자인)
-        size="small" // 사이즈는 작게 (디자인)
+        grid={{ gutter:4, xs:2, md: 3}} 
+        size="small"
         header={<div>팔로워 목록</div>} 
-        loadMore={<Button style={{width: '100%'}}>더 보기</Button>} // 더보기 버튼
-        bordered // 테두리 디자인 옵션
-        dataSource={['영이', '건이', '얏호']} // 실제 안에 들어 갈 데이터들
+        loadMore={<Button style={{width: '100%'}}>더 보기</Button>}
+        bordered
+        dataSource={['영이', '건이', '얏호']} 
         renderItem={ item => (
           <List.Item style={{ marginTop: '20px'}}>
-            {/* 배열 안에 jsx를 사용할 떄에는 key를 꼭!! 넣어여한다. 밑에 키 안에 stop이 있다. */}
             <Card actions={[<Icon type="stop" key="stop" />]}><Card.Meta description={item} /></Card>
           </List.Item>
         )}
       />
 
-      {/* 팔로잉 목록 */}
       <List
         style={{ marginBottom: '20px'}}
-        grid={{ gutter:4, xs:2, md: 3}} // 아이템들에 간격을 해준다 (디자인)
-        size="small" // 사이즈는 작게 (디자인)
+        grid={{ gutter:4, xs:2, md: 3}}
+        size="small"
         header={<div>팔로잉 목록</div>} 
-        loadMore={<Button style={{width: '100%'}}>더 보기</Button>} // 더보기 버튼
+        loadMore={<Button style={{width: '100%'}}>더 보기</Button>} 
         bordered // 테두리 디자인 옵션
-        dataSource={['영이', '건이', '얏호']} // 실제 안에 들어 갈 데이터들
+        dataSource={['영이', '건이', '얏호']} 
         renderItem={ item => (
           <List.Item style={{ marginTop: '20px'}}>
-            {/* Card.Meta가 dataSource에 데이터를 사용하는 것 */}
             <Card actions={[<Icon type="stop" key="stop" />]}><Card.Meta description={item} /></Card>
           </List.Item>
         )}

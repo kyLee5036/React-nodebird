@@ -10,7 +10,6 @@ const dummy = {
       nickname : 'LEEKY',
     },
     content: '첫번 째 게시글',
-    // img는 img예시로 넣어주었다. 저작권이 없는 거라서 괜찮음.
     img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
   }],
 }

@@ -4,6 +4,7 @@
 + [첫 리듀서 만들기](#첫-리듀서-만들기)
 + [불변성과 리듀서 여러 개 합치기](#불변성과-리듀서-여러-개-합치기)
 + [redux와 react 연결하기](#redux와-react-연결하기)
++ [redux devtools 사용하기](#redux-devtools-사용하기)
 
 ## redux 주요 개념 소개
 [위로가기](#리덕스-익히기)
@@ -407,4 +408,122 @@ export default WithRedux((initalState, options) => {
     "<AppLayout />"
   ]
 }
+```
+
+
+## redux devtools 사용하기
+[위로가기](#리덕스-익히기)
+
+먼저 redux devtools 다운을 받자. <br>
+리덕스에 기능을 추가할려면 `middlewares`를 추가해준다. <br>
+
+#### \front\pages\_app.js
+```js
+...생략
+import { Provider } from 'react-redux'; 
+import reducer from '../reducers/index';
+import { createStore, compose, applyMiddleware } from 'redux'; // 추가
+
+const NodeBird = ({Component, store}) => {
+  ...생략
+};
+
+...생략
+
+export default WithRedux((initalState, options) => {
+  const middlewares = []; // 미들웨어 추가
+  // enhancer : 리덕스에 기능을 향상 시킨다.
+  // compose : 미들웨어끼리 합성을 한다(합체)
+  const enhancer = compose(
+    applyMiddleware(...middlewares)); // 
+  const store = createStore(reducer, initalState, enhancer); 
+  return store; 
+  // 순서를 지켜줘야 한다.
+})(NodeBird);
+```
+<strong>enhancer</strong> : 리덕스에 기능을 향상 시킨다. <br>
+<strong>compose</strong> : 미들웨어끼리 합성을 한다(합체) <br>
+
+#### \front\pages\_app.js
+```js
+...생략
+import { Provider } from 'react-redux'; 
+import reducer from '../reducers/index';
+import { createStore, compose, applyMiddleware } from 'redux'; // 추가
+
+const NodeBird = ({Component, store}) => {
+  ...생략
+};
+
+...생략
+
+export default WithRedux((initalState, options) => {
+  const middlewares = []; 
+  const enhancer = compose(
+    applyMiddleware(...middlewares), 
+    window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ?
+    window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  ); // 이 코드는 redux-devtools의 사이트에 가져왔다. 확장 프로그램 설치하면 이 window.__REDUX_DEVTOOLS_EXTENSION__를 사용할 수가 있다.
+
+
+  const store = createStore(reducer, initalState, enhancer); 
+
+  return store;
+})(NodeBird);
+```
+미들웨어는 액션과 스토어 사이에서 동작한다. <br>
+
+솔직히 이해하기 힘들면, 외우는 것도 나쁘지가 않다. <br>
+Tip) 코딩할 때에는 이부분이 절대 바뀌지가 않는다 <br>
+
+#### \front\pages\_app.js
+```js
+export default WithRedux((initalState, options) => {
+  const middlewares = []; // 여기 배열만 바뀌는 것이다. (이 부분만!!!! )
+  const enhancer = compose(
+    applyMiddleware(...middlewares), 
+    window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ?
+    window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  ); 
+  const store = createStore(reducer, initalState, enhancer); 
+  return store;
+})(NodeBird);
+```
+
+`window is not defined` 에러가 나온다. 밑에 해결방법이 있다. <br>
+
+#### \front\pages\_app.js
+```js
+export default WithRedux((initalState, options) => {
+  const middlewares = [];
+  const enhancer = compose(
+    applyMiddleware(...middlewares), 
+    typeof window !== 'undefined' && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f, // 추가 해준다
+  ); 
+  const store = createStore(reducer, initalState, enhancer); 
+  return store;
+})(NodeBird);
+```
+
+이렇게 해주면 redux-devtools을 사용할 수가 있다. <br>
+
+
+여기서는 서버 확인 하는 방법이다.
+#### \front\pages\_app.js
+```js
+export default WithRedux((initalState, options) => {
+  const middlewares = [];
+  const enhancer = compose(
+    applyMiddleware(...middlewares), 
+    
+    // options.isServer를 하면 서버 임을 판단한다.
+    // options는 서버인지 아닌지를 판단 할 수 있다. 
+    !options.isServer && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+    
+    // 여기 이 부분을 주석을 처리한다.
+    // typeof window !== 'undefined' && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  ); 
+  const store = createStore(reducer, initalState, enhancer); 
+  return store;
+})(NodeBird);
 ```

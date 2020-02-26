@@ -4,6 +4,8 @@
 + [첫 리듀서 만들기](#첫-리듀서-만들기)
 + [불변성과 리듀서 여러 개 합치기](#불변성과-리듀서-여러-개-합치기)
 + [redux와 react 연결하기](#redux와-react-연결하기)
++ [redux devtools 사용하기](#redux-devtools-사용하기)
+
 
 ## redux 주요 개념 소개
 [위로가기](#리덕스-익히기)
@@ -214,3 +216,6 @@ export default WithRedux((initalState, options) => {
   return store;
 })(NodeBird);
 ```
+
+## redux devtools 사용하기
+[위로가기](#리덕스-익히기)

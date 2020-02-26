@@ -5,7 +5,7 @@ import WithRedux from 'next-redux-wrapper';
 import AppLayout from '../components/App.Layout';
 import { Provider } from 'react-redux'; 
 import reducer from '../reducers/index';
-import { createStore } from 'redux';
+import { createStore, compose, applyMiddleware } from 'redux';
 
 const NodeBird = ({Component, store}) => {
   return (
@@ -27,6 +27,11 @@ NodeBird.prototype = {
 }
 
 export default WithRedux((initalState, options) => {
-  const store = createStore(reducer, initalState); 
+  const middlewares = [];
+  const enhancer = compose(
+    applyMiddleware(...middlewares), 
+    !options.isServer && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  ); 
+  const store = createStore(reducer, initalState, enhancer); 
   return store;
 })(NodeBird);

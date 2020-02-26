@@ -5,6 +5,7 @@
 + [불변성과 리듀서 여러 개 합치기](#불변성과-리듀서-여러-개-합치기)
 + [redux와 react 연결하기](#redux와-react-연결하기)
 + [redux devtools 사용하기](#redux-devtools-사용하기)
++ [react redux 훅 사용하기](#react-redux-훅-사용하기)
 
 
 ## redux 주요 개념 소개
@@ -219,3 +220,144 @@ export default WithRedux((initalState, options) => {
 
 ## redux devtools 사용하기
 [위로가기](#리덕스-익히기)
+
+#### \front\pages\_app.js
+```js
+import React from 'react';
+import Head from 'next/head';
+import PropTypes from 'prop-types';
+import WithRedux from 'next-redux-wrapper';
+import AppLayout from '../components/App.Layout';
+import { Provider } from 'react-redux'; 
+import reducer from '../reducers/index';
+import { createStore, compose, applyMiddleware } from 'redux';
+
+const NodeBird = ({Component, store}) => {
+  return (
+    <Provider store={store} > 
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+      </Head>
+      <AppLayout >
+        <Component />
+      </AppLayout>
+    </Provider>
+  );
+};
+
+NodeBird.prototype = {
+  Component : PropTypes.elementType,
+  store: PropTypes.object,
+}
+
+export default WithRedux((initalState, options) => {
+  const middlewares = [];
+  const enhancer = compose(
+    applyMiddleware(...middlewares), 
+    !options.isServer && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  ); 
+  const store = createStore(reducer, initalState, enhancer); 
+  return store;
+})(NodeBird);
+```
+
+## react redux 훅 사용하기
+[위로가기](#리덕스-익히기)
+
+#### \front\pages\index.js
+```js
+import React, { useEffect } from 'react';
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+import { useDispatch, useSelector } from 'react-redux';
+import { LOG_IN } from '../reducers/user';
+
+const dummy = {
+  isLoggedIn : true,
+  imagePaths: [],
+  mainPosts: [{
+    User: {
+      id : 1,
+      nickname : 'LEEKY',
+    },
+    content: '첫번 째 게시글',
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+  }],
+}
+
+const Home = () => {
+  const dispatch = useDispatch();
+  const {isLoggedIn, user} = useSelector(state => state.user); 
+  useEffect(() => {
+    dispatch( {
+      type: LOG_IN,
+      data: {
+        nickname: 'LEEKY',
+      }
+    })
+  }, []);
+
+  return (
+    <div>
+      {user ? <div>로그인 했습니다 : {user.nickname}</div> : <div>로그아웃 했습니다</div>}
+      {dummy.isLoggedIn && <PostForm /> }
+      {dummy.mainPosts.map((c) => {
+        return (
+          <PostCard key={c} post={c} />
+        )
+      })}
+    </div>
+  );
+};
+
+export default Home;
+```
+
+#### \front\reducers\user.js
+```js
+export const intialState = { 
+  isLoggedIn : false,
+  user: {},
+}
+
+export const LOG_IN = 'LOG_IN' 
+export const LOG_OUT = 'LOG_OUT';
+
+const loginAction = { 
+  type: LOG_IN,
+  data: { 
+    nickname: 'LEEKY',
+  }
+}
+
+const logoutAction = {
+  type: LOG_OUT,
+}
+
+const reducer = (state = intialState, action) => {
+  switch(action.type) { 
+    case LOG_IN: {
+      return {
+        ...state,
+        isLoggedIn: true,
+        user: action.user,
+      };
+    }
+    case LOG_OUT: {
+      return {
+        ...state,
+        isLoggedIn: false,
+        user: null,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+}
+
+export default reducer;
+```

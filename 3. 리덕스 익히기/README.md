@@ -5,6 +5,7 @@
 + [불변성과 리듀서 여러 개 합치기](#불변성과-리듀서-여러-개-합치기)
 + [redux와 react 연결하기](#redux와-react-연결하기)
 + [redux devtools 사용하기](#redux-devtools-사용하기)
++ [react redux 훅 사용하기](#react-redux-훅-사용하기)
 
 ## redux 주요 개념 소개
 [위로가기](#리덕스-익히기)
@@ -526,4 +527,105 @@ export default WithRedux((initalState, options) => {
   const store = createStore(reducer, initalState, enhancer); 
   return store;
 })(NodeBird);
+```
+
+
+## react redux 훅 사용하기
+[위로가기](#리덕스-익히기)
+
+연습으로 메인화면에서 action을 dispatch를 해보겠다. <br>
+
+<pre><code>npm i react-redux
+
++ react-redux@7.2.0
+</code></pre>
+
+리액트에서의 훅을 리덕스에 사용할려면 버전 7.1.0 이상이어야한다. <br>
+그래야만 훅에서 리덕스를 지원해주기 때문이다. <br>
+
+### useDispatch (action 하는 방법)
+dispatch 하는 방법 <br>
+
+#### \front\pages\index.js
+```js
+import React, { useEffect } from 'react'; // 추가
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+import { useDispatch } from 'react-redux'; // 추가
+import { LOG_IN } from '../reducers/user'; // 추가
+
+...생략
+
+const Home = () => {
+  const dispatch = useDispatch();
+  useEffect(() => {
+    dispatch( {
+      type: LOG_IN,
+      data: {
+        nickname: 'LEEKY',
+      }
+    })
+  }, []);
+
+  return (
+    ...생략
+  );
+};
+
+export default Home;
+```
+
+### useSelector (initalState를 사용하는 방법)
+
+여기서 action만 사용했지만, state를 어떻게 사용했는지 알아보자!! <br>
+-> 즉, reducers에서의 user의 initalState를 사용하는 방법을 알아보자!! <br>
+
+#### \front\pages\index.js
+```js
+...생략
+import { useDispatch, useSelector } from 'react-redux'; // useSelector 추가해준다.
+import { LOG_IN } from '../reducers/user';
+
+...생략
+
+const Home = () => {
+  const dispatch = useDispatch();
+  const {isLoggedIn, user} = useSelector(state => state.user); 
+  // 여기에서 useSelector의 전자 state는 전체 state 의미를 한다.
+  //  => state.user 이 부분은 state에서 user인 state를 가져오는 것이다.
+  // 즉, 전체 state에서 user를 가져오는 것이다.
+  // 그리고, user안에 isLoggedIn이랑 user가 들어있다.
+  // 마지막으로, 구조분해로 isLoggedIn, user를 사용한다.
+  
+  // 구조분해 하기 전의 모습
+  const user = useSelector(state => state.user); 
+  console.log(user);
+
+  useEffect(() => {
+    dispatch( {
+      type: LOG_IN,
+      data: {
+        nickname: 'LEEKY',
+      }
+    })
+  }, []);
+
+  return (
+    <div>
+      {user ? <div>로그인 했습니다 : {user.nickname}</div> : <div>로그아웃 했습니다</div>}
+      {dummy.isLoggedIn && <PostForm /> }
+     ...생략
+    </div>
+  );
+};
+
+export default Home;
+```
+
+console.log(user)의 화면 <br>
+```js 
+{ isLoggedIn: false, 
+  user: {
+    …
+  }}
 ```

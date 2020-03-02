@@ -6,6 +6,7 @@
 + [redux와 react 연결하기](#redux와-react-연결하기)
 + [redux devtools 사용하기](#redux-devtools-사용하기)
 + [react redux 훅 사용하기](#react-redux-훅-사용하기)
++ [react redux connect](#react-redux-connect)
 
 
 ## redux 주요 개념 소개
@@ -361,3 +362,6 @@ const reducer = (state = intialState, action) => {
 
 export default reducer;
 ```
+
+## react redux connect
+[위로가기](#리덕스-익히기)

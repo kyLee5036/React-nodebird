@@ -6,6 +6,7 @@
 + [redux와 react 연결하기](#redux와-react-연결하기)
 + [redux devtools 사용하기](#redux-devtools-사용하기)
 + [react redux 훅 사용하기](#react-redux-훅-사용하기)
++ [react redux connect](#react-redux-connect)
 
 ## redux 주요 개념 소개
 [위로가기](#리덕스-익히기)
@@ -629,3 +630,80 @@ console.log(user)의 화면 <br>
     …
   }}
 ```
+
+## react redux connect
+[위로가기](#리덕스-익히기)
+
+복습하기
+useDispatch : action을 실행
+useSelector : reudx의 state를 사용할 수 있다.
+
+### 옛날 방식
+Hooks가 없을 때 react, react-redux 연결하는 법
+
+```js
+import React, { useEffect } from 'react';
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+// import { useDispatch, useSelector } from 'react-redux'; // 사용하지 않는다
+import { connect } from 'react-redux'; // 추가
+import { LOG_IN } from '../reducers/user';
+
+const dummy = {
+  ....생략
+}
+
+const Home = () => {
+  const dispatch = useDispatch();
+  const {isLoggedIn, user} = useSelector(state => state.user); 
+  ...생략
+};
+
+function MapStateToProps () { // 추가
+  
+}
+
+export default connect(MapStateToProps)(Home); // 추가
+```
+
+```js
+....생략
+import { connect } from 'react-redux'; 
+import { LOG_IN } from '../reducers/user';
+
+const dummy = {
+  ...생략
+}
+
+const Home = ({ user, dispatch, login, logout }) => {
+  // const dispatch = useDispatch();
+  // const {isLoggedIn, user} = useSelector(state => state.user); 
+  useEffect(() => {
+    login();
+    logout();
+    login();
+  }, []);
+
+  return (
+    ...생략
+  );
+};
+
+function MapStateToProps () { // 의미 : 리덕스 state react props로 만들겠다. 
+  return {
+    user: state.user, // props의 user가 들어간다.
+  };
+}
+
+function mapDispatchToProps(dispatch) {
+  return {
+    login: () => dispatch(LOG_IN),
+    logout: () => dispatch(LOG_OUT),
+  };
+}
+
+export default connect(MapStateToProps, mapDispatchToProps)(Home);
+```
+
+취향에 따라 사용하면 된다. 아무래도 우리는 Hooks를 사용한다.
+

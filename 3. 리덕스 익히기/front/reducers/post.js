@@ -1,5 +1,13 @@
-export const initalState = {
-  mainPosts: [],
+export const initialState = {
+  mainPosts: [{
+    User: {
+      id: 1,
+      nickname: '제로초',
+    },
+    content: '첫 번째 게시글',
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+  }],
+  imagePaths: [],
 };
 
 const ADD_POST = 'ADD_POST';
@@ -20,7 +28,7 @@ const addDummy = {
   }
 };
 
-const reducer = (state = initalState, action) => {
+const reducer = (state = initialState, action) => {
   switch (action.type) {
     case ADD_POST: {
       return {

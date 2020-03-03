@@ -7,6 +7,7 @@
 + [redux devtools 사용하기](#redux-devtools-사용하기)
 + [react redux 훅 사용하기](#react-redux-훅-사용하기)
 + [react redux connect](#react-redux-connect)
++ [dummy 데이터로 리덕스 사용하기](#dummy-데이터로-리덕스-사용하기)
 
 ## redux 주요 개념 소개
 [위로가기](#리덕스-익히기)
@@ -634,13 +635,14 @@ console.log(user)의 화면 <br>
 ## react redux connect
 [위로가기](#리덕스-익히기)
 
-복습하기
-useDispatch : action을 실행
-useSelector : reudx의 state를 사용할 수 있다.
+복습하기<br>
+useDispatch : action을 실행<br>
+useSelector : reudx의 state를 사용할 수 있다.<br>
 
 ### 옛날 방식
-Hooks가 없을 때 react, react-redux 연결하는 법
+Hooks가 없을 때 react, react-redux 연결하는 법<br>
 
+#### \front\pages\index.js
 ```js
 import React, { useEffect } from 'react';
 import PostForm from '../components/PostForm';
@@ -666,6 +668,7 @@ function MapStateToProps () { // 추가
 export default connect(MapStateToProps)(Home); // 추가
 ```
 
+#### \front\pages\index.js
 ```js
 ....생략
 import { connect } from 'react-redux'; 
@@ -705,5 +708,161 @@ function mapDispatchToProps(dispatch) {
 export default connect(MapStateToProps, mapDispatchToProps)(Home);
 ```
 
-취향에 따라 사용하면 된다. 아무래도 우리는 Hooks를 사용한다.
+취향에 따라 사용하면 된다. 아무래도 우리는 Hooks를 사용한다. <br>
 
+
+## dummy 데이터로 리덕스 사용하기
+[위로가기](#리덕스-익히기)
+
+실제 데이터 받기 전에는 dummy 데이터를 사용할 것이다. <br>
+
+#### \front\pages\index.js
+```js
+import React, { useEffect } from 'react';
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+import { useDispatch, useSelector } from 'react-redux';z
+import { LOG_IN } from '../reducers/user';
+
+// dummy데이터를 post.js(redux)에 옮겨준다.
+
+const Home = () => {
+  const dispatch = useDispatch();
+  const {user} = useSelector(state => state.user); 
+  const { mainPosts } = useSelector(state => state.post);
+  
+  ...생략
+
+  return (
+    <div>
+      {user ? <div>로그인 했습니다 : {user.nickname}</div> : <div>로그아웃 했습니다</div>}
+      {dummy.isLoggedIn && <PostForm /> }
+      {dummy.mainPosts.map((c) => {
+        return (
+          <PostCard key={c} post={c} />
+        )
+      })}
+    </div>
+  );
+};
+
+export default Home;
+```
+
+#### \front\reducers\post.js
+```js
+export const initalState = {
+  mainPosts: [{
+    User: {
+      id : 1,
+      nickname : 'LEEKY',
+    },
+    content: '첫번 째 게시글',
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+  }],
+};
+
+const ADD_POST = 'ADD_POST';
+const ADD_DUMMY = 'ADD_DUMMY';
+...생략
+
+export default reducer;
+```
+
+useSelector을 잘 사용하고, 자주 사용해주는 것도 좋다. <br>
+그리고 최대한 잘게, 나누어줘서 사용해주는 것이 리 렌더링이 줄어준다. <br>
+
+```js
+// 잘게 썰어줬다.
+const user = useSelector(state => state.user.user);
+// 잘게 썰어줬다.
+const isLoggedIn = useSelector(state => state.user.isLoggedIn);
+// 보통
+const { mainPosts } = useSelector(state => state.post);
+```
+
+여기서부터 dummy 데이터를 삭제하겠다. <br>
+그리고 redux에 dummy 데이터를 추가하겠다. <br>
+
+### dummy 추가 (Reudx 부분)
+
+#### \front\reducers\post.js
+```js
+export const initalState = {
+  mainPosts: [{
+    User: {
+      id : 1,
+      nickname : 'LEEKY',
+    },
+    content: '첫번 째 게시글',
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+  }],
+};
+
+const ADD_POST = 'ADD_POST';
+const ADD_DUMMY = 'ADD_DUMMY';
+....생략
+
+export default reducer;
+```
+
+#### \front\reducers\user.js
+```js
+export const intialState = { 
+  isLoggedIn : false,
+  user: {
+    nickname: 'LEEKY',
+    Post: [],
+    Followings: [],
+    Followers: [],
+  },
+}
+
+export const LOG_IN = 'LOG_IN' 
+export const LOG_OUT = 'LOG_OUT';
+
+...생략
+
+export default reducer;
+```
+
+### dummy 삭제
+
+#### \front\pages\index.js
+```js
+....생략
+import { useSelector } from 'react-redux'; // 추가
+
+// dummy 삭제
+
+const AppLayout = ({ children }) => {
+  const { isLoggedIn } = useSelector(state => state.user)
+
+  return (
+    <div>
+      ...생략
+      <Row gutter={10} >
+        <Col xs={24} md={6} >
+          {isLoggedIn // 수정
+          ? <UserProfile />
+          : <LoginForm />
+        }   
+        </Col> 
+        ...생략
+      </Row>
+    </div>
+  );
+};
+
+AppLayout.prototype = {
+  children: PropTypes.node,
+}
+
+export default AppLayout;
+```
+
+즉, 리덕스 안에 가짜 데이터를 만들어서 관리하는게 편하다. <br>
+
+까먹을 수도 있으니까, imagePath가 미리보기이다. <br>
+
+나머지는 반복 작업이라서 생략하겠다.

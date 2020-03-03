@@ -8,6 +8,7 @@
 + [react redux 훅 사용하기](#react-redux-훅-사용하기)
 + [react redux connect](#react-redux-connect)
 + [dummy 데이터로 리덕스 사용하기](#dummy-데이터로-리덕스-사용하기)
++ [리액트 state와 리덕스 state](#리액트-state와-리덕스-state)
 
 ## redux 주요 개념 소개
 [위로가기](#리덕스-익히기)
@@ -866,3 +867,123 @@ export default AppLayout;
 까먹을 수도 있으니까, imagePath가 미리보기이다. <br>
 
 나머지는 반복 작업이라서 생략하겠다.
+
+
+## 리액트 state와 리덕스 state
+[위로가기](#리덕스-익히기)
+
+회원가입도 바꿔보겠다. <br>
+#### \front\reducers\user.js
+```js
+const dummyUser = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+  signUpData: [], // 추가
+};
+
+....생략
+
+export const SIGN_UP = 'SIGN_UP';
+export const SIGN_UP_SUCCESS = 'SIGN_UP_SUCCESS';
+export const LOG_IN = 'LOG_IN'; // 액션의 이름
+export const LOG_IN_SUCCESS = 'LOG_IN_SUCCESS'; // 액션의 이름
+export const LOG_IN_FAILURE = 'LOG_IN_FAILURE'; // 액션의 이름
+export const LOG_OUT = 'LOG_OUT';
+
+....생략
+
+// ************중요*******************
+export const signUpAction = (data) => { // 동적데이터라서 함수를 만들어줘야한다.
+  return {
+    type: SIGN_UP,
+    data,
+  };
+};
+export const signUpSuccess = {
+  type: SIGN_UP_SUCCESS,
+};
+
+export const signUp = (data) => {
+  return {
+    type: SIGN_UP,
+    data,
+  }
+};
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ....생략
+    case SIGN_UP: { // sigun up추가하기
+      return { 
+        ...state, 
+        // 여기에 data가 저장이 된다
+        signUpData: action.data, // 여기에 데이터를 받는다.
+      }; 
+    } 
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+새로운 redux state를 만들어주었다. 그리고, 액션도 새로 만들어 주겠다. <br>
+
+### action에 넣을 데이터가 동적인 경우에는 action을 함수로 만들어야한다.
+
+동적데이터라서 함수를 만들어줘야한다.
+```js
+export const signUpAction = (data) => { // 동적데이터라서 함수를 만들어줘야한다.
+  return {
+    type: SIGN_UP,
+    data,
+  };
+};
+```
+
+#### \front\pages\signup.js
+```js
+import React, { useState, useCallback } from 'react';
+import { Form, Input, Checkbox, Button } from 'antd';
+import { useSelector, useDispatch} from 'react-redux'; // 여기에 추가된 부분
+...생략
+
+...생략
+const Signup = () => {
+  const dispatch = useDispatch(); // 여기에 추가된 부분
+  const [passwordCheck, setPasswordCheck] = useState('');
+  ...생략
+  
+  const onSubmit = useCallback((e) => {
+    e.preventDefault();
+    if ( password !== passwordCheck) {
+      return setPasswordError(true);
+    }
+    if (!term) {
+      setTermError(true);
+    }
+    dispatch(signUpAction({
+      id, password, nick
+    })); // 여기에 추가된 부분
+  }, [password, passwordCheck, term]);
+  
+  ...생략
+  return (
+    <>
+      ...생략
+    </>
+  );
+};
+
+export default Signup;
+```
+
+Action 1개당 reducer 1개를 만들어줘야한다. <br>
+useState를 reducer를 바꿀 수가 있다. <br>
+
+> Tip) Form컴포넌트같은 것들은 react-state를 사용해서 한 번에 모아서 redux로 넘겨준다. (dispatch로 처리하는 의미) <br>
+
+> Real Tip) 즉, Form같은 것은 useState를 사용하고, <br>서버와 통신할 데이터 및 여러 컴포넌트 사용 할 것같은 것들은 redux-state(dispatch)를 사용하는 것이 편하다

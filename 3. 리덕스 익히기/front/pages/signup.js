@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Form, Input, Checkbox, Button } from 'antd';
+import { useSelector, useDispatch} from 'react-redux';
 import PropTypes from 'prop-types';
+import { signUpAction } from '../reducers/user';
 
 // 모듈을 만들어서 재 사용을 하겠다.
 export const useInput = (initValue = null) => {
@@ -12,7 +14,7 @@ export const useInput = (initValue = null) => {
 };
 
 const Signup = () => {
-
+  const dispatch = useDispatch();
   const [passwordCheck, setPasswordCheck] = useState('');
   const [term, setTerm] = useState(false); 
   const [passwordError, setPasswordError] = useState(false); 
@@ -30,6 +32,9 @@ const Signup = () => {
     if (!term) {
       setTermError(true);
     }
+    dispatch(signUpAction({
+      id, password, nick
+    })); 
   }, [password, passwordCheck, term]);
   
   const onChangePasswordCheck = useCallback((e) => {

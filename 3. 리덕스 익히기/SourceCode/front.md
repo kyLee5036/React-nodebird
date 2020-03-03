@@ -8,6 +8,7 @@
 + [react redux 훅 사용하기](#react-redux-훅-사용하기)
 + [react redux connect](#react-redux-connect)
 + [dummy 데이터로 리덕스 사용하기](#dummy-데이터로-리덕스-사용하기)
++ [리액트 state와 리덕스 state](#리액트-state와-리덕스-state)
 
 ## redux 주요 개념 소개
 [위로가기](#리덕스-익히기)
@@ -768,3 +769,7 @@ export default (state = initialState, action) => {
   }
 };
 ```
+
+
+## 리액트 state와 리덕스 state
+[위로가기](#리덕스-익히기)

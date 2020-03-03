@@ -3,6 +3,7 @@ const dummyUser = {
   Post: [],
   Followings: [],
   Followers: [],
+  signUpData: [],
 };
 
 export const initialState = {
@@ -63,12 +64,12 @@ export default (state = initialState, action) => {
         user: null,
       };
     }
-    case SIGN_UP: {
-      return {
-        ...state,
-        signUpData: action.data,
-      };
-    }
+    case SIGN_UP: { // sigun up추가하기
+      return { 
+        ...state, 
+        signUpData: action.data, 
+      }; 
+    } 
     default: {
       return {
         ...state,

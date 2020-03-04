@@ -19,6 +19,17 @@
   + 프로필 화면 만들기
   + 컴포넌트 분리하기
 
+- 리덕스 익히기
+  + reudx 주요 개념 소개
+  + 첫 리듀서 만들기
+  + 불변성과 리듀서 여러 개 합치기
+  + redux와 react 연결하기
+  + redux devtools 사용하기
+  + react-redux 훅 사용하기
+  + react-redux connect
+  + dummy 데이터로 리덕스 사용하기
+  + 리액트 state와 리덕스 state
+
   
 
  

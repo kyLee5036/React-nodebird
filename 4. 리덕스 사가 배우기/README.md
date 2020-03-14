@@ -304,3 +304,182 @@ hoc(Component); // 특징이 컴포넌트를 마음대로 조작할 수가 있�
 
 ## ES2015 제너레이터
 [위로가기](#리덕스-사가-배우기)
+
+예로들면 <br>
+```js
+function a() {
+  console.log('1');
+  console.log('2');
+  console.log('3');
+}
+
+a();
+// 1,2,3
+```
+결과가 1,2,3인데 여기서 1,2만 하고 3은 안하고싶다!! <br>
+```js
+function* generator() {
+  console.log('1');
+  console.log('2');
+  console.log('3');
+}
+
+generator();
+
+/*
+▶ generator {<suspended>}
+  __proto__: Generator
+  [[GeneratorLocation]]: VM56:1
+  [[GeneratorStatus]]: "suspended"
+  [[GeneratorFunction]]: ƒ* generator()
+  [[GeneratorReceiver]]: Window
+  [[Scopes]]: Scopes[3]
+*/
+
+```
+
+제너레이터를 실행할려면 next를 사용해야한다. <br>
+
+```js
+function* generator() {
+  console.log('1');
+  console.log('2');
+  console.log('3');
+}
+
+const gen = generator();
+gen.next(); 
+
+//▶ {value: undefined, done: true}
+```
+실행이 되었다. `done: true`가 되었다. <br>
+
+그리고, 다시 실행해보면 <br>
+```js
+gen;
+//▶ generator {<closed>}
+```
+`generator {<closed>}` 이 처럼 종료되었다. <br>
+`next`는 `closed`되기 전까지 게속 사용할 수 있다. <br>
+
+### 중단점(yield)
+
+이번에는 중단점을 만들어보겠다. <br>
+```js
+function* generator() {
+  console.log('1');
+  console.log('2');
+  yield;
+  console.log('3');
+}
+
+const gen = generator();
+gen.next(); 
+
+/* 
+1
+2
+▶ {value: undefined, done: false}
+*/
+```
+계속 이어서 `gen.next`를 하겠다.
+```js
+gen.next(); 
+
+/*
+▶ {value: undefined, done: true}
+*/
+```
+
+이번에는 yield에 값을 넣어보겠다. <br>
+```js
+function* generator() {
+  console.log('1');
+  console.log('2');
+  yield 5;
+  console.log('3');
+}
+
+const gen = generator();
+gen.next(); 
+
+/*
+1
+2
+▶ {value: 5, done: false}
+*/
+```
+value에 값이 들어있는 것을 확인할 수가 있다. <br>
+또 한번 더, `gen.next()`를 해보겠다. <br>
+
+```js
+// ▶ {value: undefined, done: true}
+```
+값에 `undefined`가 정의되어있다. <br>
+
+> yield에 중단점이고, 값을 넣을 수가 있다. <br>
+```js
+function* generator() {
+  yield 1;
+  yield 2;
+  yield 3;
+  yield 4;
+  yield* '나는 반복이다!';
+}
+
+const gen = generator();
+
+```
+yield에 `*`에 있다. `*`는 반복(interable)을 하겠다라는 의미이다. <br>
+interable: 반복 가능 값<br>
+```js
+gen.next(); 
+// ▶ {value: 1, done: false}
+gen.next(); 
+// ▶ {value: 2, done: false}
+gen.next(); 
+// ▶ {value: 3, done: false}
+gen.next(); 
+// ▶ {value: 4, done: false}
+gen.next(); 
+// ▶ {value: "나", done: false}
+gen.next(); 
+// ▶ {value: "는", done: false}
+gen.next(); 
+// ▶ {value: " ", done: false}
+gen.next(); 
+// ▶ {value: "반", done: false}
+gen.next(); 
+// ▶ {value: "복", done: false}
+gen.next(); 
+// ▶ {value: "이", done: false}
+gen.next(); 
+// ▶ {value: "다", done: false}
+gen.next(); 
+// ▶ {value: "!", done: false}
+gen.next();  // 마지막에 true가 된다.
+// ▶ {value: undefined, done: true}
+```
+
+yield를 await로 생각하면 된다. <br>
+
+```js
+function* generator() {
+  let i = 0;
+  while(true) {
+    yield i++
+  }
+}
+
+const gen = generator();
+```
+
+무한 반복문이 실제로 무한 반복을 하지않는다. <br>
+```js
+gen.next(); // {value: 0, done: false}
+gen.next(); // {value: 1, done: false}
+gen.next(); // {value: 2, done: false}
+gen.next(); // {value: 3, done: false}
+...
+```
+무한 반복문을 컨트롤할 수가 있게된다. <br>

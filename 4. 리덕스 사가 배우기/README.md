@@ -4,6 +4,7 @@
 + [사가 미들웨어 리덕스에 연결하기](#사가-미들웨어-리덕스에-연결하기)
 + [ES2015 제너레이터](#ES2015-제너레이터)
 + [사가의 제너레이터 이해하기](#사가의-제너레이터-이해하기)
++ [사가에서 반복문 제어하기](#사가에서-반복문-제어하기)
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -489,7 +490,7 @@ gen.next(); // {value: 3, done: false}
 ## 사가의 제너레이터 이해하기
 [위로가기](#리덕스-사가-배우기)
 
-saga(사가)는 next를 알아서 (이펙트에 따라) 해주는 제너레이터이다.
+saga(사가)는 next를 알아서 (이펙트에 따라) 해주는 제너레이터이다. <br>
 
 
 ```js
@@ -539,7 +540,93 @@ function* helloSaga() {
   
 }
 ```
+### take
 take : 해당 액션이 dispatch되면 제너레이터를 next하는 이펙트
 
 > tip ) 컴포넌트에 직접 dispatch를 해줘야한다.
 
+## 사가에서 반복문 제어하기
+[위로가기](#리덕스-사가-배우기)
+
+이벤트 리스너를 사용하면 콜백이 나오는데 콜백을 생각하면 콜백헬(callback hell)이 나온다. <br>
+
+```js
+import { all, fork, takeLatest, call, put, take } from 'redux-saga/effects';
+
+const HELLO_SAGA = 'HELLO_SAGA';
+
+function* watchHello() {
+  while(true) {
+    yield take(HELLO_SAGA);
+    // yield는 중단점
+    // take에 액션(HELLO_SAGA)가 들어올 떄 실행이 된다.
+  }
+}
+
+export default function* userSaga() {
+  yield all([ // all은 여러 이펙트를 동시에 실행할 수 있게 된다.
+    watchHello(),
+  ]);
+}
+
+// ******************************
+// Componet라고 가정치고
+useEffect( () => {
+  dispatch({ type: HELLO_SAGA });
+  dispatch({ type: HELLO_SAGA });
+  dispatch({ type: HELLO_SAGA });
+  dispatch({ type: HELLO_SAGA });
+  dispatch({ type: HELLO_SAGA });
+  dispatch({ type: HELLO_SAGA });
+}) // 6번이 호출이 된다.
+```
+이벤트 리스너가 일어나면 removeEventListenr로 제거를 해줘야하는데, <br>
+사가는 이벤트를 제어할 수 있는 큰 장점이 있다. <br>
+
+> 사가는 리덕스랑 별개로 움직인다.
+
+
+### put
+put은 dispatch (사가의 dispatch이다.) <br>
+
+#### \front\sagas\user.js
+```js
+import { all, fork, takeLatest, call, put, take, delay } from 'redux-saga/effects';
+...생략
+
+function* watchLogin() {
+  yield take(LOG_IN); // 로그인하고 로그아웃한다면, 한 번 밖에 실행이 안된다.
+  yield put({
+    type: LOG_IN_SUCCESS
+  });
+}
+
+export default function* userSaga() {
+  yield all([
+    watchLogin(),
+  ]);
+}
+```
+
+#### \front\sagas\user.js
+```js
+import { all, fork, takeLatest, call, put, take, delay } from 'redux-saga/effects';
+...생략
+
+function* watchLogin() {
+  while(true) { // 그래서 while(true)로 감싸준다.
+    yield take(LOG_IN);
+    yield delay(2000); // 2초 뒤에 로그인 성공을 할 수가 있다. 
+    yield put({
+      type: LOG_IN_SUCCESS
+    });
+  }
+  
+}
+
+export default function* userSaga() {
+  yield all([
+    watchLogin(),
+  ]);
+}
+```

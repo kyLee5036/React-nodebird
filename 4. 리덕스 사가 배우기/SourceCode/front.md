@@ -4,6 +4,7 @@
 + [사가 미들웨어 리덕스에 연결하기](#사가-미들웨어-리덕스에-연결하기)
 + [ES2015 제너레이터](#ES2015-제너레이터)
 + [사가의 제너레이터 이해하기](#사가의-제너레이터-이해하기)
++ [사가에서 반복문 제어하기](#사가에서-반복문-제어하기)
 
 ## 리덕스 사가의 필요성과 맛보기
 [위로가기](#리덕스-사가-배우기)
@@ -121,9 +122,49 @@ export default WithRedux((initalState, options) => {
 [위로가기](#리덕스-사가-배우기)
 (코드 없음)
 
-
 ## 사가의 제너레이터 이해하기
 [위로가기](#리덕스-사가-배우기)
+(코드 없음)
 
+## 사가에서 반복문 제어하기
+[위로가기](#리덕스-사가-배우기)
 
+#### \front\sagas\user.js
+```js
+import { all, fork, takeLatest, call, put, take, delay } from 'redux-saga/effects';
+import { LOG_IN, LOG_IN_SUCCESS, LOG_IN_FAILURE } from '../reducers/user'
 
+function loginAPI() {
+
+}
+
+function* login() {
+  try {
+    yield delay(2000);
+    yield put({
+      type: LOG_IN_SUCCESS,
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogin() {
+  while(true) {
+    yield take(LOG_IN);
+    yield delay(2000);
+    yield put({
+      type: LOG_IN_SUCCESS
+    });
+  }
+}
+
+export default function* userSaga() {
+  yield all([
+    watchLogin(),
+  ]);
+}
+```

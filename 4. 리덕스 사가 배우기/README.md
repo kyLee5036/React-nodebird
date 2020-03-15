@@ -3,6 +3,7 @@
 + [리덕스 사가의 필요성과 맛보기](#리덕스-사가의-필요성과-맛보기)
 + [사가 미들웨어 리덕스에 연결하기](#사가-미들웨어-리덕스에-연결하기)
 + [ES2015 제너레이터](#ES2015-제너레이터)
++ [사가의 제너레이터 이해하기](#사가의-제너레이터-이해하기)
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -463,6 +464,7 @@ gen.next();  // 마지막에 true가 된다.
 
 yield를 await로 생각하면 된다. <br>
 
+### 반복문 컨트롤하기
 ```js
 function* generator() {
   let i = 0;
@@ -483,3 +485,61 @@ gen.next(); // {value: 3, done: false}
 ...
 ```
 무한 반복문을 컨트롤할 수가 있게된다. <br>
+
+## 사가의 제너레이터 이해하기
+[위로가기](#리덕스-사가-배우기)
+
+saga(사가)는 next를 알아서 (이펙트에 따라) 해주는 제너레이터이다.
+
+
+```js
+import { all, fork, takeLatest, call, put, take } from 'redux-saga/effects';
+
+export const HELLO_SAGA = 'HELLO_SAGA';
+
+function* hello() {
+  try {
+    yield put({type: HELLO_SAGA});
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function* helloSaga() {
+  yield take(HELLO_SAGA); // take가 hellow_saga를 기다린다.
+  // 재개를 해줄려면 next함수를 사용해야하는데 next는 사가 마들웨어에서 알아서해준다.
+  // gen.next()의 next이다.
+  // 여기에다가 비동기 요청, 타이머를 넣어준다.
+}
+```
+
+```js
+// Componet라고 가정치고
+useEffect( () => {
+  dispatch({
+    type: HELLO_SAGA
+  });
+  dispatch({
+    type: HELLO_SAGA
+  });
+  dispatch({
+    type: HELLO_SAGA
+  });
+})
+
+
+// *******************************************
+function* helloSaga() {
+  while(true) { // hellowSaga가 
+    yield take(HELLO_SAGA); // 위에서 dispatch를 3번을 했는데
+    // while이 없으면 한 반밖에 안한다.
+    // 3번 연속으로 해주기 위해서는 while문을 넣어주었다.
+    // 이벤트리스너를 동기적으로 표현했다고 보면 된다.
+  }
+  
+}
+```
+take : 해당 액션이 dispatch되면 제너레이터를 next하는 이펙트
+
+> tip ) 컴포넌트에 직접 dispatch를 해줘야한다.
+

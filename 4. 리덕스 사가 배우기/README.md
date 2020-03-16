@@ -5,6 +5,7 @@
 + [ES2015 제너레이터](#ES2015-제너레이터)
 + [사가의 제너레이터 이해하기](#사가의-제너레이터-이해하기)
 + [사가에서 반복문 제어하기](#사가에서-반복문-제어하기)
++ [takeEvery takeLatest](#takeEvery-takeLatest)
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -630,3 +631,34 @@ export default function* userSaga() {
   ]);
 }
 ```
+
+## takeEvery takeLatest
+[위로가기](#리덕스-사가-배우기)
+
+`takeEvery, takeLatest` 들은 while문을 대신해서 사용하는 것이다.
+
+```js
+function* helloSaga() {
+  while(true) { 
+    yield take(HELLO_SAGA); 
+    console.log(1);
+    console.log(2);
+    console.log(3);
+    console.log(4);
+  }
+};
+```
+
+```js
+
+function* helloSaga() {
+  while(true) { 
+    yield take(HELLO_SAGA); 
+    console.log(1);
+    console.log(2);
+    console.log(3);
+    console.log(4);
+  }
+};
+```
+

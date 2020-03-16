@@ -5,6 +5,9 @@
 + [ES2015 제너레이터](#ES2015-제너레이터)
 + [사가의 제너레이터 이해하기](#사가의-제너레이터-이해하기)
 + [사가에서 반복문 제어하기](#사가에서-반복문-제어하기)
++ [takeEvery takeLatest](#takeEvery-takeLatest)
+
+
 
 ## 리덕스 사가의 필요성과 맛보기
 [위로가기](#리덕스-사가-배우기)
@@ -168,3 +171,8 @@ export default function* userSaga() {
   ]);
 }
 ```
+
+
+## takeEvery takeLatest
+[위로가기](#리덕스-사가-배우기)
+

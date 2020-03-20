@@ -905,5 +905,8 @@ export default function* userSaga() {
 `all, fork, takeLatest, takeEvery, call, put, take, delay` 8가지를 배웠지만, <br>
 `race, cancel, select, throttle, debounce 이펙트`도 자주 사용하기 때문에, <br>
 나중에 알아서 공부해주는 것이 좋다. <br>
+take는 한 번만 실행해준다. takeLatest랑 takeEvery는 계속 실행해준다. <br>
 
-제너레이터라는게 별거 없다. 일단 yeild로 중단하고, next를 실행해서 움직이는데, 리덕스 사가에서는 알아서 next를 실행해준다.
+제너레이터라는게 별거 없다. 일단 yeild로 중단하고, next를 실행해서 움직이는데, 리덕스 사가에서는 알아서 next를 실행해준다. <br>
+
+

@@ -639,6 +639,22 @@ export default function* userSaga() {
 
 ```js
 function* helloSaga() {
+  while(true) { // while문 대신에 사용할 takeEvery, takeLatest를 사용한다.
+  // while(true) 를 사용하면 뭔가 어색하기 때문에이다. 
+    yield take(HELLO_SAGA); 
+    console.log(1);
+    console.log(2);
+    console.log(3);
+    console.log(4);
+  }
+};
+```
+
+### takeEvery
+
+```js
+// while의 경우
+function* watchHello() {
   while(true) { 
     yield take(HELLO_SAGA); 
     console.log(1);
@@ -647,20 +663,103 @@ function* helloSaga() {
     console.log(4);
   }
 };
+
+// takeEvery, takeLatest의 경우
+function* watchHello() {
+  yield takeEvery(HELLO_SAGA, function*() { // taketakeEvery의 경우
+    yield put({
+      type : 'BYE_SAGA'
+    })
+  })
+};
+
+
+export default* function* () {
+  yield all([
+    watchHello(),
+  ])
+}
+
+```
+`takeEvery`의 제너레이터(*)함수를 넣어야한다. <br>
+HelloSaga액션의 동작을 함수 안에 적어준다. <br>
+
+```js
+  useEffect(() => {
+    dispatch({
+      type : HELLO_SAGA
+    });
+    dispatch({
+      type : HELLO_SAGA
+    });
+    dispatch({
+      type : HELLO_SAGA
+    });
+    dispatch({
+      type : HELLO_SAGA
+    });
+  })
+```
+> 총 8번이 실행, HELLOW_SAGA가 4번, BYE_SAGA가 4번
+
+### takeLatest, delay
+
+```js
+// while의 경우
+function* watchHello() {
+  while(true) { 
+    yield take(HELLO_SAGA); 
+    yield delay(1000); // delay를 사용해서 타이머를 제어할 수도 있다.
+    console.log(1);
+    console.log(2);
+    console.log(3);
+    console.log(4);
+  }
+};
+
+// takeEvery, takeLatest의 경우
+function* watchHello() {
+  yield takeLatest(HELLO_SAGA, function*() { // takeLatest의 경우
+    yield put({
+      type : 'BYE_SAGA'
+    })
+  })
+};
+
+
+export default* function* () {
+  yield all([
+    watchHello(),
+  ])
+}
+
 ```
 
 ```js
-
-function* helloSaga() {
-  while(true) { 
-    yield take(HELLO_SAGA); 
-    console.log(1);
-    console.log(2);
-    console.log(3);
-    console.log(4);
-  }
-};
+  useEffect(() => {
+    dispatch({
+      type : HELLO_SAGA
+    });
+    dispatch({
+      type : HELLO_SAGA
+    });
+    dispatch({
+      type : HELLO_SAGA
+    });
+    dispatch({
+      type : HELLO_SAGA
+    });
+  })
 ```
+> 총 5번이 실행, HELLOW_SAGA가 4번, BYE_SAGA가 1번 <br>
 
+<strong>takeLatest</strong>는 이전 요청이 끝나지 않는게 있다면 이전 요청을 취소한다. <br>
+ 
+takeLatest를 하면  동시에 여러번 액션을 실행하면 마지막 액션을 실행한다. <br>
+예로들면, 로그인 버튼을 막 클릭하면, 사가에서 제어를 해주기 위해서 `takeLatest`를 사용한다. <br>
+또한, 클라이언트에서 제대로 처리못하면, 로그인처리가 10번 이상 할 수 있는 상황이 생기기 때문에, takeLatest를 사용한다. <br>
 
-
+takeEvery, takeLatest를 뭐 할지 고민된다면 ? <br>
+버튼을 게속 클릭했을 때, 전부 OK를 해줄건지, 마지막에 처리를 OK해줄건지 구분을 하면된다. <br>
+예로들면, 실수해서 로그인 버튼 3번 클릭하면, takeLatest를 사용하면 한 번만 처리한다. <br>
+또, 카운트(Count)를 계속 증가 시키고 싶으면,  takeEvery를 사용하는게 알맞는 것 같다. <br>

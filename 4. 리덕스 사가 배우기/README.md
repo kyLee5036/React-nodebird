@@ -6,6 +6,8 @@
 + [사가의 제너레이터 이해하기](#사가의-제너레이터-이해하기)
 + [사가에서 반복문 제어하기](#사가에서-반복문-제어하기)
 + [takeEvery takeLatest](#takeEvery-takeLatest)
++ [fork call 사가 총정리](#fork-call-사가-총정리)
+  
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -755,11 +757,153 @@ export default* function* () {
 
 <strong>takeLatest</strong>는 이전 요청이 끝나지 않는게 있다면 이전 요청을 취소한다. <br>
  
-takeLatest를 하면  동시에 여러번 액션을 실행하면 마지막 액션을 실행한다. <br>
+`takeLatest`를 하면 동시에 여러번 액션을 실행하면 마지막 액션을 실행한다. <br>
 예로들면, 로그인 버튼을 막 클릭하면, 사가에서 제어를 해주기 위해서 `takeLatest`를 사용한다. <br>
-또한, 클라이언트에서 제대로 처리못하면, 로그인처리가 10번 이상 할 수 있는 상황이 생기기 때문에, takeLatest를 사용한다. <br>
+또한, 클라이언트에서 제대로 처리못하면, 로그인처리가 10번 이상 할 수 있는 상황이 생기기 때문에, `takeLatest`를 사용한다. <br>
 
-takeEvery, takeLatest를 뭐 할지 고민된다면 ? <br>
+> takeEvery, takeLatest를 뭐 할지 고민된다면 ? <br>
+> 
 버튼을 게속 클릭했을 때, 전부 OK를 해줄건지, 마지막에 처리를 OK해줄건지 구분을 하면된다. <br>
 예로들면, 실수해서 로그인 버튼 3번 클릭하면, takeLatest를 사용하면 한 번만 처리한다. <br>
 또, 카운트(Count)를 계속 증가 시키고 싶으면,  takeEvery를 사용하는게 알맞는 것 같다. <br>
+
+
+## fork call 사가 총정리
+[위로가기](#리덕스-사가-배우기)
+
+#### \front\sagas\user.js
+```js
+import { all, fork, takeLatest, takeEvery, call, put, take, delay } from 'redux-saga/effects';
+import { LOG_IN, LOG_IN_SUCCESS, LOG_IN_FAILURE } from '../reducers/user'
+
+function loginAPI() {
+
+}
+
+function* login() {
+  try {
+    yield call(loginAPI);
+    yield put({
+      type: LOG_IN_SUCCESS,
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogin() {
+  yield takeEvery(LOG_IN, login);
+}
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogin()),
+  ]);
+}
+
+```
+여기에 자세히 보면
+
+```js
+export default function* userSaga() {
+  yield all([
+    // 셋 다 함수 실행이다.
+    // 하지만, 사가를 사용하면 첫번 째 watchLogin()보다는 그 밑에 줄 call, fork로 감싸주는게 좋다
+    watchLogin(),
+    call(watchLogin()),
+    fork(watchLogin()),
+  ]);
+}
+```
+
+### call(동기호출), fork(비동기호출)
+
+```js
+... 생략
+
+function loginAPI() {
+  // 서버에 요청을 보내는 부분
+}
+
+function* login() {
+  try {
+    yield call(loginAPI); // 이 부분은 동기부분인 call로 해줘야한다.
+    // fork를 하면, 서버에 요청을 오든 말든, LOG_IN_SUCCESS를 바로 실행하기 때문에,
+    // 문제가 바로 생긴다. 
+    // 즉, 서버로 보내는 요청이 끝나야만, LOG_IN_SUCCESS가 실행된다.
+    // call이 오류가 나면 catch문에 간다.
+    yield put({
+      type: LOG_IN_SUCCESS,
+    })
+  } catch (e) {
+    ...생략
+  }
+}
+
+function* watchLogin() {
+  yield takeEvery(LOG_IN, login);
+}
+
+export default function* userSaga() {
+  yield all([
+    watchLogin(), // fork를 안해줘도 상관은 없다. 하지만, fork를 해준다.
+    fork(watchLogin()), // 사실 이 부분은 fork를 붙이는 이유는
+    // fork라는 의미를 공부하기 위해서 사용한다. 비동기라는 것의 중점을 두기위해서
+  ]);
+}
+
+```
+
+
+> <strong>call</strong> : 순서를 지킬 때 사용하면 된다. <br>
+> <strong>fork</strong> : 순서가 필요 없고, 바로 넘어가고 싶을 때 사용한다. <br>
+
+
+좀 더 와 닿는 예제를 본다면, 
+```js
+... 생략
+
+function loginAPI() {
+  // 서버에 요청을 보내는 부분
+}
+
+function* login() {
+  try {
+    // logger의 call할 경우
+    yield call(logger); // 내 기록을 로깅하는 함수, 하지만 10초 걸린다.
+    // 이 함수가 상당히 10초 걸리는데, call을 사용하면 10초 기다린 다음에 loginAPI가 실행된다.
+    
+    // logger의 fork할 경우
+    // 이럴 경우에는 logger함수를 실행하는데 10초가 걸리니까, 다음 것을 실행시켜주기 위해서 fork를 사용해주는 것도 있다. 
+    yield fork(logger);  // 즉, 쓸데없는 부과적인 것은 fork를 사용해준다.
+    yield call(loginAPI); 
+    yield put({
+      type: LOG_IN_SUCCESS,
+    })
+  } catch (e) {
+    ...생략
+  }
+}
+
+function* watchLogin() {
+  yield takeEvery(LOG_IN, login);
+}
+
+export default function* userSaga() {
+  yield all([
+    watchLogin(),     
+    fork(watchLogin()),   
+  ]);
+}
+
+```
+
+총 정리를 하면 <br>
+`all, fork, takeLatest, takeEvery, call, put, take, delay` 8가지를 배웠지만, <br>
+`race, cancel, select, throttle, debounce 이펙트`도 자주 사용하기 때문에, <br>
+나중에 알아서 공부해주는 것이 좋다. <br>
+
+제너레이터라는게 별거 없다. 일단 yeild로 중단하고, next를 실행해서 움직이는데, 리덕스 사가에서는 알아서 next를 실행해준다.

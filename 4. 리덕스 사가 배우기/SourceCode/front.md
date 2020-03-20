@@ -6,6 +6,7 @@
 + [사가의 제너레이터 이해하기](#사가의-제너레이터-이해하기)
 + [사가에서 반복문 제어하기](#사가에서-반복문-제어하기)
 + [takeEvery takeLatest](#takeEvery-takeLatest)
++ [fork call 사가 총정리](#fork-call-사가-총정리)
 
 
 
@@ -176,3 +177,41 @@ export default function* userSaga() {
 ## takeEvery takeLatest
 [위로가기](#리덕스-사가-배우기)
 
+(코드 없음)
+
+## fork call 사가 총정리
+[위로가기](#리덕스-사가-배우기)
+
+#### \front\sagas\user.js
+```js
+import { all, fork, takeLatest, takeEvery, call, put, take, delay } from 'redux-saga/effects';
+import { LOG_IN, LOG_IN_SUCCESS, LOG_IN_FAILURE } from '../reducers/user'
+
+function loginAPI() {
+
+}
+
+function* login() {
+  try {
+    yield call(loginAPI);
+    yield put({
+      type: LOG_IN_SUCCESS,
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogin() {
+  yield takeEvery(LOG_IN, login);
+}
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogin()),
+  ]);
+}
+```

@@ -7,7 +7,7 @@ function loginAPI() {
 
 function* login() {
   try {
-    yield delay(2000);
+    yield call(loginAPI);
     yield put({
       type: LOG_IN_SUCCESS,
     })
@@ -20,17 +20,11 @@ function* login() {
 }
 
 function* watchLogin() {
-  while(true) {
-    yield take(LOG_IN);
-    yield delay(2000);
-    yield put({
-      type: LOG_IN_SUCCESS
-    });
-  }
+  yield takeLatest(LOG_IN, login);
 }
 
 export default function* userSaga() {
   yield all([
-    watchLogin(),
+    fork(watchLogin()),
   ]);
 }

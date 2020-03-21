@@ -7,7 +7,7 @@
 + [사가에서 반복문 제어하기](#사가에서-반복문-제어하기)
 + [takeEvery takeLatest](#takeEvery-takeLatest)
 + [fork call 사가 총정리](#fork-call-사가-총정리)
-  
++ [사가 패턴과 Q&A](#사가-패턴과-Q&A)
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -908,5 +908,75 @@ export default function* userSaga() {
 take는 한 번만 실행해준다. takeLatest랑 takeEvery는 계속 실행해준다. <br>
 
 제너레이터라는게 별거 없다. 일단 yeild로 중단하고, next를 실행해서 움직이는데, 리덕스 사가에서는 알아서 next를 실행해준다. <br>
+
+
++ [사가 패턴과 QA](#사가-패턴과-QA)
+[위로가기](#리덕스-사가-배우기)
+
+로그인 요청 (LOG_IN_REQUEST) <br>
+↓ <br>
+(서버 갔다옴) <br>
+↓ <br>
+로그인 성공 or 로그인 성공 <br>
+(LOG_IN_SUCCESS or LOG_IN_SUCCESS) <br>
+
+-> 자세히 보면 패턴이 생겨졌다. <br>
+```js
+// 비동기 액션
+export const SIGN_UP_REQUEST = 'SIGN_UP_REQUEST';
+export const SIGN_UP_SUCCESS = 'SIGN_UP_SUCCESS';
+export const SIGN_UP_FAILURE = 'SIGN_UP_FAILURE';
+
+export const LOG_IN_REQUEST = 'LOG_IN_REQUEST'; // 액션의 이름
+export const LOG_IN_SUCCESS = 'LOG_IN_SUCCESS'; // 액션의 이름
+export const LOG_IN_FAILURE = 'LOG_IN_FAILURE'; // 액션의 이름
+
+export const LOG_OUT_REQUEST = 'LOG_OUT_REQUEST';
+export const LOG_OUT_SUCCESS = 'LOG_OUT_SUCCESS';
+export const LOG_OUT_FAILURE = 'LOG_OUT_FAILURE';
+
+// 동기 액션
+export const INCREMENT_NUMBER = 'INCREMENT_NUMBER'; 
+
+```
+이런 식으로 반듯하게, 이름맞추도록 정했다. (정해진건 아닌데, 우연하게 딱 맞아서 보기가 좋다.) <br>
+`REQUEST, SUCCESS, FAILURE`가 있으면 비동기액션이라고 생각하면 좋다. <br>
+
+-> 여기에서 `REQUEST`에서는 보통 로딩 창 돌아가는 것을 많이 해준다. <br>
+
+#### \front\reducers\user.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case LOG_IN_REQUEST: {
+      return {
+        ...state,
+        isLoggedIn: true,
+        loginData: action.data,
+        isLoading : true, // 여기에서 request에서 true를 해준다
+      };
+    }
+
+    case LOG_IN_REQUEST: {
+      return {
+        ...state,
+        isLoading : false, // 성공하면 로딩 창을 false을 해준다
+        user: dummyUser, // 데이터도 같이 넣어준다.
+      };
+    }
+    ...생략
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+try, catch를 해주는 이유는? <br>
+자바스크립트에서 에러가 나면 서버가 죽어버리는 경우가 있는데, try, catch를 하면 서버가 보호되기 때문에 사용한다. <br>
 
 

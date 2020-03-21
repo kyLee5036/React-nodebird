@@ -1051,6 +1051,11 @@ export const signUpAction = data => ({
 ## redux state와 action 구조 잡기
 [위로가기](#리덕스-사가-배우기)
 
+### axios
+axios는 서버에 요청을 보내는 모듈이다. <br>
+제일 유명해서 사용한다. 심지어 구글에서도 사용한다. <br>
+
+
 ```js
 function signUpAPI() {
 
@@ -1346,4 +1351,310 @@ export default reducer;
 ## 로그인 리덕스 사이클
 [위로가기](#리덕스-사가-배우기)
 
+#### \front\components\LoginForm.js
+```js
+...생략
+import { useDispatch, useSelector } from 'react-redux';
+import { LOG_IN_REQUEST } from '../reducers/user';
 
+const LoginForm = () => {
+  const dispatch = useDispatch();
+  const { isLoggingIn } = useSelector(state => state.user);
+  const [id, onChangeId] = useInput('');
+  const [password, onChangePassword] = useInput('');
+
+  // Form형식을 이렇게 바꾸었다. dispatch로 id, password들을 전달한다.
+  const onsubmitForm = useCallback((e) => {
+    e.preventDefault();
+    dispatch({
+     type: LOG_IN_REQUEST, 
+     data: {
+       id, password
+     } 
+    });
+  }, [id, password]);
+
+  return (
+    <Form onSubmit={onsubmitForm} style={{ padding : '10px' }}>
+      ...생략
+        <label htmlFor="user-password">비밀번호</label>
+        <br />
+        <Input name="user-password" value={password} onChange={onChangePassword} type="password" required />
+      </div>
+      <div style={{marginTop: '10px'}}>
+        <Button type="primary" htmlType="submit" loading={isLoggingIn}>로그인</Button> // 추가
+        <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+      </div>
+    </Form>
+  )
+}
+
+export default LoginForm;
+```
+
+#### \front\sagas\user.js
+```js
+...생략
+
+function loginAPI() {
+  return axios.post('/login');
+}
+
+function* login() {
+  try {
+    // 일단 백엔드 서버에 유저 데이터가 없어서 확인하기 위하여 delay를 해주었다.
+    // yield call(loginAPI); // 일단 주석처리를 한다.
+    yield delay(2000); 
+    yield put({
+      type: LOG_IN_SUCCESS,
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogin() {
+  yield takeLatest(LOG_IN_REQUEST, login);
+}
+
+...생략
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogin),
+    fork(watchSignUp)
+  ]);
+}
+```
+
+
+일단 백엔드 서버에 유저 데이터가 없어서 확인하기 위하여 delay를 해주었다.
+
+#### \front\reducers\user.js
+```js
+const dummyUser = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+  signUpData: [],
+};
+
+export const initialState = {
+  isLoggedIn: false, // 로그인 여부
+  isLoggingOut : false, // 로그아웃 시도중
+  isLogginIn : false, // 로그인 시도중
+  LoginInErrorReason: '', // 로그인 실패 이유
+  signedUp: false, // 회원가입 성공
+  isSigningUp: false, // 회원가입 시도중
+  signUpErrorReason: '', // 회원가입 실패 이유
+  me: null, // 내 정보
+  followingList : [], // 팔로잉 리스트
+  followerList: [], // 팔로워 리스트
+  userInfo: [], // 남의 정보
+};
+// 회원가입
+export const SIGN_UP_REQUEST = 'SIGN_UP_REQUEST';
+export const SIGN_UP_SUCCESS = 'SIGN_UP_SUCCESS';
+export const SIGN_UP_FAILURE = 'SIGN_UP_FAILURE';
+// 로그인
+export const LOG_IN_REQUEST = 'LOG_IN_REQUEST'; // 액션의 이름
+export const LOG_IN_SUCCESS = 'LOG_IN_SUCCESS'; // 액션의 이름
+export const LOG_IN_FAILURE = 'LOG_IN_FAILURE'; // 액션의 이름
+// 로그인 후 사용자 정보 불러오기
+export const LOAD_USER_REQUEST = 'LOAD_USER_REQUEST';
+export const LOAD_USER_SUCCESS = 'LOAD_USER_SUCCESS';
+export const LOAD_USER_FAILURE = 'LOAD_USER_FAILURE';
+// 로그아웃
+export const LOG_OUT_REQUEST = 'LOG_OUT_REQUEST';
+export const LOG_OUT_SUCCESS = 'LOG_OUT_SUCCESS';
+export const LOG_OUT_FAILURE = 'LOG_OUT_FAILURE';
+...생략
+
+// 이건 나중에 설명을 따로 한다. 리듀서의 단점을 보완하기 위한 액션
+export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case LOG_IN_REQUEST: {
+      return {
+        ...state,
+        isLoggingIn: true,
+      };
+    }
+    case LOG_IN_SUCCESS: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        isLoggedIn : true,
+        isLoading : false,
+        me: dummyUser,
+      };
+    }
+    case LOG_IN_FAILURE: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        isLoggedIn : false,
+        LoginInErrorReason : action.error,
+        me: null,
+      };
+    }
+
+    case LOG_OUT_REQUEST: {
+      return {
+        ...state,
+        isLoggedIn: false,
+        user: null,
+        isLoading : true,
+      };
+    }
+    case SIGN_UP_REQUEST: { // sigun up추가하기
+      return { 
+        ...state, 
+        signUpData: action.data, 
+      }; 
+    } 
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+설명이 허접하지만, 많이 해보면 적응이 된다. <br>
+순서가 <br>
+Form의 ID, password 입력 <br> 
+↓<br>
+로그인 버튼을 누르면 <br>
+↓<br>
+LoginForm의 (LOG_IN_REQUEST)가 실행한다<br>
+↓<br>
+LoginForm의 (isLggingIn)가 true라면 <br>
+reducers랑 saga과 동시에 실행<br>
+↓<br>
+saga에서는 watchLogin함수<br>
+↓<br>
+saga의 LOG_IN_REQUEST가 실행이 되면서, login함수가 실행<br>
+↓<br>
+2초후에 saga의 LOG_IN_SUCCESS실행<br>
+↓<br>
+reducer의 LOG_IN_SUCCESS가 성공이 되서 데이터 전달<br>
+
+### 이때까지 자동으로 로그인 된 부분을 수정하였다.
+#### \front\pages\index.js (수정 전)
+```js
+...생략
+import { useDispatch, useSelector } from 'react-redux';
+import { LOG_IN_REQUEST } from '../reducers/user';
+
+
+const Home = () => {
+  ...생략
+
+  /// 여기 index화면에 useEffect로 정보를 받아오고 있었기 때문에 자동로그인이 되었다.
+  useEffect(() => {
+    dispatch( {
+      type: LOG_IN_REQUEST,
+      data: {
+        nickname: 'LEEKY',
+      }
+    })
+  }, []);
+
+  return (
+    ...생략
+  );
+};
+
+export default Home;
+```
+
+#### \front\pages\index.js (수정 후)
+```js
+...생략
+
+const Home = () => {
+  ...생략
+  // useEffect를 삭제하였음.
+  return (
+    ...생략
+  );
+};
+
+export default Home;
+```
+
+#### \front\components\UserProfile.js
+```js
+...생략 
+import { LOG_OUT_REQUEST } from '../reducers/user';
+
+const UserProfile = () => {
+  const { me } = useSelector(state => state.user); // 수정
+  const dispatch = useDispatch();
+  const onLogout = useCallback(() => {
+    dispatch({ // LOG_OUT_REQUEST 추가
+      type: LOG_OUT_REQUEST,
+    });
+  }, []);
+
+  return (
+    <Card
+      actions={[
+        <div key="twit">짹짹<br />{me.Post.length}</div>,// user-> me로 수정
+        <div key="following">팔로잉<br />{me.Followings.length}</div>,// user-> me로 수정
+        <div key="follower">팔로워<br />{me.Followers.length}</div>, // user-> me로 수정
+      ]}
+    >
+      <Card.Meta
+        avatar={<Avatar>{me.nickname[0]}</Avatar>}
+        title={me.nickname}
+      />
+      <Button onClick={onLogout}>로그아웃</Button>
+    </Card> 
+  )
+}
+
+export default UserProfile;
+```
+
+#### \front\pages\signup.js
+
+```js
+...생략
+
+const Signup = () => {
+  ...생략
+  
+  const onSubmit = useCallback((e) => {
+    e.preventDefault();
+    if ( password !== passwordCheck) {
+      return setPasswordError(true);
+    }
+    if (!term) {
+      setTermError(true);
+    }
+    dispatch({ // 여기에 SIGN_UP_REQUEST 수정을 해준다.
+      type : SIGN_UP_REQUEST,
+      data : {
+        id, password, nick
+      }
+    }); 
+  }, [password, passwordCheck, term]);
+  
+  ...생략
+  return (
+    <>
+     ...생략
+    </>
+  );
+};
+
+export default Signup;
+```

@@ -1,5 +1,5 @@
 import { all, fork, takeLatest, takeEvery, call, put, take, delay } from 'redux-saga/effects';
-import { LOG_IN, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS } from '../reducers/user'
+import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS } from '../reducers/user'
 import axios from 'axios';
 
 function loginAPI() {
@@ -8,7 +8,8 @@ function loginAPI() {
 
 function* login() {
   try {
-    yield call(loginAPI);
+    // yield call(loginAPI);
+    yield delay(2000);
     yield put({
       type: LOG_IN_SUCCESS,
     })

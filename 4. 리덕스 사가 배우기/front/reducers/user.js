@@ -53,7 +53,6 @@ export const REMOVE_USER_SUCCESS = 'REMOVE_USER_SUCCESS';
 export const REMOVE_USER_FAILURE = 'REMOVE_USER_FAILURE';
 
 // 이건 나중에 설명을 따로 한다. 리듀서의 단점을 보완하기 위한 액션
-// 나중에 설명함!!!
 export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
 
 export default (state = initialState, action) => {
@@ -61,12 +60,13 @@ export default (state = initialState, action) => {
     case LOG_IN_REQUEST: {
       return {
         ...state,
-        isLoading : true,
+        isLoggingIn: true,
       };
     }
     case LOG_IN_SUCCESS: {
       return {
         ...state,
+        isLoggingIn: false,
         isLoggedIn : true,
         isLoading : false,
         me: dummyUser,
@@ -75,7 +75,9 @@ export default (state = initialState, action) => {
     case LOG_IN_FAILURE: {
       return {
         ...state,
+        isLoggingIn: false,
         isLoggedIn : false,
+        LoginInErrorReason : action.error,
         me: null,
       };
     }

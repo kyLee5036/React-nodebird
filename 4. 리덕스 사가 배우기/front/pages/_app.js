@@ -2,10 +2,10 @@ import React from 'react';
 import Head from 'next/head';
 import PropTypes from 'prop-types';
 import WithRedux from 'next-redux-wrapper';
-import AppLayout from '../components/App.Layout';
-import { Provider } from 'react-redux'; 
-import reducer from '../reducers/index';
 import { createStore, compose, applyMiddleware } from 'redux';
+import { Provider } from 'react-redux'; 
+import AppLayout from '../components/App.Layout';
+import reducer from '../reducers/index';
 import createSagaMiddleware from 'redux-saga';
 import rootSaga from '../sagas';
 
@@ -24,11 +24,11 @@ const NodeBird = ({Component, store}) => {
 };
 
 NodeBird.prototype = {
-  Component : PropTypes.elementType,
-  store: PropTypes.object,
+  Component : PropTypes.elementType.isRequired,
+  store: PropTypes.object.isRequired,
 }
 
-export default WithRedux((initalState, options) => {
+const configureStore = (initalState, options) => {
   const sagaMiddleware = createSagaMiddleware();
   const middlewares = [sagaMiddleware];
   const enhancer = process.env.NODE_ENV === 'production' 
@@ -42,4 +42,6 @@ export default WithRedux((initalState, options) => {
   const store = createStore(reducer, initalState, enhancer);
   sagaMiddleware.run(rootSaga); 
   return store;
-})(NodeBird);
+}
+
+export default WithRedux(configureStore)(NodeBird);

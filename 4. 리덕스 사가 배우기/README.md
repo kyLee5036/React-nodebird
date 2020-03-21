@@ -8,6 +8,8 @@
 + [takeEvery takeLatest](#takeEvery-takeLatest)
 + [fork call 사가 총정리](#fork-call-사가-총정리)
 + [사가 패턴과 Q&A](#사가-패턴과-Q&A)
++ [eslingConfigAirbnb와 코드 정리](#eslingConfigAirbnb와-코드-정리)
+
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -980,3 +982,65 @@ try, catch를 해주는 이유는? <br>
 자바스크립트에서 에러가 나면 서버가 죽어버리는 경우가 있는데, try, catch를 하면 서버가 보호되기 때문에 사용한다. <br>
 
 
+## eslingConfigAirbnb와 코드 정리
+[위로가기](#리덕스-사가-배우기)
+
+eslint설치를 하였는데, 코드를 잡아주는게 없어서 <br>
+<pre><code>npm i -d eslint-config-airbnb</code></pre>
+`eslint-confing-airbnb`가 코드를 잡아는게 엄격하다. <br>
+
+또한, 설치해줘야하는게 한가지 더 있다. <br>
+<pre><cdoe>npm i -D eslint eslint-plugin-jsx-a11y (숫자 1이다)</code></pre>
+또한, 바벨 최신문법을 지원해주기 위해서 <br>
+<pre><cdoe>npm i -D babel-eslint</code></pre>
+
+> 실행한 결과 : 잘 되지가 않고, 찾아봤는데 안되어서 일단, 보류하겠다.
+
+
+### \front\.eslintrc
+```js
+{
+  "parser": "babel-eslint", // babel-eslint를 연결해준다.
+  "parserOptions": {
+    "ecmaVersion": 2018,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "es6": true // es6 허가
+  },
+  "extends": [
+    "airbnb" // 코드스타일을 airbnb를 하겠다다는 의미
+  ],
+  "plugins": [
+    "import",
+    "react-hooks"
+  ],
+  "rules": {
+    "no-underscore-dangle": "off",
+    "react/forbid-prop-types": 0, // 0 or Off // 의미 : 엄격하게 안하겠다.
+    "object-curly-newline": 0
+  }
+}
+```
+
+```js
+export const signUpAction = (data) => {
+  return {
+    type: SIGN_UP_REQUEST,
+    data,
+  }
+};
+
+export const signUpAction = data => ({
+  type: SIGN_UP_REQUEST,
+  data,
+});
+```
+
+위, 아래랑 같은 것인데, 바로 올바른 문법은 아래의 것이다. <br>
+바로 리턴을 해주어야기 떄문이다. <br>

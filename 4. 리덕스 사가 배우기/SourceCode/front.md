@@ -8,7 +8,7 @@
 + [takeEvery takeLatest](#takeEvery-takeLatest)
 + [fork call 사가 총정리](#fork-call-사가-총정리)
 + [사가 패턴과 Q&A](#사가-패턴과-Q&A)
-
++ [eslingConfigAirbnb와 코드 정리](#eslingConfigAirbnb와-코드-정리)
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -317,3 +317,10 @@ export default (state = initialState, action) => {
   }
 };
 ```
+
+
+## eslingConfigAirbnb와 코드 정리
+[위로가기](#리덕스-사가-배우기)
+
+[코드 정리만 해서 생략]
+

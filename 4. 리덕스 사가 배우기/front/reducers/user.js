@@ -25,12 +25,10 @@ export const LOG_OUT_REQUEST = 'LOG_OUT_REQUEST';
 export const LOG_OUT_SUCCESS = 'LOG_OUT_SUCCESS';
 export const LOG_OUT_FAILURE = 'LOG_OUT_FAILURE';
 
-export const signUpAction = (data) => {
-  return {
-    type: SIGN_UP_REQUEST,
-    data,
-  };
-};
+export const signUpAction = data => ({
+  type: SIGN_UP_REQUEST,
+  data,
+});
 
 export const signUpSuccess = {
   type: SIGN_UP_SUCCESS,
@@ -45,12 +43,10 @@ export const loginAction = (data) => {
 export const logoutAction = {
   type: LOG_OUT_REQUEST,
 };
-export const signUp = (data) => {
-  return {
-    type: SIGN_UP_REQUEST,
-    data,
-  }
-};
+export const signUp = data => ({
+  type: SIGN_UP_REQUEST,
+  data,
+});
 
 export default (state = initialState, action) => {
   switch (action.type) {

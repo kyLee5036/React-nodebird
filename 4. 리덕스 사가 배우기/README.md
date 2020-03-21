@@ -10,6 +10,8 @@
 + [사가 패턴과 Q&A](#사가-패턴과-Q&A)
 + [eslingConfigAirbnb와 코드 정리](#eslingConfigAirbnb와-코드-정리)
 + [redux state와 action 구조 잡기](#redux-state와-action-구조-잡기)
++ [로그인 리덕스 사이클](#로그인-리덕스-사이클)
+
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -1073,12 +1075,12 @@ function* watchSignUp() {
 }
 
 ```
-3개의 함수가 하나의 싸이클을 이룬다.
-`SIGN_UP_REQUEST`회원가입 액션이 들어오고,
-call에서 성공인가, 실패인가 처리를 해준다. 
+3개의 함수가 하나의 싸이클을 이룬다. <br>
+`SIGN_UP_REQUEST`회원가입 액션이 들어오고, <br>
+call에서 성공인가, 실패인가 처리를 해준다.  <br>
 
 
-일단 에러가 걸리는데 나중에 해결한다.
+일단 에러가 걸리는데 나중에 해결한다. <br>
 #### \front\sagas\user.js
 ```js
 import { all, fork, takeLatest, takeEvery, call, put, take, delay } from 'redux-saga/effects';
@@ -1134,7 +1136,7 @@ export default function* userSaga() {
   ]);
 }
 ```
-자세히 보면 공통된 부분이 보일 것이다. 
+자세히 보면 공통된 부분이 보일 것이다. <br>
 
 #### \front\reducers\user.js
 ```js
@@ -1242,7 +1244,7 @@ export default (state = initialState, action) => {
   }
 };
 ```
-나중에 액션에서 더 추가 할 것이라서 일단 모양으로만 만들어 놓았다.
+나중에 액션에서 더 추가 할 것이라서 일단 모양으로만 만들어 놓았다. <br>
 
 #### \front\reducers\post.js
 ```js
@@ -1340,4 +1342,8 @@ const reducer = (state = initialState, action) => {
 
 export default reducer;
 ```
+
+## 로그인 리덕스 사이클
+[위로가기](#리덕스-사가-배우기)
+
 

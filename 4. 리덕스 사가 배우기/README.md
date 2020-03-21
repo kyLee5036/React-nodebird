@@ -11,7 +11,7 @@
 + [eslingConfigAirbnb와 코드 정리](#eslingConfigAirbnb와-코드-정리)
 + [redux state와 action 구조 잡기](#redux-state와-action-구조-잡기)
 + [로그인 리덕스 사이클](#로그인-리덕스-사이클)
-
++ [회원가입 리덕스 사이클](#회원가입-리덕스-사이클)
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -1658,3 +1658,144 @@ const Signup = () => {
 
 export default Signup;
 ```
+
+## 회원가입 리덕스 사이클
+[위로가기](#리덕스-사가-배우기)
+
+#### \front\pages\signup.js
+```js
+...생략
+import { SIGN_UP_REQUEST } from '../reducers/user';
+
+// 모듈을 만들어서 재 사용을 하겠다.
+export const useInput = (initValue = null) => {
+  const [value, setter] = useState(initValue);
+  const handler = useCallback((e) => {
+    setter(e.target.value);
+  }, []);
+  return [value, handler];
+};
+
+const Signup = () => {
+  const dispatch = useDispatch();
+  const {isSigningUp} = useSelector(state => state.user); // 추가
+  ...생략
+  return (
+    <>
+      <Form onSubmit={onSubmit} style={{ padding : 10}} >
+        ...생략
+        <div>
+          <Checkbox name="user-term" defaultChecked={term} onChange={onChangeTerm}>약관 동의</Checkbox> // 수정 checked -> defalutChecked
+          { termError && <div style={{color : 'red'}}>약관에 동의하셔야 합니다.</div> }
+        </div>
+        <div style={{ marginTop : 10}}>
+          <Button type="primary" htmlType="submit" loading={isSigningUp} >가입하기</Button> // loading추가 (isSigninUp)
+        </div>
+      </Form>
+    </>
+  );
+};
+
+export default Signup;
+```
+
+checked의 오류가 있어서 수정한 부분이 있다. 코드 소스 참고할 것 <br>
+또한, 가입하기 버튼을 누르면 로딩 창 표시하도록 추가하였다. <br>
+
+#### \front\reducers\user.js
+```js
+...생략
+export const initialState = {
+  isLoggedIn: false, // 로그인 여부
+  isLoggingOut : false, // 로그아웃 시도중
+  isLogginIn : false, // 로그인 시도중
+  LoginInErrorReason: '', // 로그인 실패 이유
+  signedUp: false, // 회원가입 성공
+  isSigningUp: false, // 회원가입 시도중
+  // ******************** 밑부분 추가 **************************
+  isSignedUp : false, // 회원가입이 되어졌음. (추가하였음)
+
+
+  signUpErrorReason: '', // 회원가입 실패 이유
+  me: null, // 내 정보
+  followingList : [], // 팔로잉 리스트
+  followerList: [], // 팔로워 리스트
+  userInfo: [], // 남의 정보
+};
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case SIGN_UP_REQUEST: { 
+      return { 
+        ...state, 
+        isSigningUp: true,
+        isSignedUp: false,
+        signUpErrorReason: '',
+      }; 
+    }
+    case SIGN_UP_SUCCESS: { 
+      return { 
+        ...state, 
+        isSigningUp: false,
+        isSignedUp: true, 
+      }; 
+    }
+    case SIGN_UP_FAILURE: { 
+      return { 
+        ...state, 
+        signUpErrorReason : '', 
+      }; 
+    } 
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+#### \front\sagas\user.js
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, call, put, delay } from 'redux-saga/effects';
+import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS } from '../reducers/user'
+
+...생략
+
+function signUpAPI() {
+  return axios.post('/signup');
+}
+
+function* signUp() {
+  try {
+    yield delay(2000);
+    // yield call(signUpAPI); 
+    yield put({
+      type: SIGN_UP_SUCCESS
+    });
+  } catch (e) {
+    console.error(r);
+    yield put({ 
+      type : SIGN_UP_FAILURE,
+      error : e,
+    });
+  }
+}
+
+function* watchSignUp() {
+  yield takeLatest(SIGN_UP_REQUEST, signUp);
+}
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogin),
+    fork(watchSignUp)
+  ]);
+}
+```
+솔직히, 지금부터는 형태가 많이 비슷할 것이다. <br>
+SING_REQUEST, SIGN_UP_SUCCESS, SIGN_UP_FAILURE가 있다. <br>
+

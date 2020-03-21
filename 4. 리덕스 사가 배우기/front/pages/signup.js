@@ -1,10 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { Form, Input, Checkbox, Button } from 'antd';
-import { useSelector, useDispatch} from 'react-redux';
+import { useDispatch, useSelector} from 'react-redux';
 import PropTypes from 'prop-types';
 import { SIGN_UP_REQUEST } from '../reducers/user';
 
-// 모듈을 만들어서 재 사용을 하겠다.
 export const useInput = (initValue = null) => {
   const [value, setter] = useState(initValue);
   const handler = useCallback((e) => {
@@ -15,6 +14,7 @@ export const useInput = (initValue = null) => {
 
 const Signup = () => {
   const dispatch = useDispatch();
+  const {isSigningUp} = useSelector(state => state.user);
   const [passwordCheck, setPasswordCheck] = useState('');
   const [term, setTerm] = useState(false); 
   const [passwordError, setPasswordError] = useState(false); 
@@ -43,11 +43,11 @@ const Signup = () => {
   const onChangePasswordCheck = useCallback((e) => {
     setPasswordError(e.target.value !== password); 
     setPasswordCheck(e.target.value);
-  }, [password]); // 함수 내부에서 쓰는 state를 deps 배열로 넣어야한다.
+  }, [password]); 
   const onChangeTerm = useCallback((e) => {
     setTermError(false);
     setTerm(e.target.checked);
-  }, []); // 함수 내부에서 쓰는 state를 deps 배열로 넣어야한다.
+  }, []); 
 
   
   return (
@@ -75,11 +75,11 @@ const Signup = () => {
           { passwordError && <div style={{color : 'red'}}>비밀번호가 일치하지 않습니다.</div> }
         </div>
         <div>
-          <Checkbox name="user-term" value={term} onChange={onChangeTerm}>약관 동의</Checkbox>
+          <Checkbox name="user-term" defaultChecked={term} onChange={onChangeTerm}>약관 동의</Checkbox>
           { termError && <div style={{color : 'red'}}>약관에 동의하셔야 합니다.</div> }
         </div>
         <div style={{ marginTop : 10}}>
-          <Button type="primary" htmlType="submit">가입하기</Button>
+          <Button type="primary" htmlType="submit" loading={isSigningUp} >가입하기</Button>
         </div>
       </Form>
     </>

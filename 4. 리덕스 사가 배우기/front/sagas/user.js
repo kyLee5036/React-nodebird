@@ -1,6 +1,6 @@
-import { all, fork, takeLatest, takeEvery, call, put, take, delay } from 'redux-saga/effects';
-import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS } from '../reducers/user'
 import axios from 'axios';
+import { all, fork, takeLatest, call, put, delay } from 'redux-saga/effects';
+import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS } from '../reducers/user'
 
 function loginAPI() {
   return axios.post('/login');
@@ -31,13 +31,17 @@ function signUpAPI() {
 
 function* signUp() {
   try {
-    yield call(signUpAPI);
+    yield delay(2000);
+    // yield call(signUpAPI); 
     yield put({
       type: SIGN_UP_SUCCESS
-    })
+    });
   } catch (e) {
     console.error(r);
-    yield put({ type : SIGN_UP_FAILURE});
+    yield put({ 
+      type : SIGN_UP_FAILURE,
+      error : e,
+    });
   }
 }
 

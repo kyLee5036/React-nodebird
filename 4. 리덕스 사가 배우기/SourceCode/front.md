@@ -11,7 +11,7 @@
 + [eslingConfigAirbnb와 코드 정리](#eslingConfigAirbnb와-코드-정리)
 + [redux state와 action 구조 잡기](#redux-state와-action-구조-잡기)
 + [로그인 리덕스 사이클](#로그인-리덕스-사이클)
-
++ [회원가입 리덕스 사이클](#회원가입-리덕스-사이클)
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -961,3 +961,8 @@ export default function* userSaga() {
   ]);
 }
 ```
+
+
+## 회원가입 리덕스 사이클
+[위로가기](#리덕스-사가-배우기)
+

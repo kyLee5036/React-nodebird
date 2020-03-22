@@ -12,6 +12,7 @@
 + [redux state와 action 구조 잡기](#redux-state와-action-구조-잡기)
 + [로그인 리덕스 사이클](#로그인-리덕스-사이클)
 + [회원가입 리덕스 사이클](#회원가입-리덕스-사이클)
++ [게시글 작성 리덕스 사이클](#게시글-작성-리덕스-사이클)
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -1799,3 +1800,165 @@ export default function* userSaga() {
 솔직히, 지금부터는 형태가 많이 비슷할 것이다. <br>
 SING_REQUEST, SIGN_UP_SUCCESS, SIGN_UP_FAILURE가 있다. <br>
 
+
+## 게시글 작성 리덕스 사이클
+[위로가기](#리덕스-사가-배우기)
+
+#### \front\components\PostForm.js
+```js
+import React, { useCallback, useState, useEffect } from 'react';
+import { Form, Input, Button } from 'antd';
+import { useSelector, useDispatch } from 'react-redux';
+import { ADD_POST_REQUEST } from '../reducers/post';
+
+const PostForm = () => {
+  const { imagePaths, isAddingPost, postAdded } = useSelector(state => state.post);
+  const dispatch = useDispatch(); // 추가
+  const [text, setText] = useState(''); // 추가
+
+  const onSubmitForm = useCallback((e) => { // 추가
+    e.preventDefault();
+    dispatch({
+      type: ADD_POST_REQUEST,
+      data: {
+        text,
+      }
+    });
+  }, []);
+
+  const onChangeText = useCallback((e) => { // 추가
+    setText(e.target.value);
+  }, []);
+
+  // 게시글이 작성되었을 때 text를 리셋해야한다.
+  // postAdded(포스트업로드 성공)은 reducer의 추가되었다. 
+  useEffect(() => {
+    if (postAdded) {
+      setText('');
+    }
+  }, [postAdded]);
+
+  return (
+    <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data" onSubmit={onSubmitForm}>
+      <Input.TextArea maxLength={140} placeholder="어떤 신기한 일이 있었나요?" value={text} onChange={onChangeText} />  // 추가
+      <div>
+        <input type="file" multiple hidden />
+        <Button>이미지 업로드</Button>
+        <Button type="primary" style={{ float : 'right'}} htmlType="submit" loading={isAddingPost} >업로드</Button> // loading 추가
+      </div>
+      <div>
+        {imagePaths.map((v) => {
+          return (
+            <div key={v} style={{ display: 'inline-black' }}>
+              <img src={'http://localhost:3065/' + v} style={{ width : '200px' }} alt={v} />
+              <div>
+                <Button>제거</Button>
+              </div>
+            </div>
+          )
+        })}  
+      </div>  
+  </Form>
+  )
+}
+
+export default PostForm;
+```
+
+#### \front\reducers\post.js
+```js
+export const initialState = {
+  mainPosts: [{
+    User: {
+      id: 1,
+      nickname: '제로초',
+    },
+    content: '첫 번째 게시글',
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+  }], // 화면에 보일 포스터들
+  imagePaths: [], // 미리보고 이미지 경로
+  addPostError: false, // 포스트 업로드 실패 이유
+  isAddingPost: false, // 포스트 업로드 중
+  postAdded: false, // 포스트 업로드 성공 ( ***** 추가 ********)
+};
+
+//일단 임시로 추가한다.
+const dummyPost = { 
+  User: {
+    id: 1,
+    nickname: 'dummyNickName',
+  },
+  content: 'dummyTestContent',
+}
+
+...생략
+
+const reducer = (state = initialState, action) => {
+  switch (action.type) {
+    case ADD_POST_REQUEST: {
+      return {
+        ...state,
+        isAddingPost: true,
+        addPostError: '',
+        postAdded: false, 
+      };
+    };
+    case ADD_POST_SUCCESS: {
+      return {
+        ...state,
+        isAddingPost: false,
+        // 기존의 있던 포스트에 더미 포스트를 넣어준다
+        // 그 다음에 사가도 구성같이 해준다.
+        mainPosts: [dummyPost, ...state.mainPosts], 
+        postAdded: true, 
+      };
+    };
+    case ADD_POST_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addPostError: action.error,
+      };
+    };
+
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+export default reducer;
+```
+
+#### \front\sagas\post.js
+```js
+import { all, fork, takeLatest, put, delay } from 'redux-saga/effects';
+import { ADD_POST_REQUEST, ADD_POST_FAILURE, ADD_POST_SUCCESS } from '../reducers/post';
+
+function* addPost() {
+  try {
+    yield delay(2000);
+    yield put({
+      type: ADD_POST_SUCCESS,
+    })
+  } catch (e) {
+    console.log(e);
+    yield put({
+      type: ADD_POST_FAILURE,
+      error: e
+    })
+  }
+}
+
+function* matchAddPost() {
+  yield takeLatest(ADD_POST_REQUEST, addPost)
+}
+
+export default function* postSaga() {
+  yield all([
+    fork(matchAddPost),
+  ]);
+}
+```

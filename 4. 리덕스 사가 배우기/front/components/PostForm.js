@@ -37,16 +37,14 @@ const PostForm = () => {
         <Button type="primary" style={{ float : 'right'}} htmlType="submit" loading={isAddingPost} >업로드</Button>
       </div>
       <div>
-        {imagePaths.map((v) => {
-          return (
-            <div key={v} style={{ display: 'inline-black' }}>
-              <img src={'http://localhost:3065/' + v} style={{ width : '200px' }} alt={v} />
-              <div>
-                <Button>제거</Button>
-              </div>
+        {imagePaths.map((v) => (
+          <div key={v} style={{ display: 'inline-black' }}>
+            <img src={`http://localhost:3065/${v}`} style={{ width : '200px' }} alt={v} />
+            <div>
+              <Button>제거</Button>
             </div>
-          )
-        })}  
+          </div>
+        ))}  
       </div>  
   </Form>
   )

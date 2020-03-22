@@ -13,6 +13,7 @@
 + [로그인 리덕스 사이클](#로그인-리덕스-사이클)
 + [회원가입 리덕스 사이클](#회원가입-리덕스-사이클)
 + [게시글 작성 리덕스 사이클](#게시글-작성-리덕스-사이클)
++ [next Router로 페이지 이동하기](#next-Router로-페이지-이동하기)
 
 
 ## 리덕스 사가의 필요성과 맛보기
@@ -1962,3 +1963,74 @@ export default function* postSaga() {
   ]);
 }
 ```
+
+## next Router로 페이지 이동하기
+[위로가기](#리덕스-사가-배우기)
+
+### 회원가입 페이지에서 로그인하면 회원가입 페이지 안되도록 하는 방법!!!!(중요!!!)
+
+#### \front\pages\signup.js
+```js
+...생략
+import router from 'next/router'; // 추가
+...생략
+
+
+...생략
+
+const Signup = () => {
+  const dispatch = useDispatch();
+  const {isSigningUp, me} = useSelector(state => state.user); // me추가
+  ...생략
+
+
+  // 프로그래밍적으로 링크를 바꿀 수가 있다.
+  useEffect(() => {
+    // next의 Link도 있는데 router로 사용할 수도 있다.
+    if(me) {
+      alert('로그인했으니 메인페이지로 이동합니다.');
+      router.push('/')
+    }
+  }, [me && me.id]); // 참고로 배열안에 객체를 넣어주지 말고, 객체 안의 값을 넣어줘야한다.
+  // 왜냐하면, 비교하는게 힘들기 때문이다.
+  // 자바스크립트는 undefined일 수도 있으니까 보호해주기 위해서 &&연산자를 사용
+  
+  return (
+    <>
+      ...생략
+    </>
+  );
+};
+
+export default Signup;
+```
+
+
+
+#### \front\components\PostForm.js(코드 잠깐 수정)
+```js
+...생략
+
+const PostForm = () => {
+  ...생략
+
+  return (
+    <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data" onSubmit={onSubmitForm}>
+      ...생략
+      <div>
+        {imagePaths.map((v) => ( // 잠깐 코드 수정(그렇게 중요하지 않다.)
+          <div key={v} style={{ display: 'inline-black' }}>
+            <img src={`http://localhost:3065/${v}`} style={{ width : '200px' }} alt={v} />
+            <div>
+              <Button>제거</Button>
+            </div>
+          </div>
+        ))}  
+      </div>  
+  </Form>
+  )
+}
+
+export default PostForm;
+```
+

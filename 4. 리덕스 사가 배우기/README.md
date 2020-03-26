@@ -2039,4 +2039,115 @@ export default PostForm;
 ## 댓글 컴포넌트 만들기
 [위로가기](#리덕스-사가-배우기)
 
+#### \front\components\PostCard.js
+```js
+import React, { useState, useCallback } from 'react';
+import { Card, Icon, Button, Avatar, Form, Input, List, Comment } from 'antd';
+import PropTypes from 'prop-types';
+import { useSelector, useDispatch } from 'react-redux';
+import { ADD_COMMENT_REQUEST } from '../reducers/post';
 
+const PostCard = ({post}) => {
+
+  const [commentFormOpened, setCommentFormOpened] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const { me } = useSelector(state => state.user);
+  const dispatch = useDispatch();
+
+  const onToggleComment = useCallback(() => {
+    // 펼쳐져 있으면 닫고, 닫혀져있으면 열고
+    setCommentFormOpened(prev => !prev); // 함수형 setState이다. !!!!!기능적으로 중요!!!
+  }, []);
+  /* 설명 추가!!!!!!!!!!!
+  prev가 과거의 값 이다. prev => !prev는 과거의 값을 반전하라는 뜻이다.
+  function(prev) { return !prev }와 같다.
+  prev가 false였다면 반전해서 true로 만들고
+  true였다면 반전해서 false로 만들게 됩니다.
+
+  여기서 질문!!!!
+  실질적으로, 콘솔에, 변환하기전 Before 과 변환후를 After를 
+  찍어보면은,  값은 변하지는 않고 다 false 만 나오네???!!!!!!!!!
+  해답 :
+  setCommentFormOpened(prev => !prev);는 비동기이다. 
+  전후로 console.log찍어도 setCommentFormOpened(prev => !prev);보다 먼저 실행돼서 둘 다 false로 뜹니다.
+
+  */
+  
+  const onSubmitComment = useCallback((e) => {
+    e.preventDefault();
+    // 로그인을 안하면 자꾸 리턴을 해줘서 돌아간다. 그러니까 로그인을 하면 ADD_COMMENT_REQUEST가 반응한다.
+    if (!me) { // 댓글은 로그인을 했던 사람만 불러올 수 있도록 if문을 사용
+      return alert('로그인이 필요합니다.');
+    };
+    dispatch({
+      type: ADD_COMMENT_REQUEST,
+    })
+  }, []);
+
+  // 이거는 리액트 기초편에 설명있음
+  const onChangeCommentText = useCallback((e) => {
+    setCommentText(e.target.value);
+  }, []);
+
+  return (
+    <div>
+      <Card
+        key={+post.createAt}
+        cover={post.img && <img alt="example" src={post.img} />}
+        actions={[
+          <Icon type="retweet" key="retweet" />,
+          <Icon type="heart" key="heart" />,
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Icon type="ellipsis" key="ellipsis" />,
+        ]}
+        extra={<Button>팔로우</Button>}
+      >
+        {/* 카드 세부 정보  */}
+        <Card.Meta 
+          avatar={<Avatar>{post.User.nickname[0]}</Avatar>}
+          title={post.User.nickname}
+          description={post.content}
+        />
+      </Card>
+      // prev => !prev의 기능이 열고 닫고 해준다.
+      {commentFormOpened && ( // 열려있으면 true, 닫혀져있으면 false 
+        <> // 이거 사용해주기 위해서 <div></div>로 일단 감싸줬다.
+          <Form onSubmit={onSubmitComment}>
+            <Form.Item>
+              // value는 항상 onchange가 있어야한다. (리액트 기본편)
+              <Input.TextArea rows={4} value={commentText} onChange={onChangeCommentText}/> 
+            </Form.Item>
+            <Button type="primary" htmlType="submit">클릭</Button>
+          </Form>
+          <List
+            header={`${post.Comments ? post.Comments.length : 0} 댓글`}
+            itemLayout="horizontal"
+            dataSource={post.Comment || []}
+            renderItem={ item => ( // 
+              <li>
+                <Comment
+                  author={item.User.nickname}
+                  avatar={<Avatar>{item.User.nickname}</Avatar>}
+                  content={item.content}
+                  datetime={item.createAt}
+                />
+              </li>
+            )}
+          />
+        </>
+      )} 
+    </div> 
+  )
+};
+
+PostCard.prototypes = {
+  post: PropTypes.shape({
+    User : PropTypes.object,
+    content : PropTypes.string,
+    img: PropTypes.string,
+    createAt: PropTypes.object,  
+  }),
+}
+
+export default PostCard;
+```

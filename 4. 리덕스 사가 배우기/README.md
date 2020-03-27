@@ -2229,6 +2229,10 @@ const reducer = (state = initialState, action) => {
       const mainPosts = [...state.mainPosts]; // 게시글들 얕은 복사
       얕은 복사를 하는 이유는 불변성을 지키기 위함입니다.
 
+      // immer을 사용한다면 ? 밑에 두 줄이 끝이다.
+      // const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postid);
+      // state.mainPosts[postIndex].Comments.push(action.data.comment);
+
       /* 
       const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postid);의 추가설명
       위의 코드중에서 v는 mainPosts의 전체 객체를 뜻합니다.
@@ -2239,15 +2243,7 @@ const reducer = (state = initialState, action) => {
 
       즉 맨위의 코드는 mainPosts의 객체중에서 새롭게 들어온 postId와 , mainPosts.id를 비교해서 true가 되면 그 배열의 인덱스를 반환해준다.
       
-     
       */
-
-
-
-
-      // immer을 사용한다면 ? 밑에 두 줄이 끝이다.
-      // const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postid);
-      // state.mainPosts[postIndex].Comments.push(action.data.comment);
       return {
         ...state,
         isAddingComment: false,

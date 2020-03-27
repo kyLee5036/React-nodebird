@@ -1,25 +1,42 @@
 export const initialState = {
   mainPosts: [{
+    id : 1,
     User: {
       id: 1,
       nickname: '제로초',
     },
     content: '첫 번째 게시글',
     img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
-  }], // 화면에 보일 포스터들
-  imagePaths: [], // 미리보고 이미지 경로
-  addPostError: false, // 포스트 업로드 실패 이유
-  isAddingPost: false, // 포스트 업로드 중
-  postAdded: false, // 포스트 업로드 성공
+    Comments: [],
+  }], 
+  imagePaths: [], 
+  addPostError: false, 
+  isAddingPost: false, 
+  postAdded: false, 
+  isAddingComment: false,
+  addCommentErrorReason : '',
+  commentAdded: false,
 };
 
 const dummyPost = {
+  id : 2,
   User: {
     id: 1,
     nickname: 'dummyNickName',
   },
   content: 'dummyTestContent',
+  Comments: [],
 }
+
+const dummyComment = {
+  id : 1,
+  User: {
+    id: 1,
+    nickname: 'LEEKY',
+  },
+  createAt: new Date(),
+  content: '더미 댓글입니다.',
+};
 
 // 포스트 업로드
 export const ADD_POST_REQUEST = 'ADD_POST_REQUEST';
@@ -96,6 +113,35 @@ const reducer = (state = initialState, action) => {
         ...state,
         isAddingPost: false,
         addPostError: action.error,
+      };
+    };
+
+    case ADD_COMMENT_REQUEST: {
+      return {
+        ...state,
+        isAddingComment: true,
+        addCommentError: '',
+        commentAdded: false, 
+      };
+    };
+    case ADD_COMMENT_SUCCESS: {
+      const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postId);
+      const post = state.mainPosts[postIndex];
+      const Comments = [...post.Comments, dummyComment];
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = { ...post, Comments };
+      return {
+        ...state,
+        isAddingComment: false,
+        mainPosts,
+        commentAdded: true, 
+      };
+    };
+    case ADD_COMMENT_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addCommentErrorReason: action.error,
       };
     };
 

@@ -13,8 +13,9 @@
 + [로그인 리덕스 사이클](#로그인-리덕스-사이클)
 + [회원가입 리덕스 사이클](#회원가입-리덕스-사이클)
 + [게시글 작성 리덕스 사이클](#게시글-작성-리덕스-사이클)
-+ [next Router로 페이지 이동하기](#next-Router로-페이지-이동하기)
++ [next Router로 페이지 이동하기](#next-Router로-페이지-이동하기)[
 + [댓글 컴포넌트 만들기](#댓글-컴포넌트-만들기)
++ [댓글 작성 리덕스 사이클](#댓글-작성-리덕스-사이클)
 
 
 
@@ -2148,6 +2149,314 @@ PostCard.prototypes = {
     createAt: PropTypes.object,  
   }),
 }
+
+export default PostCard;
+```
+
+## 댓글 작성 리덕스 사이클
+[위로가기](#리덕스-사가-배우기)
+
+#### \front\reducers\post.js
+```js
+export const initialState = {
+  mainPosts: [{
+    id : 1, // 아디를 구분하기 떄문에 아이디를 잘 달아줘야한다. (추가)
+    User: {
+      id: 1, // 아디를 구분하기 떄문에 아이디를 잘 달아줘야한다. (추가)
+      nickname: '제로초',
+    },
+    content: '첫 번째 게시글',
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+    Comments: [], // 추가
+  }], 
+  imagePaths: [], 
+  addPostError: false,  
+  isAddingPost: false, 
+  postAdded: false, 
+  isAddingComment: false, // (추가)
+  addCommentErrorReason : '', // (추가)
+  commentAdded: false, // (추가)
+};
+
+const dummyPost = {
+  id : 2, // 아디를 구분하기 떄문에 아이디를 잘 달아줘야한다. (추가)
+  User: {
+    id: 1,
+    nickname: 'dummyNickName',
+  },
+  content: 'dummyTestContent',
+  Comments: [], // 추가
+}
+
+// (dummyComment 추가)
+const dummyComment = {
+  id : 1, // 아디를 구분하기 떄문에 아이디를 잘 달아줘야한다. (추가)
+  User: {
+    id: 1,
+    nickname: 2,
+  },
+  createAt: new Date(), // 현재 날짜
+  content: '더미 댓글입니다.',
+};
+
+...생략
+
+const reducer = (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+
+    case ADD_COMMENT_REQUEST: {
+      return {
+        ...state,
+        isAddingComment: true,
+        addCommentError: '',
+        commentAdded: false, 
+      };
+    };
+    case ADD_COMMENT_SUCCESS: {
+      // 불변성을 지켜줘야한다. 그래서 immer을 사용한다.
+      const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postid);
+      const post = state.mainPosts[postIndex];
+      // const Comments = [...post.Comments, action.data.comment]; // 실제 데이터 값
+      const Comments = [...post.Comments, dummyComment]; // 일단 더미데이터를 넣어준다.
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = [...post, Comments];
+
+      // 코드 설명임
+      const postIndex =state.mainPosts.findIndex(v=>v.id=== action.data.postId); // action.data.postId로 게시글의 위치를 찾음
+      const post = state.mainPosts[postIndex]; // 찾은 위치로 게시글 선택
+      const Comments = [...post.Comments, action.data.Comments];  // 그 게시글의 댓글들 얕은 복사 후, 새 댓글 데이터(action.data.Comments) 추가
+      const mainPosts = [...state.mainPosts]; // 게시글들 얕은 복사
+      얕은 복사를 하는 이유는 불변성을 지키기 위함입니다.
+
+      /* 
+      const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postid);의 추가설명
+      위의 코드중에서 v는 mainPosts의 전체 객체를 뜻합니다.
+
+      (위의 경우 객체가 더미데이터로 하나밖에없으나 여러개있어도 문제가 되지않음 왜냐면 findIndex()때문인데.. (아래에서 설명))
+
+      findIndex()메소드가 전체 배열중에서 조건에 맞는 첫번째 인자(?)의 위치를 반환하기때문에 객체가 여러개있어도 문제가 되지않음
+
+      즉 맨위의 코드는 mainPosts의 객체중에서 새롭게 들어온 postId와 , mainPosts.id를 비교해서 true가 되면 그 배열의 인덱스를 반환해준다.
+      
+     
+      */
+
+
+
+
+      // immer을 사용한다면 ? 밑에 두 줄이 끝이다.
+      // const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postid);
+      // state.mainPosts[postIndex].Comments.push(action.data.comment);
+      return {
+        ...state,
+        isAddingComment: false,
+        // 이분이 복잡한데 게시글이 여러개 있는데, 그중에 하나를 뽑아줘야한다.
+        // 그 게시글을 여기서 찾아주고, 댓글을 넣어준다. 
+        mainPosts,
+        commentAdded: true, 
+      };
+    };
+    case ADD_COMMENT_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addCommentErrorReason: action.error,
+      };
+    };
+
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+export default reducer;
+```
+
+#### \front\sagas\post.js
+```js
+import { all, fork, takeLatest, put, delay } from 'redux-saga/effects';
+import { ADD_POST_REQUEST, ADD_POST_FAILURE, ADD_POST_SUCCESS, ADD_COMMENT_SUCCESS } from '../reducers/post';
+
+
+function* AddCommentAPI() {
+
+}
+function* AddComment(action) { // action을 추가한다.
+  // action이 추가가 된다. action에 대한 데이터를 받을 수 있다.
+  // ADD_COMMENT_REQUEST에 넣어준 데이터를 action에 받을 수 있다.
+  try {
+    yield delay(2000);
+    yield put({
+      type: ADD_COMMENT_SUCCESS,
+      data: {
+        postId: action.data.postId, // 넘겨준 값을 여기에서 받는다.
+      }
+    })
+  } catch (e) {
+    console.log(e);
+    yield put({
+      type: ADD_COMMENT_FAILURE,
+      error: e
+    })
+  }
+}
+function* matchAddComment() {
+  yield takeLatest(ADD_COMMENT_REQUEST, AddComment);
+}
+
+...생략
+
+export default function* postSaga() {
+  yield all([
+    fork(matchAddPost),
+    fork(matchAddComment),
+  ]);
+}
+```
+
+#### postCard.js에 있음.
+```js
+dispatch({ // 여기에 ADD_COMMENT_REQUEST가 PostId의 값을 넘겨준다.
+  type: ADD_COMMENT_REQUEST,
+  data: {
+    postId: post.id,
+  }
+})
+```
+
+
+```js
+...생략
+  
+  const onSubmitComment = useCallback((e) => {
+    e.preventDefault();
+    if (!me) {
+      return alert('로그인이 필요합니다.');
+    };
+    dispatch({
+      type: ADD_COMMENT_REQUEST,
+      data: {
+        postId: post.id, // 이거 추가!!!!!!!!!! post.id를 넘겨줘야하기 때문에..
+      }
+    })
+    
+  }, []);
+
+  const onChangeCommentText = useCallback((e) => {
+    setCommentText(e.target.value);
+  }, []);
+
+  return (
+    ...생략
+  )
+};
+
+...생략
+
+export default PostCard;
+
+```
+
+여기까지 하면, 갑자기 에러가 나온다. <br>
+에러내용은 `로그인이 필요합니다.`라고 나온다. <br> 
+
+> useCallback에서 그 안 useState를 사용하면, state를 넣어줘야한다. <br>
+
+<strong>그리고 state가 객체일 경우(me가 객체이다)일 경우에는 객체의 값(me.id)을 넣어줘야한다.</strong> <br>
+즉, `me && me.id` (객체 && 객체의 값)   <br>
+
+하지만, 또 에러가 나온다. reudx-devtools에서 state 상태를 확인해야한다.  <br>
+
+```js
+const dummyComment = {
+  id : 1,
+  User: {
+    id: 1,
+    nickname: 'LEEKY', // dummyComment의 nicname가 없어서 에러가 나왔다.
+    // 그러므로 nickname을 추가해준다.
+  },
+  createAt: new Date(),
+  content: '더미 댓글입니다.',
+```
+
+PostCard.js에서  `datetime={item.createAt}` 이 부분 그냥 삭제해준다. <br>
+나중에 찾아서 수정할 것!! <br>
+
+#### \front\components\PostCard.js
+```js
+const { commentAdded, isAddingComment} = useSelector(state => state.post); // 추가해주기
+...생략
+
+const PostCard = ({post}) => {
+  ...생략
+  
+  const onSubmitComment = useCallback((e) => {
+    e.preventDefault();
+    if (!me) {
+      return alert('로그인이 필요합니다.');
+    };
+    dispatch({
+      type: ADD_COMMENT_REQUEST,
+      data: {
+        postId: post.id, // 추가
+      }
+    })
+    
+  }, [me && me.id]); // 여기에 me가 객체인 경우에는 객체랑 객체의 값을 같이 넣어줘야한다.!!!!!!
+
+  // 두가지 방법이 있는데 솔직히 밑에 것이 더 올바른 것이다.
+  // 댓글이 추가되면 댓글 텍스트를 초기화 시켜준다.
+  useEffect(() => { // 추가하기
+    if (commentAdded) {
+      setCommentText('');
+    }
+  }, [commentAdded]);
+  // 댓글이 추가되면 댓글 텍스트를 초기화 시켜준다.
+  // useEffect(() => {  // 추가하기
+  //   setCommentText('');
+  // }, [commentAdded === true]);
+
+  const onChangeCommentText = useCallback((e) => {
+    setCommentText(e.target.value);
+  }, []);
+
+  return (
+    <div>
+      ...생략
+      {commentFormOpened && (
+        <>
+          <Form onSubmit={onSubmitComment}>
+            <Form.Item>
+              <Input.TextArea rows={4} value={commentText} onChange={onChangeCommentText}/>
+            </Form.Item>
+            <Button type="primary" htmlType="submit" loading={isAddingComment}>클릭</Button>
+          </Form>
+          <List
+            header={`${post.Comments ? post.Comments.length : 0} 댓글`} // 수정해주기
+            itemLayout="horizontal"
+            dataSource={post.Comments || []}
+            renderItem={ item => (
+              <li>
+                <Comment
+                  author={item.User.nickname}
+                  avatar={<Avatar>{item.User.nickname[0]}</Avatar>} // 수정해주기
+                  content={item.content}
+                  // createAt 삭제하기 (데이터가 안 맞아서)
+                />
+              </li>
+            )}
+          />
+        </>
+      )} 
+    </div>
+  )
+};
+
+...생략
 
 export default PostCard;
 ```

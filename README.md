@@ -29,6 +29,24 @@
   + react-redux connect
   + dummy 데이터로 리덕스 사용하기
   + 리액트 state와 리덕스 state
+  
+- 리덕스 사가 배우기
+  + 리덕스 사가의 필요성과 맛보기
+  + 사가 미들웨어 리덕스에 연결하기
+  + ES2015 제너레이터
+  + 사가의 제너레이터 이해하기
+  + 사가에서 반복문 제어하기
+  + takeEvery, takeLatest
+  + fork, call, 사가 총정리
+  + 사가 패턴과 Q&A
+  + eslint-config-airbnb와 코드 정리
+  + redux state와 action 구조 잡기
+  + 로그인 리덕스 사이클
+  + 회원가입 리덕스 사이클
+  + 게시글 작성 리덕스 사이클
+  + next Router로 페이지 이동하기
+  + 댓글 컴포넌트 만들기
+  + 댓글 작성 리덕스 사이클
 
   
 

@@ -50,7 +50,7 @@ npm i -D nodemon
 + <strong>eslint-plugin-jsx-a11y</strong> : 코딩스타일 설정 <br>
 + <strong>nodemon</strong> : 서버 쪽 코드를 바꾸면 재부팅하기위해서 nodemon을 사용 (서버를 껐다, 켰다하기가 귀찮기 때문) <br>
 
-#### package.json의 설정
+#### #### \back\package.json의 설정
 ```json
 ...생략
 "scripts": {
@@ -61,7 +61,8 @@ npm i -D nodemon
 
 nodemon의 설정이 필요하다. <br>
 
-```json
+#### \back\nodemon.json
+```js
 {
   "watch" : [
     "index.js", // 메일파일인 index.js가 있다.

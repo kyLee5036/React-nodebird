@@ -1,6 +1,7 @@
 # 백엔드 서버 만들기
 
 + [백엔드 서버 구동에 필요한 모듈들](#백엔드-서버-구동에-필요한-모듈들)
++ [HTTP 요청 주소 체계 이해하기](#HTTP-요청-주소-체계-이해하기)
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -78,4 +79,70 @@ nodemon의 설정이 필요하다. <br>
 }
 ```
 > 즉, watch에 있는 파일, 폴더가 내용이 바뀐다면 exec가 노드 서버를 다시 실행하게 한다.<br>
+
+## HTTP 요청 주소 체계 이해하기
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\index.js
+```js
+const express = require('express');
+
+const app = express();
+
+app.get('/', (req, res, next) => { // req(request의 생략), res(response의 생략)
+  res.send('Hello, Server');
+});
+
+app.listen(8080, () => { // 8080은 서버의 주소(로컬호스트 서버)
+  console.log('server is running on localhost:8080');
+});
+```
+
+app.get의 `'/'`는 주소이다. 로컬호스트의 뒤에 붙는 주소이다. <br>
+
+프론트(클라이언트) <br>
+↓(요청)　↑(응답) <br>
+서버(백엔드) <br>
+
+프론트에서 요청을 보내면 백엔드가 요청을 돌려보낸다(응답) <br>
+요청과 응답이 종류가 많아서 약속을 정했다. <br> 
+그 약속이 RESTAPI, GRAPH-QL이라는 대포적으로 두 가지 방식이 있다. <br>
+
+실제로 RESPAPI 규칙이 있는데, 규칙 지키는게 힘들어서 HTTP API으로 타협을 본다. <br>
+/user : 유저 <br>
+/posts : 게시글 <br>
+/user/follow : 사용자의 팔로워 <br>
+이렇게만 봐서 힘들기 때문에 메서드라는게 있다 <br>
+메서드는 `GET(조회), POST(생성), PUT(전체 수정), PATC(일부 수정)), DELETE(삭제)`가 있다. <br>
+
+/user : 유저(GET) <br>
+/posts : 게시글(POST) <br>
+/user/follow : 사용자의 팔로워(DELETE) 로 정해져 있다면, <br>
+user는 유저 조회하고, post 게시글을 생성하고, user/follow는 유저 팔로워를 삭제한다. <br>
+
+웹사이트 접속, 페이지 로딩, 새로고침은 GET 주소 요청이다. <br>
+
+```js
+const express = require('express');
+
+const app = express();
+
+app.get('/', (req, res, next) => {
+  res.send('Hello, Server');
+});
+
+app.get('/about', (req, res, next) => {
+  res.send('about');
+});
+
+app.listen(8080, () => {
+  console.log('server is running on localhost:8080');
+});
+```
+
+`http://localhost:8080/` 를 하면 `Hello, Server`가 나온다. <br>
+`http://localhost:8080/about` 를 하면 `about`가 나온다. <br>
+
+그리고 포트 8080(http에 사용), 443(https에 사용)은 숨겨져있다. <br>
+예시) https://도메인주소:443/ <br>
 

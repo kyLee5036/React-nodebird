@@ -2,7 +2,7 @@
 
 + [백엔드 서버 구동에 필요한 모듈들](#백엔드-서버-구동에-필요한-모듈들)
 + [HTTP 요청 주소 체계 이해하기](#HTTP-요청-주소-체계-이해하기)
-
++ [Sequelize와 ERD](#Sequelize와-ERD)
 
 ## 백엔드 서버 구동에 필요한 모듈들
 [위로가기](#백엔드-서버-만들기)
@@ -145,4 +145,70 @@ app.listen(8080, () => {
 
 그리고 포트 8080(http에 사용), 443(https에 사용)은 숨겨져있다. <br>
 예시) https://도메인주소:443/ <br>
+
+## Sequelize와 ERD
+[위로가기](#백엔드-서버-만들기)
+
+<pre><code>npm i -g sequelize-cli</code></pre>
+이번에는 전역변수로 설치해준다.<br>
+이걸 해줘야만, sequelize라는 명령어를 사용할 수 있다. <br>
+
+<pre><code>sequelize init</code></pre>
+위에 명령어를 사용하면, config(.gitignore에 설정해서 안보임), models의 폴더가 생긴다. <br>
+
+#### \back\models\index.js의 기본설정 (전에 있던 내용 다 삭제하고 이렇게 바꿈)
+```js
+const Sequelize = require('sequelize');
+const env = process.env.NODE_ENV || 'development';
+const config = require('/../config/config.json')[env]; // config.json을 불러온다. 
+const db = {};
+
+const sequelize = new Sequelize(config.database, config.username, config.password, config); // 시퀄라이즈를 초기화 한다.
+// sequelize를 조작해서 db를 컨트롤(시작, 종류, 진행 등) 할 수 있다.
+// 시퀄라이즈로 트렌젝션 처리도 가능하다.
+
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+
+module.exports = db;
+
+```
+
+models의 폴더에 파일(comment.js, hashtag.js, image.js, post.js, user.js)를 만들어준다. <br>
+
+#### \back\models\user.js
+```js
+module.exports = (sequelilze, DataTypes) => {
+  const User = sequelilze.define('User', {
+    nickname: {
+      type: DataTypes.STRING(20), // 20자 이하
+      allowNull: false, // 필수
+    },
+    userId: {
+      type: DataTypes.STRING(20), // 20자 이하
+      allowNull: false,
+      unique: true, // 고유한 값, 겹치지 않는다.
+    },
+    password: {
+      type: DataTypes.STRING(100), // 100자 이하
+      allowNull: false,
+    },
+  }, {
+    charset: 'utf8', // charset, collate를 해줘야 한글이 저장된다. 
+    collate: 'utf_general_ci', // charset, collate를 해줘야 한글이 저장된다.
+  });
+  User.associate = (db) => {
+    db.User.hasMany(db.Post); // User가 Post의 글을 여러게 작성할 수 있다.
+    db.User.hasMany(db.Comment); // User가 Post의 댓글을 여러게 작성할 수 있다.
+  };
+  return User;
+};
+```
+
 

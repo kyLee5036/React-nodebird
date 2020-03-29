@@ -3,6 +3,8 @@
 + [백엔드 서버 구동에 필요한 모듈들](#백엔드-서버-구동에-필요한-모듈들)
 + [HTTP 요청 주소 체계 이해하기](#HTTP-요청-주소-체계-이해하기)
 + [Sequelize와 ERD](#Sequelize와-ERD)
++ [테이블간의 관계들](#테이블간의-관계들)
+
 
 ## 백엔드 서버 구동에 필요한 모듈들
 [위로가기](#백엔드-서버-만들기)
@@ -210,5 +212,116 @@ module.exports = (sequelilze, DataTypes) => {
   return User;
 };
 ```
+
+## 테이블간의 관계들
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\models\post.js
+```js
+module.exports = (sequelize, DataTypes) => {
+  const Post = sequelize.define('Post', {
+    content: {
+      type: DataTypes.TEXT, // 글자가 몇 글자수가 될지 모를 떄 TEXT를 사용
+      allowNull: false,
+    }
+  }, {
+    charset: 'utf8nb4', // 한글 + 이모티콘 사용가능
+    collate: 'utf8nb4_general_ci',
+  });
+  Post.asscoiate = (db) => {
+    db.Post.belongsTo(db.User); // Post가 User에 속해져 있다.
+    db.post.hasMany(db.Comment);
+    db.Post.hasMany(db.Image);
+  };
+  return Post;
+};
+```
+> belongsTo가 있는 테이블에 다른 테이블의 id를 저장한다. (Post 테이블에 UserId 저장)
+
+
+#### \back\models\image.js
+```js
+module.exports = (sequelize, DataTypes) => {
+  const Image = sequelize.define('Image', {
+    src: {
+      type: DataTypes.STRING(200), // 이미지 경로를 적어놓았다.
+      allowNull: false,
+    }
+  }, {
+    charset: 'utf8',
+    collate: 'utf_general_ci',
+  });
+  Image.asscoiate = (db) => {
+    db.Image.belongsTo(db.Post);
+  };
+  return Image;
+};
+```
+
+#### \back\models\image.js
+```js
+module.exports = (sequelize, DataTypes) => {
+  const Comment = sequelize.define('Comment', {
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    }
+  }, {
+    charset: 'utf8nb4',
+    collate: 'utf8nb4_general_ci',
+  });
+  Comment.asscoiate = (db) => {
+    db.Comment.belongsTo(db.User);
+    db.Comment.belongsTo(db.Post);
+  };
+  return Comment;
+};
+```
+
+#### \back\models\hashtag.js
+```js
+module.exports = (sequelize, DataTypes) => {
+  const Hashtag = sequelize.define('Hashtag', {
+    name: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    }
+  }, {
+    charset: 'utf8nb4',
+    collate: 'utf8nb4_general_ci',
+  });
+  Hashtag.asscoiate = (db) => {
+    db.Hashtag.belongsToMany(db.User, { through: 'PostHashTag' });
+    // 다대다 관계에는 중간에 테이블이 생긴다. 
+    // 서로 간의 관게를 정리해주는 테이블이다.
+    // 그 중간 테이블(through)의 이름은 PostHashTag라고 한다.
+    // PostHashTag도 테이블이라는 것 잊지말기!! 
+  };
+  return Hashtag;
+};
+```
+
+다대다 관계, M:N관계를 형성하고 있다. <br>
+다대다 관계에서는 중간 테이블이 있다. <br>
+그 중간 테이블의 정의할려면 `through`을 사용한다. <br>
+
+여기에서 <strong>다대다 관계</strong>를 정리할려고하는데, <br>
+HashTag랑 User의 해쉬태그 M:N관계(다대다관계) <br>
+User랑 Post의 좋아요 M:N관계(다대다관계) <br>
+User랑 User의 팔로워 M:N관계(다대다관계) <br>
+Post랑 Post의 리트윗 M:N관계(다대다관계) <br>
+
+
+
+### 테이블정리
+> 일반 테이블 5개 (Comment, Hashtag, Iamge, Post, User) <br>
+> 다대다 관계에서 생기는 테이블 4개 (Like, Follow, PostHashTag, Retweet) <br>
+> 총 테이블 : 9개(Comment, Hashtag, Iamge, Post, User, Like, Follow, PostHashTag, Retweet) <br>
+
+실제로 moelds에서는 파일 5개(index.js제외)이지만, 중간 테이블도 합해서 늘어났다. <br>
+
+유독히, SNS가 테이블관계가 많이 생긴다. <br>
+
+다음 DB설명을 계속 진행될 것이다. 
 
 

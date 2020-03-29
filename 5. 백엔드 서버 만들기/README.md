@@ -4,6 +4,7 @@
 + [HTTP 요청 주소 체계 이해하기](#HTTP-요청-주소-체계-이해하기)
 + [Sequelize와 ERD](#Sequelize와-ERD)
 + [테이블간의 관계들](#테이블간의-관계들)
++ [시퀄라이즈 Q&A와 DB 연결하기](#시퀄라이즈-Q&A와-DB-연결하기)
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -31,6 +32,7 @@ npm i morgan
 npm i multer
 npm i passport passport-local
 npm i sequelize sequelize-cli
+npm i mysql2
 </code></pre>
 + <strong>axios</strong> : 서버쪽이나 프론트쪽에 http요청을 보낼 때 사용 <br>
 + <strong>bcrypt</strong> : 비밀번호 암호화에 사용 <br>
@@ -43,6 +45,7 @@ npm i sequelize sequelize-cli
 + <strong>multer</strong> : 이미지 업로드에 사용 <br>
 + <strong>passport, passport-local</strong> : 로그인 관리, 회원가입에서 사용 <br>
 + <strong>sequelize, sequelize-cli</strong> : sequelize는 DB로 MySQL을 사용(다른 SQL사용해도 상관없음) <br>
++ <strong>mysql2</strong> : mysql을 사용하기 위해서 <br>
 
 <pre><code>npm i -D eslint eslint-config-airbnb
 npm i -D eslint-plugin-jsx-a11y
@@ -323,5 +326,160 @@ Post랑 Post의 리트윗 M:N관계(다대다관계) <br>
 유독히, SNS가 테이블관계가 많이 생긴다. <br>
 
 다음 DB설명을 계속 진행될 것이다. 
+
+
+## 시퀄라이즈 Q&A와 DB 연결하기
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\models\post.js
+```js
+module.exports = (sequelize, DataTypes) => {
+  const Post = sequelize.define('Post', {
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    }
+  }, {
+    charset: 'utf8',
+    collate: 'utf_general_ci',
+  });
+  Post.asscoiate = (db) => {
+    db.Post.belongsTo(db.User);
+    db.Post.hasMany(db.Comment);
+    db.Post.hasMany(db.Image);
+    // 여기에 보면 Post, Post똑같다 구별이 안되서 as로 구별하면 된다.
+    db.Post.belongsTo(db.Post, { as : 'Retweet' }); // 리트윗 테이블
+    db.Post.belongsToMany(db.Hashtag, { through: 'PostHashTag' }); 
+    db.Post.belongsToMany(db.User, { through: 'Like' }); 
+    
+  };
+  return Post;
+};
+```
+#### \back\models\user.js
+```js
+module.exports = (sequelilze, DataTypes) => {
+  const User = sequelilze.define('User', { 
+    nickname: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    userId: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      unique: true,
+    },
+    password: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+    },
+  }, {
+    charset: 'utf8',
+    collate: 'utf_general_ci',
+  });
+  User.associate = (db) => {
+    db.User.hasMany(db.Post, {as : 'Post'} );
+    db.User.hasMany(db.Comment);
+    db.User.belongsToMany(db.Post, { through: 'Like', as: 'Liked' }); 
+    // 하지만 여기에서  db.User.hasMany(db.Post);, db.User.belongsToMany(db.Post, { through: 'Like' }); 
+    // db.User, db.Post 이름 똑같은 곳이 2개가 있어서 구별이 안된다.
+    // 그러기 위해서 한 쪽에 as를 넣어서 구별을 해주는 것이 좋다.
+
+    db.User.belongsToMany(db.User, { through: 'Follow', as: 'Followers' }); // 사용자랑 사용자의 팔로워 관계
+    db.User.belongsToMany(db.User, { through: 'Follow', as: 'Followings' }); // 사용자랑 사용자의 팔로잉 관계
+    // 그리고 같은 테이블에 다대다 관계있으면 as를 꼭 적어줘야한다. 위에 보면 예시가 있다.
+    // as는 꼭 적어줘야한다. 값을 가져올 때 as라는 이름으로 가져온다.
+
+    
+  };
+  return User;
+};
+```
+> Tip) belongsToMany는 as를 넣어주는게 좋다.
+
+```js
+mysql.query('SELECT * FROM USER JOIN .... GROUB BY... HAVING');
+```
+위에 경우에는 문자열이 되는순간, 자바스크립트에서 관리하기 힘들어진다. <br>
+재사용하기도 힘들고, 재 사용할려면 시퀄라이즈처럼 바껴진다. <br>
+
+MySql - knex - sequelize/typeorm <br>
+생 쿼리 - 자바스크립트로 SQL만들어준다 - 테이블까지 자바스크립트로 관리 <br>
+
+생 쿼리는 MySQL자신 있으면 사용하면된다. <br>
+왜냐하면, 쿼리문은 100줄, 1000줄 넘을 수도 있기때문이다. <br>
+결국에는 knex 또는 sequelize를 사용하게 된다. <br>
+
+
+```js
+  const User = sequelilze.define('User', { 
+```
+define옆에 보면 `User`가 있는다.  <br>
+테이블 생성할 때 자동으로 `user(소문자)`로 바꿔진다. <br>
+바껴지는게 싫어한다면 <br>
+```js
+module.exports = (sequelilze, DataTypes) => {
+  const User = sequelilze.define('User', { 
+    ...생략
+  }, {
+    charset: 'utf8',
+    collate: 'utf_general_ci',
+    tableName: '테이블명 마음대로 정하기' // 테이블 명을 내가 정할 수가 있다.
+  });
+  User.associate = (db) => {
+    ...생략
+  };
+  return User;
+};
+```
+
+#### \back\index.js
+```js
+const express = require('express');
+
+const db = require('./models'); // models의 파일을 불러온다.
+
+const app = express();
+db.sequelize.sync(); /// 자동으로 테이블 생성 
+app.get('/', (req, res, next) => {
+  res.send('Hello, Server');
+});
+...생략
+
+```
+
+#### \back\models\index.js
+```js
+const Sequelize = require('sequelize');
+const env = process.env.NODE_ENV || 'development';
+const config = require('../config/config.json')[env];
+const db = {};
+
+const sequelize = new Sequelize(config.database, config.username, config.password, config);
+
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
+db.Comment = require('./comment')(sequelize, Sequelize); // 설정해준다.
+db.Hashtag = require('./hashtag')(sequelize, Sequelize); // 설정해준다.
+db.Image = require('./image')(sequelize, Sequelize); // 설정해준다.
+db.Post = require('./post')(sequelize, Sequelize); // 설정해준다.
+db.User = require('./user')(sequelize, Sequelize); // 설정해준다.
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+
+module.exports = db;
+
+```
+
+시작하기전에 밑에 실행해주기 <br>
+`sequelize db:create` <br>
+그리고 또한 에러메세지가 나온다. 에러메시지는 구글에 검색하면서 하면 해결할 수 있을 것이다. <br>
+불안하다면, back.md파일에 있다. <br>
+
+> 정상적으로 실행하면 실제로 테이블이 5개 추가되는데, 좋아요버튼이나, 리트윗버튼을 누르면 테이블이 새로 생긴다.  <br>
 
 

@@ -5,6 +5,7 @@
 + [Sequelize와 ERD](#Sequelize와-ERD)
 + [테이블간의 관계들](#테이블간의-관계들)
 + [시퀄라이즈 Q&A와 DB 연결하기](#시퀄라이즈-Q&A와-DB-연결하기)
++ [백엔드 서버 API 만들기](#백엔드-서버-API-만들기)
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -483,3 +484,205 @@ module.exports = db;
 > 정상적으로 실행하면 실제로 테이블이 5개 추가되는데, 좋아요버튼이나, 리트윗버튼을 누르면 테이블이 새로 생긴다.  <br>
 
 
+
+## 백엔드 서버 API 만들기
+[위로가기](#백엔드-서버-만들기)
+
+<strong>API</strong>는 다른 서비스가 내 서비스의 기능을 실행할 수 있게 열어둔 창구 <br>
+프론트에서 백엔드서버에서 요청을 할 수 있고, 응답도 할 수 있게한다. <br>
+
+> 즉, API를 더 간단하게 설명하자면, 다른 서버가 내 것을 서비스를 사용할 수있게 하는 것이다.<br>
+
+#### \back\index.js
+```js
+const express = require('express');
+
+const db = require('./models');
+
+const app = express();
+db.sequelize.sync();
+
+// 내 정보 가져오기
+app.get('/api/user', (res, req) => { // api는 api라는 것을 알려주기 위해 붙여줬다.
+
+});
+
+// 사용자 등록하기
+app.post('/api/user', (req, res) => { // api는 api라는 것을 알려주기 위해 붙여줬다.
+
+});
+
+app.get('/api/user/:id', (req, res) => { // api는 api라는 것을 알려주기 위해 붙여줬다.
+
+})
+app.post('/api/user/logout', (req, res) => { // api는 api라는 것을 알려주기 위해 붙여줬다.
+
+});
+app.post('/api/user/login', (req, res) => { // api는 api라는 것을 알려주기 위해 붙여줬다.
+
+});
+app.get('/api/user/:id/follow', (req, res) => { // api는 api라는 것을 알려주기 위해 붙여줬다.
+
+});
+app.post('/api/user/:id/follow', (req, res) => {
+
+});
+app.delete('/api/user/:id/follow', (req, res) => {
+
+});
+app.delete('/api/user/:id/follower', (req, res) => {
+
+});
+app.get('/api/user/:id/posts', (req, res) => {
+
+});
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+
+다른 유저 정보 가져오기(:id 에다가 id를 넣어준다) <br>
+
+### :id의 의미(req.params.id도 포함)
+> :id는 req,params.id로 가져올 수 있다. <br>
+
+ex) /api/user/3의 의미는 user의 ID가 3인 정보를 가져온다라는 것이다.<br> 
+
+### 중요!!!
+대충 주소만 읽어도 뭐하는 건지 일단 대충 만들어도 좋다(형태를 만들기 위해서이다.)<br>
+코딩보다는 설계가 더 중요하다!!<br>
+
+여기에서 user만 이정도 있는데, post, hashtag등이 있으면 코드가 길어진다. 그래서 지금부터 <strong>분리</strong>를 하겠다. <br>
+왜? 분리를 하면 라우터 하나당 get, post 이런 것들이 다 합하면 100줄 넘기 때문이다. <br>
+
+Tip) 되도록이면 서버에서는 import는 사용지할고, require를 사용한다. 왜냐하면, import를 사용하면 귀찮이는게 많아지기 때문이다. <br>
+
+#### \back\index.js
+```js
+const express = require('express');
+
+const db = require('./models');
+const userAPIRouter = require('./routes/user'); // 추가해준다
+
+const app = express();
+db.sequelize.sync();
+
+app.use('/api/user', userAPIRouter); // 추가해준다
+// 이렇게 하면 합쳐진다
+
+app.get('/api/posts', (req, res) => {
+
+});
+app.post('/api/post', (req, res) => {
+
+});
+app.post('/api/post/images', (req, res) => {
+
+});
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+
+routes폴더, user.js를 생성해준다. <br>
+
+#### \back\routes\user.js
+```js
+const express = require('express');
+const router = express.Router();
+
+// /api/user를 삭제해준다.
+router.get('/', (res, req) => { // 합쳐져서: /api/user/
+
+});
+router.post('/', (req, res) => {
+
+});
+router.get('/:id', (req, res) => {
+
+})
+router.post('/logout', (req, res) => { // /api/logout
+
+});
+router.post('/login', (req, res) => {
+
+});
+router.get('/:id/follow', (req, res) => {
+
+});
+router.post('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follower', (req, res) => {
+
+});
+router.get('/:id/posts', (req, res) => {
+
+});
+
+module.exports = Router;
+
+```
+
+여기에서 routes의 폴더에 `post.js`, `posts.js`가 두 개있는데 단수, 복수를 구별해주기 위해서 만들어주었다. <br>
+
+> post.js는 하나의 게시글 <br>
+> posts.js는 여러 개의 게시글이다. <br>
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+
+const router = express.Router();
+
+router.post('/', (req, res) => {
+
+});
+app.post('/images', (req, res) => {
+
+});
+
+module.exports = router;
+```
+
+#### \back\routes\posts.js
+```js
+const express = require('express');
+
+const router = express.Router();
+
+router.get('/', (req, res) => {
+
+});
+
+
+module.exports = router;
+```
+
+#### \back\index.js
+```js
+const express = require('express');
+
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+const postAPIRouter = require('./routes/post');
+const postsAPIRouter = require('./routes/posts');
+
+const app = express();
+db.sequelize.sync();
+
+app.use('/api/user', userAPIRouter);
+app.use('/api/post', postAPIRouter);
+app.use('/api/posts', postsAPIRouter);
+
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+보다시피 전의 index.js랑 비교하면 코드가 깔끔해지고 보기가 좋아졌다. <br>

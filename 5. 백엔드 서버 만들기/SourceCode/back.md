@@ -5,7 +5,7 @@
 + [Sequelize와 ERD](#Sequelize와-ERD)
 + [테이블간의 관계들](#테이블간의-관계들)
 + [시퀄라이즈 Q&A와 DB 연결하기](#시퀄라이즈-Q&A와-DB-연결하기)
-
++ [백엔드 서버 API 만들기](#백엔드-서버-API-만들기)
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -365,6 +365,101 @@ app.get('/', (req, res, next) => {
 app.get('/about', (req, res, next) => {
   res.send('about');
 });
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+
+## 백엔드 서버 API 만들기
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+
+const router = express.Router();
+
+router.post('/', (req, res) => {
+
+});
+app.post('/images', (req, res) => {
+
+});
+
+module.exports = router;
+```
+
+#### \back\routes\posts.js
+```js
+const express = require('express');
+
+const router = express.Router();
+
+router.get('/', (req, res) => {
+
+});
+
+
+module.exports = router;
+```
+
+#### \back\routes\user.js
+```js
+const express = require('express');
+const router = express.Router();
+
+router.get('/', (res, req) => { 
+
+});
+router.post('/', (req, res) => {
+
+});
+router.get('/:id', (req, res) => {
+
+})
+router.post('/logout', (req, res) => {
+
+});
+router.post('/login', (req, res) => {
+
+});
+router.get('/:id/follow', (req, res) => {
+
+});
+router.post('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follower', (req, res) => {
+
+});
+router.get('/:id/posts', (req, res) => {
+
+});
+
+module.exports = Router;
+
+```
+
+#### \back\index.js
+```js
+const express = require('express');
+
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+const postAPIRouter = require('./routes/post');
+const postsAPIRouter = require('./routes/posts');
+
+const app = express();
+db.sequelize.sync();
+
+app.use('/api/user', userAPIRouter);
+app.use('/api/post', postAPIRouter);
+app.use('/api/posts', postsAPIRouter);
+
 
 app.listen(3065, () => {
   console.log('server is running on (서버주소) : http://localhost:3065');

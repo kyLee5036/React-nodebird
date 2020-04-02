@@ -6,6 +6,7 @@
 + [테이블간의 관계들](#테이블간의-관계들)
 + [시퀄라이즈 Q&A와 DB 연결하기](#시퀄라이즈-Q&A와-DB-연결하기)
 + [백엔드 서버 API 만들기](#백엔드-서버-API-만들기)
++ [회원가입 컨트롤러 만들기](#회원가입-컨트롤러-만들기)
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -686,3 +687,102 @@ app.listen(3065, () => {
 });
 ```
 보다시피 전의 index.js랑 비교하면 코드가 깔끔해지고 보기가 좋아졌다. <br>
+
+
+## 회원가입 컨트롤러 만들기
+[위로가기](#백엔드-서버-만들기)
+
+### 의미중요!!!!!
+GET /user (사용자 정보를 가져온다)<br>
+POST /user (사용자 등록 -> 데이터가 필요한다.)<br>
+이럴 때 요청(req)에 헤더(header) 본문(body) 같이 보낼 수 있다. 즉, req => header + body<br>
+본문에다가 데이터를 넣어서 보낸다. <br>
+
+res(응답) <br>
+여기서 req, res의 의미는 <br> 
+req(Requset)  : 요청  <br>
+res(Response) : 응답 <br>
+
+200 : 성공 <br>
+300 : 리다이렉션 <br>
+400 : 요청 오류 <br>
+500 - 서버오류 <br>
+
+```js
+  // 이건 에러의 의미가 아니다.
+  // stats가 있어야만 에러가 된다.
+  return res.status(400~500).send('이미 사용중인 아이디입니다.'); 의미이다.
+  // 이건 에러의 의미는 아니다
+  return res.send('이미 사용중인 아이디입니다.');
+```
+ 
+#### \back\routes\user.js
+```js
+const express = require('express');
+const bcrypt = require('bcrypt'); // 추가
+const db = require('../models'); // 추가
+
+const router = express.Router();
+
+
+router.get('/', (res, req) => { 
+
+});
+
+router.post('/',  async (req, res) => { // POST /api/user 회원가입
+  try {
+    // 유저 회원가입 있는지 판단
+    // DB의 유저 아이디를 찾는다 (db.User.findeOne)
+    const exUser = await db.User.findOne({ // 비동기라서 await를 붙어준다
+      where: {
+        userId: req.body.userId,
+      },
+    });
+    if (exUser) { // 유저가 존재하면
+      return res.status(403).send('이미 사용중인 아이디입니다.'); 
+    }
+    const hashtPassword = await bcrypt.hash(req.body.password, 12); // 비밀번호를 암호화한다 
+    // 보통 10~12사이로 한다. 숫자가 클 수록 암호화가 좋지만, 시간이 너무 걸린다.
+    const newUser = await db.User.create({// 새로운 유저 등록
+      nickname : req.body.nickname,
+      userId: req.body.userId,
+      password: hashtPassword,
+    });
+    console.log(user);
+    // 새로운 생성된 유저가 등록된다.
+    return res.status(200).json(newUser); // json 객체를 보낸다 <-> send는 문자열이다.
+    // json형식으로 되어있으니, json형식으로 보내주는 것이다.
+  } catch (e) {
+    // 에러가 났을 때에는 여기가 걸린다.
+    // 여기 2가지 방법이 있다.
+    console.error(e);
+    return res.status(403).send(e); // 이런식으로 해도된다.
+
+    // next를 사용할 경우에는 에러처리를 해야한다.
+    // 왜냐하면 에러걸리면 다 에러로 통과하기 때문에
+    return next(e);
+  }
+
+});
+...생략
+
+module.exports = Router;
+```
+
+#### \back\index.js
+
+```js
+...생략
+
+const app = express();
+db.sequelize.sync();
+
+// 두 줄을 추가해야한다.
+app.use(express.json()); // json 형식 본문을 처리한다. 
+app.use(express.urlencoded({ extended: true })); // form으로 넘어오는 데이터를 처리를 한다
+// 그래서 이 두개를 추가해야만, req.body가 정상적으로 동작한다.
+
+app.use('/api/user', userAPIRouter);
+...생략
+```
+

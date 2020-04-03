@@ -26,7 +26,9 @@ function* watchLogin() {
 }
 
 function signUpAPI(signUpdata) {
-  return axios.post('http://localhost:3065/api/user/', signUpdata);
+  return axios
+  .post('http://localhost:3065/api/user/', signUpdata)
+  .catch((err) => { console.log(err.response.data); return err.response.data });
 }
 
 function* signUp(action) {

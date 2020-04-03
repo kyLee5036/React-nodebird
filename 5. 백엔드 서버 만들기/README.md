@@ -8,6 +8,7 @@
 + [백엔드 서버 API 만들기](#백엔드-서버-API-만들기)
 + [회원가입 컨트롤러 만들기](#회원가입-컨트롤러-만들기)
 + [실제 회원가입과 미들웨어들](#실제-회원가입과-미들웨어들)
++ [로그인을 위한 미들웨어들](#로그인을-위한-미들웨어들)
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -898,10 +899,169 @@ app.listen(3065, () => {
 
 ### CORS문제 해결
 에러 내용이 나오는데 <br>
-> Access to XMLHttpRequest at 'htp://localhost:3065/api/user/' from origin 'http://localhost:3000'  <br>
+> Access to XMLHttpRequest at 'http://localhost:3065/api/user/' from origin 'http://localhost:3000'  <br>
 > has been blocked by CORS policy: Cross origin requests are only supported <br>
 > for protocol schemes: http, data, chrome, chrome-extension, https. <br>
 프론트 주소 : http://localhost:3000 <br>
-백엔드 주소 : htp://localhost:3065/api/user/ <br>
+백엔드 주소 : http://localhost:3065/api/user/ <br>
 
 해결하기 위해서 CORS를 설치 했을 것이다. CORS문제는 서버(백엔드)쪽에서 해줘야한다. <br>
+
+### 백엔드 응답메세지를 프론트에 출력!!
+res.send, res.status.(400~500).send 프론트 쪽에 메세지출력을 하고 싶은데 어떻게 해야할까? <br>
+```js
+if (exUser) {
+  // return res.send('이미 사용중인 아이디입니다.');
+  return res.status(403).send('이미 사용중인 아이디입니다.'); 
+}
+```
+즉, `이미 사용중인 아이디입니다`의 응답메세지를 프론트에 출력을 어떻게 해줘야 하나요??
+
+> 프런트에서 axios를 사용한다면 `axios.post().catch((err) => err.response.data)`에 있다.
+
+
+## 로그인을 위한 미들웨어들
+[위로가기](#백엔드-서버-만들기)
+
+
+이제부터 로그인을 할 것이다. <br>
+로그인을 하기위해서 준비사항이 있다. <br>
+
+아이디로 기존 가입했던 사람비교, 가입한 사람있으면 비밀번호 비교, 비밀번호 맞으면 성공<br>
+하지만 여기서 끝이 아니다. 로그인을 했으면 기록을 남겨야한다.<br>
+그 유저의 정보를 프론트, 서버(백엔드)에도 전달해야한다.<br>
+게다가, 유저정보는 민감한 것이라서 서버(백엔드)쪽에 많이 둔다. <br>
+근데 이것을 알기위해서 인증을 받아야한다. 그 인증을 쉬운 방법이 <strong>쿠기(cookie)</strong>가 있다. <br>
+쿠키가 남아있으면 "로그인이 되어있구나" 라고 알아차린다. 그래서 쿠키의 존재여부가 중요하다. <br>
+쿠키는 서버쪽에서 프론트쪽으로 보내준다. 그것을 설정해줘야한다. <br>
+
+> 정리) 사용자 정보는 서버의 세션에, 프론트에는 세션을 조회할 수 있는 쿠키를 전달 <br>
+
+지금부터 쿠기 및 세션설정을 시작하겠다. <br>
+
+#### \back\index.js
+```js
+...생략
+const cookieParser = require('cookie-parser'); // 추가
+const expressSession = require('express-session'); // 추가
+
+...생략
+
+app.use(morgam('dev'));
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cors()); 
+app.use(cookieParser('nodebirdcookie'));
+app.use(expressSession({
+  resave: false, // 매번 새션 강제 저장
+  saveUninitialized: false, // 빈 값도 저장
+  
+  // 여기서 쿠키 값들도 암호화를 해줘야한다.
+   secret: 'nodebirdcookie',
+   // 쿠키 설정
+   cookie: {
+     httpOnly: true, // 자바스크립트로 쿠키 접근을 못한다. 항상 true를 해준다.
+     secure: false, // https를 사용할 때 true를 해줘야한다.
+   }
+
+   // 여기서 소스코드가 털리면 nodebirdcookie가 유출된다.  
+}));
+
+app.use('/api/user', userAPIRouter);
+...생략
+```
+
+그래서 여기에 `.env` 등장할 것이다.
+
+#### \back\index.js
+```js
+...생략
+const dotenv = require('dotenv'); // 추가
+
+dotenv.config(); // 추가
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+...생략
+
+...생략
+app.use(cors()); 
+app.use(cookieParser(process.env.COOKIE_SECRET)); // 수정
+app.use(expressSession({
+  resave: false, 
+  saveUninitialized: false, 
+  secret: process.env.COOKIE_SECRET, // 수정
+  cookie: {
+    httpOnly: true, 
+    secure: false,
+  }
+}));
+
+...생략
+```
+
+그리고 DB설정했던 것들 `config/config.json` json파일을 `config/config.js` js파일로 바꿔준다. <br>
+json파일 -> js파일 (모듈화를 해줘야한다.) <br>
+
+#### \back\config\config.json (수정 전)
+```json
+"development": {
+  "username": "유저이름",
+  "password": "비밀번호",
+  "database": "DB명",
+  "host": "호스트 설정(ex 127.0.0.9)",
+  "port": "포트명설정(정수형으로) 예시)3265",
+  "dialect": "mysql",
+  "operatorsAliases": false
+},
+"test": {
+  "username": "유저이름",
+  "password": "비밀번호",
+  "database": "DB명",
+  "host": "호스트 설정(ex 127.0.0.9)",
+  "dialect": "mysql",
+  "operatorsAliases": false
+},
+"production": {
+  "username": "유저이름",
+  "password": "비밀번호",
+  "database": "DB명",
+  "host": "호스트 설정(예시:127.0.0.9)",
+  "dialect": "mysql",
+  "operatorsAliases": false
+}
+```
+
+#### \back\config\config.js (수정 후)
+```js
+const dotenv = require('dotenv');
+dotenv.config();
+
+module.exports = {
+  "development": {
+    "username": process.env.DB_USERNAME,
+    "password": process.env.DB_PASSWORD,
+    "database": process.env.DB_DATABASE,
+    "host": process.env.DB_HOST,
+    "port": process.env.DB_PORT,
+    "dialect": "mysql",
+    "operatorsAliases": false
+  },
+  "test": {
+    "username": process.env.DB_USERNAME,
+    "password": process.env.DB_PASSWORD,
+    "database": process.env.DB_DATABASE,
+    "host": process.env.DB_HOST,
+    "dialect": "mysql",
+    "operatorsAliases": false
+  },
+  "production": {
+    "username": process.env.DB_USERNAME,
+    "password": process.env.DB_PASSWORD,
+    "database": process.env.DB_DATABASE,
+    "host": process.env.DB_HOST,
+    "dialect": "mysql",
+    "operatorsAliases": false
+  }
+}
+```
+

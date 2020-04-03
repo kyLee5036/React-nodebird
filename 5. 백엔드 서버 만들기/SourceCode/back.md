@@ -8,6 +8,8 @@
 + [백엔드 서버 API 만들기](#백엔드-서버-API-만들기)
 + [회원가입 컨트롤러 만들기](#회원가입-컨트롤러-만들기)
 + [실제 회원가입과 미들웨어들](#실제-회원가입과-미들웨어들)
++ [로그인을 위한 미들웨어들](#로그인을-위한-미들웨어들)
+
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -668,6 +670,86 @@ app.use('/api/user', userAPIRouter);
 app.use('/api/post', postAPIRouter);
 app.use('/api/posts', postsAPIRouter);
 
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+
+## 로그인을 위한 미들웨어들
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\config\config.js
+```js
+const dotenv = require('dotenv');
+dotenv.config();
+
+module.exports = {
+  "development": {
+    "username": process.env.DB_USERNAME,
+    "password": process.env.DB_PASSWORD,
+    "database": process.env.DB_DATABASE,
+    "host": process.env.DB_HOST,
+    "port": process.env.DB_PORT,
+    "dialect": "mysql",
+    "operatorsAliases": false
+  },
+  "test": {
+    "username": process.env.DB_USERNAME,
+    "password": process.env.DB_PASSWORD,
+    "database": process.env.DB_DATABASE,
+    "host": process.env.DB_HOST,
+    "dialect": "mysql",
+    "operatorsAliases": false
+  },
+  "production": {
+    "username": process.env.DB_USERNAME,
+    "password": process.env.DB_PASSWORD,
+    "database": process.env.DB_DATABASE,
+    "host": process.env.DB_HOST,
+    "dialect": "mysql",
+    "operatorsAliases": false
+  }
+}
+
+```
+
+#### \back\index.js
+```js
+const express = require('express');
+const morgam = require('morgan');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const expressSession = require('express-session');
+const dotenv = require('dotenv'); // 추가
+
+dotenv.config(); // 추가
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+const postAPIRouter = require('./routes/post');
+const postsAPIRouter = require('./routes/posts');
+
+const app = express();
+db.sequelize.sync();
+
+app.use(morgam('dev'));
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cors()); 
+app.use(cookieParser(process.env.COOKIE_SECRET)); 
+app.use(expressSession({
+  resave: false, 
+  saveUninitialized: false, 
+  secret: process.env.COOKIE_SECRET, 
+  cookie: {
+    httpOnly: true, 
+    secure: false,
+  }
+}));
+
+app.use('/api/user', userAPIRouter);
+app.use('/api/post', postAPIRouter);
+app.use('/api/posts', postsAPIRouter);
 
 app.listen(3065, () => {
   console.log('server is running on (서버주소) : http://localhost:3065');

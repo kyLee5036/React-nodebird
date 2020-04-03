@@ -7,6 +7,7 @@
 + [시퀄라이즈 Q&A와 DB 연결하기](#시퀄라이즈-Q&A와-DB-연결하기)
 + [백엔드 서버 API 만들기](#백엔드-서버-API-만들기)
 + [회원가입 컨트롤러 만들기](#회원가입-컨트롤러-만들기)
++ [실제 회원가입과 미들웨어들](#실제-회원가입과-미들웨어들)
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -786,3 +787,121 @@ app.use('/api/user', userAPIRouter);
 ...생략
 ```
 
+## 실제 회원가입과 미들웨어들
+[위로가기](#백엔드-서버-만들기)
+
+실제 회원가입하기 위해서 프론트 코드를 바꿔 줘야한다. <br>
+
+#### \front\pages\signup.js
+```js
+...생략
+const Signup = () => {
+  ...생략
+  
+  const onSubmit = useCallback((e) => {
+    e.preventDefault();
+    if ( password !== passwordCheck) {
+      return setPasswordError(true);
+    }
+    if (!term) {
+      setTermError(true);
+    }
+    dispatch({
+      type : SIGN_UP_REQUEST,
+      data : {
+        userId : id, // 수정
+        password, // 수정
+        nickname : nick, // 수정
+        // userId, password, nickname를 서버로 보내야한다.
+      }
+    }); 
+    // useCallback안에 배열인자는 useState를 넣어주는 것 잊지말기
+    }, [id, nick, password, passwordCheck, term]);
+  ...생략
+```
+
+#### \front\pages\signup.js
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, call, put, delay } from 'redux-saga/effects';
+import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS } from '../reducers/user'
+...생략
+
+function signUpAPI(signUpdata) {
+  // 일단 다른 서버이기 때문에 주소를 붙여줘야한다.
+  return axios.post('http://localhost:3065/api/user/', signUpdata);
+  // 이렇게 axios가 post요청을 보내준다. 첫번 쨰는 주소, 두 번쨰는 데이터
+
+  // 그 다음에 백엔드로 간다.
+}
+
+function* signUp(action) { // 여기 action에 데이터(userId, pssword, nickname)가 들어있다
+  try {
+    yield call(signUpAPI, action.data); // call의 첫번 째가 함수이고, 두번 째가 인자이다
+    // action.data가 signUpAPI의 매겨변수(signUpdata)에 전달된다.
+    yield put({
+      type: SIGN_UP_SUCCESS
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({ 
+      type : SIGN_UP_FAILURE,
+      error : e,
+    });
+  }
+}
+
+function* watchSignUp() {
+  yield takeLatest(SIGN_UP_REQUEST, signUp);
+}
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogin),
+    fork(watchSignUp)
+  ]);
+}
+```
+
+
+#### \back\index.js
+```js
+const express = require('express');
+const morgam = require('morgan');
+const cors = require('cors');
+
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+const postAPIRouter = require('./routes/post');
+const postsAPIRouter = require('./routes/posts');
+
+const app = express();
+db.sequelize.sync();
+
+app.use(morgam('dev')); // 요청들어오는 것에 대해서 기록이 남는다.
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cors()); 
+
+app.use('/api/user', userAPIRouter);
+app.use('/api/post', postAPIRouter);
+app.use('/api/posts', postsAPIRouter);
+
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+ 
+로그 기록이 안되어서 `morgan`을 사용하겠다. <br>
+
+
+### CORS문제 해결
+에러 내용이 나오는데 <br>
+> Access to XMLHttpRequest at 'htp://localhost:3065/api/user/' from origin 'http://localhost:3000'  <br>
+> has been blocked by CORS policy: Cross origin requests are only supported <br>
+> for protocol schemes: http, data, chrome, chrome-extension, https. <br>
+프론트 주소 : http://localhost:3000 <br>
+백엔드 주소 : htp://localhost:3065/api/user/ <br>
+
+해결하기 위해서 CORS를 설치 했을 것이다. CORS문제는 서버(백엔드)쪽에서 해줘야한다. <br>

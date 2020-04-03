@@ -7,6 +7,8 @@
 + [시퀄라이즈 Q&A와 DB 연결하기](#시퀄라이즈-Q&A와-DB-연결하기)
 + [백엔드 서버 API 만들기](#백엔드-서버-API-만들기)
 + [회원가입 컨트롤러 만들기](#회원가입-컨트롤러-만들기)
++ [실제 회원가입과 미들웨어들](#실제-회원가입과-미들웨어들)
+
 
 ## 백엔드 서버 구동에 필요한 모듈들
 [위로가기](#백엔드-서버-만들기)
@@ -548,6 +550,119 @@ db.sequelize.sync();
 
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
+
+app.use('/api/user', userAPIRouter);
+app.use('/api/post', postAPIRouter);
+app.use('/api/posts', postsAPIRouter);
+
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+
+## 실제 회원가입과 미들웨어들
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\routes\post.js (간단한 오류 수정)
+```js
+const express = require('express');
+
+const router = express.Router();
+
+router.post('/', (req, res) => {
+
+});
+router.post('/images', (req, res) => { 
+
+});
+
+module.exports = router;
+```
+
+#### \back\routes\user.js
+```js
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/', (res, req) => { 
+
+});
+router.post('/',  async (req, res, next) => { 
+  try {
+    const exUser = await db.User.findOne({ 
+      where: {
+        userId: req.body.userId,
+      },
+    });
+    if (exUser) { 
+      // return res.send('이미 사용중인 아이디입니다.');
+      return res.status(403).send('이미 사용중인 아이디입니다.'); 
+    }
+    const hashtPassword = await bcrypt.hash(req.body.password, 12); 
+    const newUser = await db.User.create({
+      nickname : req.body.nickname,
+      userId: req.body.userId,
+      password: hashtPassword,
+    });
+    console.log(newUser);
+    return res.status(200).json(newUser); 
+  } catch (e) {
+    console.error(e);
+    return next(e);
+  }
+
+});
+router.get('/:id', (req, res) => {
+
+})
+router.post('/logout', (req, res) => {
+
+});
+router.post('/login', (req, res) => {
+
+});
+router.get('/:id/follow', (req, res) => {
+
+});
+router.post('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follower', (req, res) => {
+
+});
+router.get('/:id/posts', (req, res) => {
+
+});
+
+module.exports = router; // 에러 수정
+
+```
+
+#### \back\index.js
+```js
+const express = require('express');
+const morgam = require('morgan');
+const cors = require('cors');
+
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+const postAPIRouter = require('./routes/post');
+const postsAPIRouter = require('./routes/posts');
+
+const app = express();
+db.sequelize.sync();
+
+app.use(morgam('dev'));
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cors()); 
 
 app.use('/api/user', userAPIRouter);
 app.use('/api/post', postAPIRouter);

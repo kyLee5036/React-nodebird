@@ -25,19 +25,18 @@ function* watchLogin() {
   yield takeLatest(LOG_IN_REQUEST, login);
 }
 
-function signUpAPI() {
-  return axios.post('/signup');
+function signUpAPI(signUpdata) {
+  return axios.post('http://localhost:3065/api/user/', signUpdata);
 }
 
-function* signUp() {
+function* signUp(action) {
   try {
-    yield delay(2000);
-    // yield call(signUpAPI); 
+    yield call(signUpAPI, action.data); 
     yield put({
       type: SIGN_UP_SUCCESS
     });
   } catch (e) {
-    console.error(r);
+    console.error(e);
     yield put({ 
       type : SIGN_UP_FAILURE,
       error : e,

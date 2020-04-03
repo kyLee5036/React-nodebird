@@ -15,6 +15,7 @@ router.post('/',  async (req, res, next) => {
       },
     });
     if (exUser) { 
+      // return res.send('이미 사용중인 아이디입니다.');
       return res.status(403).send('이미 사용중인 아이디입니다.'); 
     }
     const hashtPassword = await bcrypt.hash(req.body.password, 12); 
@@ -23,7 +24,7 @@ router.post('/',  async (req, res, next) => {
       userId: req.body.userId,
       password: hashtPassword,
     });
-    console.log(user);
+    console.log(newUser);
     return res.status(200).json(newUser); 
   } catch (e) {
     console.error(e);
@@ -56,4 +57,4 @@ router.get('/:id/posts', (req, res) => {
 
 });
 
-module.exports = Router;
+module.exports = router; 

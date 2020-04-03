@@ -5,7 +5,7 @@ const router = express.Router();
 router.post('/', (req, res) => {
 
 });
-app.post('/images', (req, res) => {
+router.post('/images', (req, res) => {
 
 });
 

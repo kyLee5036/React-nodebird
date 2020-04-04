@@ -10,7 +10,8 @@
 + [실제 회원가입과 미들웨어들](#실제-회원가입과-미들웨어들)
 + [로그인을 위한 미들웨어들](#로그인을-위한-미들웨어들)
 + [passport와 쿠키 세션 동작 원리](#passport와-쿠키-세션-동작-원리)
-
++ [passport 로그인 전략](#passport-로그인-전략)
++ 
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -828,3 +829,195 @@ module.exports = () => {
 }
 
 ```
+
+## passport 로그인 전략
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\passport\index.js
+```js
+const passport = require('passport');
+const db = require('../models');
+const local = require('./local');
+
+module.exports = () => {
+  passport.serializeUser((user, done) => { 
+    return done(null, user.id);
+  });
+  passport.deserializeUser((id, done) => {
+    try {
+      const user = await db.User.findOne({
+        where: {id},
+      });
+      return done(null, user);
+    } catch (e) {
+      console.error(e);
+      return done(e);
+    }
+  });
+  local();
+}
+```
+
+#### \back\passport\local.js
+```js
+const passport = require('passport');
+const { Strategy : LocalStrategy } = require('passport-local');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+
+module.exports = () => {
+  passport.use(new localStorage({
+    usernameField: 'userId', 
+    passwordField: 'password'
+  }, async ( userId, password, done) => {
+    try {
+      const user = await db.User.findOne({ 
+        userId
+      });
+      if (!user) { 
+        return done(null, false, {reason: '존재하지 않는 사용자입니다.'});
+      }
+      const result = await bcrypt.compare(password, user.password); 
+      if (result) { 
+        return done(null, user);
+      }
+      return done(null, false, {reason: '비밀번호가 틀립니다.'});
+    } catch (e) {
+      console.error(e);
+      return done(e); 
+    }
+  }));
+}
+
+```
+
+#### \back\routes\user.js
+```js
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+const passport = require('passport');
+
+const router = express.Router();
+
+router.get('/', (res, req) => { 
+
+});
+router.post('/',  async (req, res, next) => { 
+  try {
+    const exUser = await db.User.findOne({ 
+      where: {
+        userId: req.body.userId,
+      },
+    });
+    if (exUser) { 
+      // return res.send('이미 사용중인 아이디입니다.');
+      return res.status(403).send('이미 사용중인 아이디입니다.'); 
+    }
+    const hashtPassword = await bcrypt.hash(req.body.password, 12); 
+    const newUser = await db.User.create({
+      nickname : req.body.nickname,
+      userId: req.body.userId,
+      password: hashtPassword,
+    });
+    console.log(newUser);
+    return res.status(200).json(newUser); 
+  } catch (e) {
+    console.error(e);
+    return next(e);
+  }
+
+});
+router.get('/:id', (req, res) => {
+
+})
+router.post('/logout', (req, res) => {
+
+});
+
+router.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      console.error(err);
+      return next(err);
+    } 
+    if (info) {
+      return res.status(401).send(info.reason);
+    } 
+    return req.login(user, (loginErr) => {
+      if (loginErr) { 
+        return next(loginErr);
+      }
+      const filteredUser = Object.assign({}, user);
+      delete filteredUser.password;
+      return res.json(filteredUser);
+    });
+  })(req, res, next);
+});
+router.get('/:id/follow', (req, res) => {
+
+});
+router.post('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follower', (req, res) => {
+
+});
+router.get('/:id/posts', (req, res) => {
+
+});
+
+module.exports = router; 
+
+```
+
+#### \back\index.js
+```js
+const express = require('express');
+const morgam = require('morgan');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const expressSession = require('express-session');
+const dotenv = require('dotenv');
+const passport = require('passport');
+
+const passportConfig = require('./passport');
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+const postAPIRouter = require('./routes/post');
+const postsAPIRouter = require('./routes/posts');
+
+dotenv.config();
+const app = express();
+db.sequelize.sync();
+passportConfig(); 
+
+app.use(morgam('dev'));
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cors()); 
+app.use(cookieParser(process.env.COOKIE_SECRET));
+app.use(expressSession({
+  resave: false, 
+  saveUninitialized: false, 
+  secret: process.env.COOKIE_SECRET,
+  cookie: {
+    httpOnly: true, 
+    secure: false,
+  }
+}));
+app.use(passport.initialize());
+app.use(passport.session()); 
+
+app.use('/api/user', userAPIRouter);
+app.use('/api/post', postAPIRouter);
+app.use('/api/posts', postsAPIRouter);
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+

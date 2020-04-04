@@ -10,6 +10,7 @@
 + [실제 회원가입과 미들웨어들](#실제-회원가입과-미들웨어들)
 + [로그인을 위한 미들웨어들](#로그인을-위한-미들웨어들)
 + [passport와 쿠키 세션 동작 원리](#passport와-쿠키-세션-동작-원리)
++ [passport 로그인 전략](#passport-로그인-전략)
 
 
 
@@ -1260,7 +1261,7 @@ app.listen(3065, () => {
 });
 ```
 
-passport폴더를 생성한다. 그리고 index.js, local.js도 만들어준다.
+passport폴더를 생성한다. 그리고 index.js, local.js도 만들어준다. <br>
 
 #### \back\passport\index.js
 ```js
@@ -1299,3 +1300,160 @@ module.exports = () => {
 
 대부분 90퍼 사이트 쿠키, 세션으로 되어있다. <br>
 여기서 jwt 인증방식도 있는데 요청이 많이 쏟아지거나 대규모에서 사용한다. <br>
+
+
+## passport 로그인 전략
+[위로가기](#백엔드-서버-만들기)
+
+#### \front\sagas\user.js
+```js
+...생략
+function loginAPI(loginData) { // loginData추가
+  return axios.post('/login', loginData); // loginData 추가
+}
+
+function* login(action) { // action추가
+  try {
+    yield call(loginAPI, action.data); // action.data 추가
+    yield put({
+      type: LOG_IN_SUCCESS,
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogin() {
+  yield takeLatest(LOG_IN_REQUEST, login);
+}
+...생략
+```
+
+passport의 local이 로그인 전력이라고 한다. <br>
+
+#### \back\passport\local.js
+```js
+const passport = require('passport');
+const { Strategy : LocalStrategy } = require('passport-local');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+
+module.exports = () => {
+  passport.use(new localStorage({
+    // 프론트에서 id, password가 여기에 들어온다.
+    usernameField: 'userId', // 여기에다가 req.body의 속성명을 입력한다.
+    passwordField: 'password'
+  }, async ( userId, password, done) => {
+    // 여기에서 로그인 전략이 수행한다.
+    try {
+      const user = await db.User.findOne({ // DB에서 유저 아이디 검색
+        userId // async의 userID
+      });
+      if (!user) { 
+        return done(null, false, {reason: '존재하지 않는 사용자입니다.'});
+      }
+      const result = await bcrypt.compare(password, user.password); // 프론트에 password랑 디비에 password를 비교한다
+      // compare는 bcrypt에서 제공해준다.
+      if (result) { // 로그인 성공했을 때
+        return done(null, user);
+      }
+      // 로그인 실패 했을 때
+      return done(null, false, {reason: '비밀번호가 틀립니다.'});
+    } catch (e) {
+      console.error(e);
+      return done(e); // 서버에러
+    }
+  }));
+}
+
+```
+
+<h3>done의 의미</h3>
+여기에서 <strong>done</strong>은 <br>
+`done( 첫번째 인수, 두번쨰 인수, 세번쨰 인수)` <br>
+`첫번째 인수 : 서버에러` <br>
+`두번쨰 인수 : 성공여부` <br>
+`세번쨰 인수 : 로직상에서 에러가 나왔을 때, 즉, 존재하지 않는 사용자라서 강제적으로 종료시킨다.` <br>
+
+#### \back\passport\index.js
+```js
+...생략
+const local = require('./local');
+
+module.exports = () => {
+  ...생략
+  });
+  local(); // 마지막으로 local로 연결해준다.
+
+}
+```
+
+#### \back\passport\index.js
+```js
+...생략
+const passport = require('passport');
+
+const passportConfig = require('./passport'); // 추가
+const db = require('./models');
+...생략
+
+dotenv.config(); 
+const app = express();
+db.sequelize.sync();
+passportConfig(); // 추가
+
+app.use(morgam('dev'));
+...생략
+```
+
+여기까지 했으면, 실제로 <br>
+프론트에서 서버(백엔드) 요청도 보내야 할 것이다. <br>
+
+#### \back\routes\user.js
+```js
+...생략
+const passport = require('passport'); // 추가
+
+const router = express.Router();
+
+...생략
+
+// 여기에다가 요청을 보내 줄 것이다. 
+// 여기에서 passport = require('pass') 불러오는 코드가 필요하다.
+router.post('/login', (req, res, next) => { // POST /api/user/login
+  // 구글 로그인 구현하고 싶으면
+  // passport.authenticate('google', )
+  // 네이버 로그인 구현하고 싶으면
+  // passport.authenticate('naver', )
+
+  passport.authenticate('local', (err, user, info) => {
+    // err, user, info는 
+    // done의 (첫번째 인수(서버 에러), 두번쨰 인수(성공여부), 세번쨰 인수(로직상 에러)) 이다
+    if (err) {// 서버에러 일 경우
+      console.error(err);
+      return next(err);
+    } 
+    if (info) { // 로직 상 에러 일 경우
+      return res.status(401).send(info.reason); // 에러 내용을 보낸다.
+      // info.reason가 '존재하지 않는 사용자입니다.', '비밀번호가 틀립니다'가 실행된다. 
+    } 
+    return req.login(user, (loginErr) => { // 로그인을 시켜준다
+      if (loginErr) { // 하지만, 로그인 에러가 나올 수도 있으니까 사용해준다.
+        return next(loginErr);
+      }
+      // 로그인을 성공하면 서버쪽에 쿠기, 세션이 저장이된다. 그리고 사용자 정보를 보내준다.
+      // 프론트에 사용자 정보를 JSON형태로 보내주는데, 사용자 정보에 비밀번호가 들어있다. 비밀번호를 감춰주기 위해서는 밑에 형식과 같이 적어준다.
+      const filteredUser = Object.assign({}, user); // 참조, 복사를 해준다
+      delete filteredUser.password; // 패스워드를 삭제해준다.
+      return res.json(filteredUser); // 패스워드를 제외한 데이터를 보내준다.
+    });
+  })(req, res, next);
+});
+...생략
+```
+여기까지 로그인 싸이클이다. <br>
+
+

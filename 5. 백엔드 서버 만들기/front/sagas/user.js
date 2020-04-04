@@ -37,7 +37,7 @@ function* signUp(action) {
       type: SIGN_UP_SUCCESS
     });
   } catch (err) {
-    console.log(err.response.data);
+    // console.log(err.response.data);
     yield put({ 
       type : SIGN_UP_FAILURE,
       error : err.response.data,

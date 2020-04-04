@@ -3,10 +3,10 @@ const db = require('../models');
 const local = require('./local');
 
 module.exports = () => {
-  passport.serializeUser((user, done) => { 
+  passport.serializeUser( async (user, done) => { 
     return done(null, user.id);
   });
-  passport.deserializeUser((id, done) => {
+  passport.deserializeUser( async(id, done) => {
     try {
       const user = await db.User.findOne({
         where: {id},

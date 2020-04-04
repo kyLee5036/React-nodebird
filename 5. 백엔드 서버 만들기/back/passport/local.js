@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const db = require('../models');
 
 module.exports = () => {
-  passport.use(new localStorage({
+  passport.use(new LocalStrategy ({
     usernameField: 'userId', 
     passwordField: 'password'
   }, async ( userId, password, done) => {

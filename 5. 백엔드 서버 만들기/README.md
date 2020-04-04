@@ -1071,6 +1071,13 @@ module.exports = {
 <strong>즉, 백엔드에서의 메세지를 프론트에 출력하기</strong><br>
 순서 : sagas -> reducer -> pages/signup.js <br>
 
+```js
+if (exUser) { 
+  // return res.send('이미 사용중인 아이디입니다.'); // 에러 안나오게 하는거
+  return res.status(403).send('이미 사용중인 아이디입니다.'); // 에러나오게 하는거
+}
+// 백엔드 이 메세지를 프론트에 출력하겠다.
+```
 
 #### \front\pages\signup.js
 ```js
@@ -1198,3 +1205,97 @@ function* watchSignUp() {
 ...생략
 ```
 
+
+## passport와 쿠키 세션 동작 원리
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\index.js
+```js
+const express = require('express');
+const morgam = require('morgan');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const expressSession = require('express-session');
+const dotenv = require('dotenv');
+const passport = require('passport');
+
+dotenv.config();
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+const postAPIRouter = require('./routes/post');
+const postsAPIRouter = require('./routes/posts');
+
+const app = express();
+db.sequelize.sync();
+
+app.use(morgam('dev'));
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cors()); 
+app.use(cookieParser(process.env.COOKIE_SECRET));
+app.use(expressSession({
+  resave: false, 
+  saveUninitialized: false, 
+  secret: process.env.COOKIE_SECRET,
+  cookie: {
+    httpOnly: true, 
+    secure: false,
+  }
+}));
+app.use(passport.initialize());
+app.use(passport.session()); 
+// passport.session()은 expressSession()밑에다가 작성해줘야한다.
+// passport.session()이 expressSession을 내부적으로 사용해서 
+//먼저 expressSession 실행완료된 후에  passport.session()이 실행해야한다.
+// -> 미들웨어간에 서로 의존관계가 있는 경우 순서가 중요하다.
+
+
+
+app.use('/api/user', userAPIRouter);
+app.use('/api/post', postAPIRouter);
+app.use('/api/posts', postsAPIRouter);
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+
+passport폴더를 생성한다. 그리고 index.js, local.js도 만들어준다.
+
+#### \back\passport\index.js
+```js
+const passport = require('passport');
+const db = require('../models');
+
+module.exports = () => {
+  passport.serializeUser((user, done) => { // 서버쪽에 [{id :3, cookie: 'asdfgh'}]
+  // 이런식으로 배열 안에 저장한다. cookie는 프론트에 보낸다. 
+  // 프론트에서 cookie의 'asdfgh'라는 쿠키를 서버에 보내면 'asdfgh'는 id가 3번이랑 연결되어있구나라고 판단을 한다. 
+  // 이걸 serializeUser작업이라고한다. id가 3인 것만 서버쪽에 저장하니까 메모리 낭비하지 않는다.
+  // 여기서 실제로 데이터를 사용할 때에는 id가 3인 밖에 모른다.
+  // 그래서 deserializeUser작업을 해서 유저정보를 되찾는다. id가 3인 데이터를 찾는다.
+  // done은 나중에 설명한다.
+    return done(null, user.id);
+  });
+  passport.deserializeUser((id, done) => {
+    try {
+      const user = await db.User.findOne({
+        where: {id},
+      });
+      return done(null, user);
+    } catch (e) {
+      console.error(e);
+      return done(e);
+    }
+  })
+}
+
+ 
+```
+프로필을 보면 나의 정보가 어마어마하게 많다고 가정하면, <br>
+이 모든 것들을 서버에 저장하면 서버에 무리가 있기때문에, 서버가 터진다. <br>
+서버 안 터지게 할려면, `serializeUser`, `deserializeUser` 를 사용한다. <br><br>
+
+
+대부분 90퍼 사이트 쿠키, 세션으로 되어있다. <br>
+여기서 jwt 인증방식도 있는데 요청이 많이 쏟아지거나 대규모에서 사용한다. <br>

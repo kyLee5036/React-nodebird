@@ -1067,7 +1067,10 @@ module.exports = {
 }
 ```
 
-### 보너스 추가 ( 이미 회원가입된 유저확인)
+### *** 보너스 추가 ( 이미 회원가입된 유저확인) ***
+<strong>즉, 백엔드에서의 메세지를 프론트에 출력하기</strong><br>
+순서 : sagas -> reducer -> pages/signup.js <br>
+
 
 #### \front\pages\signup.js
 ```js
@@ -1194,5 +1197,4 @@ function* watchSignUp() {
 }
 ...생략
 ```
-
 

@@ -9,6 +9,7 @@
 + [회원가입 컨트롤러 만들기](#회원가입-컨트롤러-만들기)
 + [실제 회원가입과 미들웨어들](#실제-회원가입과-미들웨어들)
 + [로그인을 위한 미들웨어들](#로그인을-위한-미들웨어들)
++ [passport와 쿠키 세션 동작 원리](#passport와-쿠키-세션-동작-원리)
 
 
 
@@ -754,4 +755,76 @@ app.use('/api/posts', postsAPIRouter);
 app.listen(3065, () => {
   console.log('server is running on (서버주소) : http://localhost:3065');
 });
+```
+
+## passport와 쿠키 세션 동작 원리
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\index.js
+```js
+const express = require('express');
+const morgam = require('morgan');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const expressSession = require('express-session');
+const dotenv = require('dotenv');
+const passport = require('passport');
+
+dotenv.config();
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+const postAPIRouter = require('./routes/post');
+const postsAPIRouter = require('./routes/posts');
+
+const app = express();
+db.sequelize.sync();
+
+app.use(morgam('dev'));
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cors()); 
+app.use(cookieParser(process.env.COOKIE_SECRET));
+app.use(expressSession({
+  resave: false, 
+  saveUninitialized: false, 
+  secret: process.env.COOKIE_SECRET,
+  cookie: {
+    httpOnly: true, 
+    secure: false,
+  }
+}));
+app.use(passport.initialize());
+app.use(passport.session()); 
+
+app.use('/api/user', userAPIRouter);
+app.use('/api/post', postAPIRouter);
+app.use('/api/posts', postsAPIRouter);
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+
+#### \back\passport\index.js
+```js
+const passport = require('passport');
+const db = require('../models');
+
+module.exports = () => {
+  passport.serializeUser((user, done) => { 
+    return done(null, user.id);
+  });
+  passport.deserializeUser((id, done) => {
+    try {
+      const user = await db.User.findOne({
+        where: {id},
+      });
+      return done(null, user);
+    } catch (e) {
+      console.error(e);
+      return done(e);
+    }
+  })
+}
+
 ```

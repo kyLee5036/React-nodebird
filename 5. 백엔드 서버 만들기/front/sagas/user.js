@@ -27,8 +27,8 @@ function* watchLogin() {
 
 function signUpAPI(signUpdata) {
   return axios
-  .post('http://localhost:3065/api/user/', signUpdata)
-  .catch((err) => { console.log(err.response.data); return err.response.data });
+  .post('http://localhost:3065/api/user/', signUpdata);
+  // .catch((err) => { console.log(err.response.data); return err.response.data });
 }
 
 function* signUp(action) {
@@ -37,11 +37,11 @@ function* signUp(action) {
     yield put({
       type: SIGN_UP_SUCCESS
     });
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.log(err.response.data);
     yield put({ 
       type : SIGN_UP_FAILURE,
-      error : e,
+      error : err.response.data,
     });
   }
 }

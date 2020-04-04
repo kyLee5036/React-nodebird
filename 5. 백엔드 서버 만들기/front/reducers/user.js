@@ -15,6 +15,7 @@ export const initialState = {
   isSigningUp: false, // 회원가입 시도중
   isSignedUp : false, // 회원가입이 되어졌음.
   signUpErrorReason: '', // 회원가입 실패 이유
+  isSignUpSuccesFailure: false, // 회원가입 성공여부
   me: null, // 내 정보
   followingList : [], // 팔로잉 리스트
   followerList: [], // 팔로워 리스트
@@ -97,6 +98,7 @@ export default (state = initialState, action) => {
         isSigningUp: true,
         isSignedUp: false,
         signUpErrorReason: '',
+        isSignUpSuccesFailure: false,
       }; 
     }
     case SIGN_UP_SUCCESS: { 
@@ -104,12 +106,15 @@ export default (state = initialState, action) => {
         ...state, 
         isSigningUp: false,
         isSignedUp: true, 
+        isSignUpSuccesFailure: false,
       }; 
     }
     case SIGN_UP_FAILURE: { 
       return { 
         ...state, 
-        signUpErrorReason : '', 
+        isSigningUp : false,
+        signUpErrorReason : action.error, 
+        isSignUpSuccesFailure: true,
       }; 
     } 
     default: {

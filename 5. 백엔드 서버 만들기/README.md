@@ -9,6 +9,8 @@
 + [회원가입 컨트롤러 만들기](#회원가입-컨트롤러-만들기)
 + [실제 회원가입과 미들웨어들](#실제-회원가입과-미들웨어들)
 + [로그인을 위한 미들웨어들](#로그인을-위한-미들웨어들)
++ [passport와 쿠키 세션 동작 원리](#passport와-쿠키-세션-동작-원리)
+
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -1064,4 +1066,133 @@ module.exports = {
   }
 }
 ```
+
+### 보너스 추가 ( 이미 회원가입된 유저확인)
+
+#### \front\pages\signup.js
+```js
+...생략
+
+const Signup = () => {
+  ...생략
+  const {isSigningUp, me, isSignUpSuccesFailure, signUpErrorReason} = useSelector(state => state.user); // isSignUpSuccesFailure, signUpErrorReason 추가
+
+  ...생략
+  
+  return (
+    <>
+      <Form onSubmit={onSubmit} style={{ padding : 10}} >
+        ...생략
+        ...생략
+        ...생략
+        <div style={{ marginTop : 10}}>
+          <Button type="primary" htmlType="submit" loading={isSigningUp} >가입하기</Button>
+        </div>
+        <div>
+          {isSignUpSuccesFailure && <div>{signUpErrorReason}</div>} // 추가
+        </div>
+      </Form>
+    </>
+  );
+};
+
+export default Signup;
+```
+
+#### \front\reducers\user.js
+```js
+...생략
+export const initialState = {
+  ...생략
+  signedUp: false, // 회원가입 성공
+  isSigningUp: false, // 회원가입 시도중
+  isSignedUp : false, // 회원가입이 되어졌음.
+  signUpErrorReason: '', // 회원가입 실패 이유
+  isSignUpSuccesFailure: false, // 회원가입 성공여부 (추가)
+  me: null, // 내 정보
+  ...생략
+};
+
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    ...생략
+    case SIGN_UP_REQUEST: { 
+      return { 
+        ...state, 
+        isSigningUp: true,
+        isSignedUp: false,
+        signUpErrorReason: '',
+        isSignUpSuccesFailure: false, // 추가
+      }; 
+    }
+    case SIGN_UP_SUCCESS: { 
+      return { 
+        ...state, 
+        isSigningUp: false,
+        isSignedUp: true, 
+        isSignUpSuccesFailure: false, // 추가
+      }; 
+    }
+    case SIGN_UP_FAILURE: { 
+      return { 
+        ...state, 
+        isSigningUp : false,
+        signUpErrorReason : action.error, // 추가
+        isSignUpSuccesFailure: true, // 추가
+      }; 
+    } 
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+
+#### \front\sagas\user.js
+```js
+...생략
+
+function* watchLogin() {
+  yield takeLatest(LOG_IN_REQUEST, login);
+}
+
+function signUpAPI(signUpdata) {
+  return axios
+  .post('http://localhost:3065/api/user/', signUpdata);
+  // .catch((err) => { console.log(err.response.data); return err.response.data }); 
+  // 위에 주석된 처리를 보면, 여기서 DB에 저장된 유저정보를 다시 입력폼에 똑같은 아이디, 닉네임, 패스워드 입력하고 
+  // 가입하기 버튼을 누르면, Redux Devtools를 보면 결과가 SIGN_UP_SUCCESS가 나온다.
+  // 해결하기 위해서는 
+  // 밑에 function* signUp(action) 이 부분의 소스를 보면
+}
+
+function* signUp(action) {
+  try {
+    yield call(signUpAPI, action.data); 
+    yield put({
+      type: SIGN_UP_SUCCESS
+    });
+  } catch (err) {
+    // axios 뒤에 직접 catch를 붙이시면 에러들이 해결된 것으로 나와버린다. axios 뒤에는 catch를 떼야한다.
+    console.dir(err); // 이것도 참고
+    yield put({ 
+      type : SIGN_UP_FAILURE,
+      error : err.response.data, // 여기!! 에러메세지를 여기에 전달을 해줘야한다.
+      // 서버(백엔드)의 에러 처리를 여기에 받아서 reducer에 그 데이터를 넘겨주는 것이다
+    });
+  }
+}
+
+function* watchSignUp() {
+  yield takeLatest(SIGN_UP_REQUEST, signUp);
+}
+...생략
+```
+
 

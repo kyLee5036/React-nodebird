@@ -15,7 +15,7 @@ export const useInput = (initValue = null) => {
 
 const Signup = () => {
   const dispatch = useDispatch();
-  const {isSigningUp, me} = useSelector(state => state.user);
+  const {isSigningUp, me, isSignUpSuccesFailure, signUpErrorReason} = useSelector(state => state.user);
   const [passwordCheck, setPasswordCheck] = useState('');
   const [term, setTerm] = useState(false); 
   const [passwordError, setPasswordError] = useState(false); 
@@ -90,6 +90,9 @@ const Signup = () => {
         </div>
         <div style={{ marginTop : 10}}>
           <Button type="primary" htmlType="submit" loading={isSigningUp} >가입하기</Button>
+        </div>
+        <div>
+          {isSignUpSuccesFailure && <div>{signUpErrorReason}</div>}
         </div>
       </Form>
     </>

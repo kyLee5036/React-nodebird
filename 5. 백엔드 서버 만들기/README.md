@@ -15,6 +15,7 @@
 + [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
 + [include와 as, foreignKey](#include와-as,-foreignKey)
 + [로그아웃과 사용자 정보 가져오기](#로그아웃과-사용자-정보-가져오기)
++ [게시글 작성과 데이터 관계 연결하기](#게시글-작성과-데이터-관계-연결하기)
 
 
 
@@ -2271,3 +2272,230 @@ router.get('/', (req, res) => { // api/user
 ...생략
 ```
 
+## 게시글 작성과 데이터 관계 연결하기
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.post('/', async (req, res, next) => { // POST api/post (게시글 작성)
+  try {
+    // 해쉬태그 문자열을 추출할 것이다.
+    const hashtags = req.body.content.match(/#[^\s]+/g); // 해쉬태그 추출 (#) - 정규표현식이다
+    const newPost = await db.POST.create({ // 게시글 작성
+      content: req.body.content, // ex) 공부화이팅 #노드 #리액트 #공부중    
+      UserId: req.user.id, // UserID는 누가 썼는지 알기 위해서 적어줬다.
+    }); 
+    if ( hashtags ) {
+      // hashtags랑 newPost를 연결해준다.
+      // 1. 해쉬태그 저장
+      const result = await Promise.all(hashtags.map( tag => db.Hashtag.findOrCreate({ // findOrCreate는 찾는다 -> 없으면 생성, 있으면 아무것도 안함
+        where: { name : tag.slice(1).toLowerCase() },
+      })));
+      // result가 2차원 배열이다.
+      console.log(result); // 솔직히 console.log 찍어보면서 이해하는 것도 좋다.
+      // addHashtags는 시퀄라이즈가 알아서 만들어주는 것이다.
+      await newPost.addHashtags(result.map(r => r[0]));
+      // addPosts, removePosts, getPosts, setPosts등 있다. 
+    }
+
+    res.json(newPost);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+router.post('/images', (req, res) => {
+
+});
+
+module.exports = router;
+```
+
+#### \front\sagas\post.js
+```js
+...생략
+...생략
+
+function* addPostAPI(postData) {
+  return axios.post('/post', postData, {
+    withCredentials: true, // 로그인 했는 사람만 해주기 위해서 쿠키인증
+  });
+}
+function* addPost(action) {
+  try {
+    const result = yield call(addPostAPI, action.data);
+    yield put({
+      type: ADD_POST_SUCCESS,
+      data: result.data
+    });
+  } catch (e) {
+    console.log(e);
+    yield put({
+      type: ADD_POST_FAILURE,
+      error: e
+    })
+  }
+}
+function* matchAddPost() {
+  yield takeLatest(ADD_POST_REQUEST, addPost);
+}
+
+export default function* postSaga() {
+  yield all([
+    fork(matchAddPost),
+    fork(matchAddComment),
+  ]);
+}
+```
+
+#### \front\reducers\post.js
+```js
+...생략
+
+const reducer = (state = initialState, action) => {
+  switch (action.type) {
+    case ADD_POST_REQUEST: {
+      return {
+        ...state,
+        isAddingPost: true,
+        addPostError: '',
+        postAdded: false, 
+      };
+    };
+    case ADD_POST_SUCCESS: {
+      return {
+        ...state,
+        isAddingPost: false,
+
+        //실제 데이터로 바꿔준다. 
+        mainPosts: [action.data, ...state.mainPosts], // 수정
+        postAdded: true, 
+      };
+    };
+    case ADD_POST_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addPostError: action.error,
+      };
+    };
+    ...생략
+    ...생략
+  }
+};
+
+export default reducer;
+```
+
+#### \front\components\PostForm.js
+```js
+....생략
+const PostForm = () => {
+  ....생략
+
+  const onSubmitForm = useCallback((e) => {
+    e.preventDefault();
+    dispatch({
+      type: ADD_POST_REQUEST,
+      data: {
+        content: text, // 여기 부분을 수정해주었다.
+      },
+    });
+  }, [text]);
+
+  ....생략
+
+  return (
+    ....생략
+    ....생략
+  )
+}
+
+export default PostForm;
+```
+<br><br>
+
+로그인했는데, 게시글 작성 폼이 안보인다..<br>
+그래서 수정을 했다.<br>
+
+#### \front\pages\index.js
+```js
+...생략
+
+const Home = () => {
+  const dispatch = useDispatch();
+  const { me } = useSelector(state => state.user); // 수정
+  const { mainPosts } = useSelector(state => state.post);
+  
+  return (
+    <div>
+      { me && <PostForm /> } // isLoggedIn -> me로 수정
+      {mainPosts.map((c) => { 
+        return (
+          <PostCard key={c} post={c} />
+        )
+      })}
+    </div>
+  );
+};
+
+export default Home;
+```
+
+마지막에 게시글을 올리면서 사용자도 찾아내기 위해서 코드 수정이 있겠다. <br>
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.post('/', async (req, res, next) => { 
+  try {
+    const hashtags = req.body.content.match(/#[^\s]+/g); 
+    const newPost = await db.POST.create({ 
+      content: req.body.content, 
+      UserId: req.user.id, 
+    }); 
+    if ( hashtags ) {
+      const result = await Promise.all(hashtags.map( tag => db.Hashtag.findOrCreate({ 
+        where: { name : tag.slice(1).toLowerCase() },
+      })));
+      console.log(result); 
+      await newPost.addHashtags(result.map(r => r[0]));
+    }
+    
+    // 마지막에는  유저 정보도 같이 불러와줘야한다. (2가지 방법이 있다.)
+    // 1. DB조회해서 게시글과 연관된 사용자(작성자)를 불러온다. 
+    const fullPost = await db.Post.findOne({
+      where: {id: newPost.id},
+      include: [{
+        model : db.User,
+      }]
+    })
+    // 2. 시퀄라이즈 데이터에 제공하는 것을 이용해서 사용자 정보를 가져오는 방식도 있다.
+    // const User = await newPost.getUser();
+    // newPost.User = User;
+    // res.json(newPost)
+
+    res.json(fullPost);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+router.post('/images', (req, res) => {
+
+});
+
+module.exports = router;
+```
+
+위와 같이 2가지 방식이 있다는 것을 잊지말기!!! <br>
+아직 에러가 나오는데, 다음 시간에서 에러 수정을 하겠다. <br>

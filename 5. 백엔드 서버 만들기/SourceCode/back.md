@@ -15,6 +15,7 @@
 + [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
 + [include와 as, foreignKey](#include와-as,-foreignKey)
 + [로그아웃과 사용자 정보 가져오기](#로그아웃과-사용자-정보-가져오기)
++ [게시글 작성과 데이터 관계 연결하기](#게시글-작성과-데이터-관계-연결하기)
 
 
 
@@ -1496,5 +1497,49 @@ router.get('/:id/posts', (req, res) => {
 
 module.exports = router; 
 
+```
+
+## 게시글 작성과 데이터 관계 연결하기
+[위로가기](#백엔드-서버-만들기)
+
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.post('/', async (req, res, next) => { 
+  try {
+    const hashtags = req.body.content.match(/#[^\s]+/g); 
+    const newPost = await db.POST.create({ 
+      content: req.body.content, 
+      UserId: req.user.id, 
+    }); 
+    if ( hashtags ) {
+      const result = await Promise.all(hashtags.map( tag => db.Hashtag.findOrCreate({ 
+        where: { name : tag.slice(1).toLowerCase() },
+      })));
+      console.log(result); 
+      await newPost.addHashtags(result.map(r => r[0]));
+    }
+    const fullPost = await db.Post.findOne({
+      where: {id: newPost.id},
+      include: [{
+        model : db.User,
+      }]
+    })
+    res.json(fullPost);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+router.post('/images', (req, res) => {
+
+});
+
+module.exports = router;
 ```
 

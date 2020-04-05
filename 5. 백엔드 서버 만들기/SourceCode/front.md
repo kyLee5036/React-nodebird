@@ -15,6 +15,7 @@
 + [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
 + [include와 as, foreignKey](#include와-as,-foreignKey)
 + [로그아웃과 사용자 정보 가져오기](#로그아웃과-사용자-정보-가져오기)
++ [게시글 작성과 데이터 관계 연결하기](#게시글-작성과-데이터-관계-연결하기)
 
 
 
@@ -1029,4 +1030,226 @@ export default function* userSaga() {
   ]);
 }
 ```
+
+## 게시글 작성과 데이터 관계 연결하기
+[위로가기](#백엔드-서버-만들기)
+
+#### \front\components\PostForm.js
+```js
+import React, { useCallback, useState, useEffect } from 'react';
+import { Form, Input, Button } from 'antd';
+import { useSelector, useDispatch } from 'react-redux';
+import { ADD_POST_REQUEST } from '../reducers/post';
+
+const PostForm = () => {
+  const { imagePaths, isAddingPost, postAdded } = useSelector(state => state.post);
+  const dispatch = useDispatch();
+  const [text, setText] = useState('');
+
+  const onSubmitForm = useCallback((e) => {
+    e.preventDefault();
+    dispatch({
+      type: ADD_POST_REQUEST,
+      data: {
+        content: text,
+      },
+    });
+  }, [text]);
+
+  const onChangeText = useCallback((e) => {
+    setText(e.target.value);
+  }, []);
+
+  useEffect(() => {
+    if (postAdded) {
+      setText('');
+    }
+  }, [postAdded]);
+
+  return (
+    <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data" onSubmit={onSubmitForm}>
+      <Input.TextArea maxLength={140} placeholder="어떤 신기한 일이 있었나요?" value={text} onChange={onChangeText} />  
+      <div>
+        <input type="file" multiple hidden />
+        <Button>이미지 업로드</Button>
+        <Button type="primary" style={{ float : 'right'}} htmlType="submit" loading={isAddingPost} >업로드</Button>
+      </div>
+      <div>
+        {imagePaths.map((v) => (
+          <div key={v} style={{ display: 'inline-black' }}>
+            <img src={`http://localhost:3065/${v}`} style={{ width : '200px' }} alt={v} />
+            <div>
+              <Button>제거</Button>
+            </div>
+          </div>
+        ))}  
+      </div>  
+  </Form>
+  )
+}
+
+export default PostForm;
+```
+
+#### \front\pages\index.js
+```js
+import React, { useEffect } from 'react';
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+import { useDispatch, useSelector } from 'react-redux';
+
+const Home = () => {
+  const dispatch = useDispatch();
+  const { me } = useSelector(state => state.user);
+  const { mainPosts } = useSelector(state => state.post);
+  
+  return (
+    <div>
+      { me && <PostForm /> }
+      {mainPosts.map((c) => {
+        return (
+          <PostCard key={c} post={c} />
+        )
+      })}
+    </div>
+  );
+};
+
+export default Home;
+```
+
+#### \front\reducers\post.js
+```js
+...생략
+
+const reducer = (state = initialState, action) => {
+  switch (action.type) {
+    case ADD_POST_REQUEST: {
+      return {
+        ...state,
+        isAddingPost: true,
+        addPostError: '',
+        postAdded: false, 
+      };
+    };
+    case ADD_POST_SUCCESS: {
+      return {
+        ...state,
+        isAddingPost: false,
+        mainPosts: [action.data, ...state.mainPosts], 
+        postAdded: true, 
+      };
+    };
+    case ADD_POST_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addPostError: action.error,
+      };
+    };
+
+    case ADD_COMMENT_REQUEST: {
+      return {
+        ...state,
+        isAddingComment: true,
+        addCommentError: '',
+        commentAdded: false, 
+      };
+    };
+    case ADD_COMMENT_SUCCESS: {
+      const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postId);
+      const post = state.mainPosts[postIndex];
+      const Comments = [...post.Comments, dummyComment];
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = { ...post, Comments };
+      return {
+        ...state,
+        isAddingComment: false,
+        mainPosts,
+        commentAdded: true, 
+      };
+    };
+    case ADD_COMMENT_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addCommentErrorReason: action.error,
+      };
+    };
+
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+export default reducer;
+```
+
+#### \front\sagas\post.js
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, put, delay, call } from 'redux-saga/effects';
+import { ADD_POST_REQUEST, ADD_POST_FAILURE, ADD_POST_SUCCESS, ADD_COMMENT_SUCCESS, ADD_COMMENT_REQUEST, ADD_COMMENT_FAILURE } from '../reducers/post';
+
+
+function* AddCommentAPI() {
+
+}
+function* AddComment(action) { 
+  try {
+    yield delay(2000);
+    yield put({
+      type: ADD_COMMENT_SUCCESS,
+      data: {
+        postId: action.data.postId, 
+      }
+    })
+  } catch (e) {
+    console.log(e);
+    yield put({
+      type: ADD_COMMENT_FAILURE,
+      error: e
+    })
+  }
+}
+function* matchAddComment() {
+  yield takeLatest(ADD_COMMENT_REQUEST, AddComment);
+}
+
+
+function* addPostAPI(postData) {
+  return axios.post('/post', postData, {
+    withCredentials: true, 
+  });
+}
+function* addPost(action) {
+  try {
+    const result = yield call(addPostAPI, action.data);
+    yield put({
+      type: ADD_POST_SUCCESS,
+      data: result.data
+    });
+  } catch (e) {
+    console.log(e);
+    yield put({
+      type: ADD_POST_FAILURE,
+      error: e
+    })
+  }
+}
+function* matchAddPost() {
+  yield takeLatest(ADD_POST_REQUEST, addPost);
+}
+
+export default function* postSaga() {
+  yield all([
+    fork(matchAddPost),
+    fork(matchAddComment),
+  ]);
+}
+```
+
 

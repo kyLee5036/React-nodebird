@@ -11,6 +11,7 @@
 + [로그인을 위한 미들웨어들](#로그인을-위한-미들웨어들)
 + [passport와 쿠키 세션 동작 원리](#passport와-쿠키-세션-동작-원리)
 + [passport 로그인 전략](#passport-로그인-전략)
++ [passport 총정리와 실제 로그인](#passport-총정리와-실제-로그인)
 
 
 
@@ -290,3 +291,294 @@ export default function* userSaga() {
 }
 ```
 
+## passport 총정리와 실제 로그인
+[위로가기](#백엔드-서버-만들기)
+
+#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\components\LoginForm.js
+```js
+import React, { useCallback } from 'react'
+import { Form, Input, Button} from 'antd';
+import Link from 'next/link';
+import {useInput} from '../pages/signup';
+import { useDispatch, useSelector } from 'react-redux';
+import { LOG_IN_REQUEST } from '../reducers/user';
+
+const LoginForm = () => {
+  const dispatch = useDispatch();
+  const { isLoggingIn } = useSelector(state => state.user);
+  const [id, onChangeId] = useInput('');
+  const [password, onChangePassword] = useInput('');
+
+  const onsubmitForm = useCallback((e) => {
+    e.preventDefault();
+    dispatch({
+     type: LOG_IN_REQUEST,
+     data: {
+       userId: id, password
+     }, 
+    });
+  }, [id, password]);
+
+  return (
+    <Form onSubmit={onsubmitForm} style={{ padding : '10px' }}>
+      <div>
+        <label htmlFor="user-id">아이디</label>
+        <br />
+        <Input name="user-id" value={id} onChange={onChangeId} required />
+      </div>
+      <div>
+        <label htmlFor="user-password">비밀번호</label>
+        <br />
+        <Input name="user-password" value={password} onChange={onChangePassword} type="password" required />
+      </div>
+      <div style={{marginTop: '10px'}}>
+        <Button type="primary" htmlType="submit" loading={isLoggingIn}>로그인</Button>
+        <Link href="/signup"><a><Button>회원가입</Button></a></Link>
+      </div>
+    </Form>
+  )
+}
+
+export default LoginForm;
+```
+
+#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\components\UserProfile.js
+```js
+import React, { useCallback } from 'react';
+import { Avatar, Card, Button } from 'antd';
+import { useSelector, useDispatch } from 'react-redux';
+import { LOG_OUT_REQUEST } from '../reducers/user';
+
+const UserProfile = () => {
+  const { me } = useSelector(state => state.user);
+  const dispatch = useDispatch();
+  const onLogout = useCallback(() => {
+    dispatch({
+      type: LOG_OUT_REQUEST,
+    });
+  }, []);
+
+  return (
+    <Card
+      actions={[   ]}
+    >
+      <Card.Meta
+        avatar={<Avatar>{me.nickname[0]}</Avatar>}
+        title={me.nickname}
+      />
+      <Button onClick={onLogout}>로그아웃</Button>
+    </Card> 
+  )
+}
+
+export default UserProfile;
+```
+
+#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\reducers\user.js
+```js
+const dummyUser = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+  signUpData: [],
+};
+
+export const initialState = {
+  isLoggedIn: false, // 로그인 여부
+  isLoggingOut : false, // 로그아웃 시도중
+  isLogginIn : false, // 로그인 시도중
+  LoginInErrorReason: '', // 로그인 실패 이유
+  signedUp: false, // 회원가입 성공
+  isSigningUp: false, // 회원가입 시도중
+  isSignedUp : false, // 회원가입이 되어졌음.
+  signUpErrorReason: '', // 회원가입 실패 이유
+  isSignUpSuccesFailure: false, // 회원가입 성공여부
+  me: null, // 내 정보
+  followingList : [], // 팔로잉 리스트
+  followerList: [], // 팔로워 리스트
+  userInfo: [], // 남의 정보
+};
+// 회원가입
+export const SIGN_UP_REQUEST = 'SIGN_UP_REQUEST';
+export const SIGN_UP_SUCCESS = 'SIGN_UP_SUCCESS';
+export const SIGN_UP_FAILURE = 'SIGN_UP_FAILURE';
+// 로그인
+export const LOG_IN_REQUEST = 'LOG_IN_REQUEST'; // 액션의 이름
+export const LOG_IN_SUCCESS = 'LOG_IN_SUCCESS'; // 액션의 이름
+export const LOG_IN_FAILURE = 'LOG_IN_FAILURE'; // 액션의 이름
+// 로그인 후 사용자 정보 불러오기
+export const LOAD_USER_REQUEST = 'LOAD_USER_REQUEST';
+export const LOAD_USER_SUCCESS = 'LOAD_USER_SUCCESS';
+export const LOAD_USER_FAILURE = 'LOAD_USER_FAILURE';
+// 로그아웃
+export const LOG_OUT_REQUEST = 'LOG_OUT_REQUEST';
+export const LOG_OUT_SUCCESS = 'LOG_OUT_SUCCESS';
+export const LOG_OUT_FAILURE = 'LOG_OUT_FAILURE';
+// 팔로워 하는 액션
+export const FOLLOW_USER_REQUEST = 'FOLLOW_USER_REQUEST';
+export const FOLLOW_USER_SUCCESS = 'FOLLOW_USER_SUCCESS';
+export const FOLLOW_USER_FAILURE = 'FOLLOW_USER_FAILURE';
+// 팔로워 목록
+export const LOAD_FOLLOW_REQUEST = 'LOAD_FOLLOW_REQUEST';
+export const LOAD_FOLLOW_SUCCESS = 'LOAD_FOLLOW_SUCCESS';
+export const LOAD_FOLLOW_FAILURE = 'LOAD_FOLLOW_FAILURE';
+// 언팔로우 하는 액션
+export const UNFOLLOW_USER_REQUEST = 'UNFOLLOW_USER_REQUEST';
+export const UNFOLLOW_USER_SUCCESS = 'UNFOLLOW_USER_SUCCESS';
+export const UNFOLLOW_USER_FAILURE = 'UNFOLLOW_USER_FAILURE';
+// 팔로워 삭제
+export const REMOVE_USER_REQUEST = 'REMOVE_USER_REQUEST';
+export const REMOVE_USER_SUCCESS = 'REMOVE_USER_SUCCESS';
+export const REMOVE_USER_FAILURE = 'REMOVE_USER_FAILURE';
+
+// 이건 나중에 설명을 따로 한다. 리듀서의 단점을 보완하기 위한 액션
+export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case LOG_IN_REQUEST: {
+      return {
+        ...state,
+        isLoggingIn: true,
+      };
+    }
+    case LOG_IN_SUCCESS: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        isLoggedIn : true,
+        isLoading : false,
+        me: action.data,
+      };
+    }
+    case LOG_IN_FAILURE: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        isLoggedIn : false,
+        LoginInErrorReason : action.error,
+        me: null,
+      };
+    }
+
+    case LOG_OUT_REQUEST: {
+      return {
+        ...state,
+        isLoggedIn: false,
+        user: null,
+        isLoading : true,
+      };
+    }
+    case SIGN_UP_REQUEST: { 
+      return { 
+        ...state, 
+        isSigningUp: true,
+        isSignedUp: false,
+        signUpErrorReason: '',
+        isSignUpSuccesFailure: false,
+      }; 
+    }
+    case SIGN_UP_SUCCESS: { 
+      return { 
+        ...state, 
+        isSigningUp: false,
+        isSignedUp: true, 
+        isSignUpSuccesFailure: false,
+      }; 
+    }
+    case SIGN_UP_FAILURE: { 
+      return { 
+        ...state, 
+        isSigningUp : false,
+        signUpErrorReason : action.error, 
+        isSignUpSuccesFailure: true,
+      }; 
+    } 
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\sagas\index.js
+```js
+import { all, call} from 'redux-saga/effects';
+import axios from 'axios';
+import user from './user';
+import post from './post';
+
+axios.defaults.baseURL = 'http://localhost:3065/api';
+
+export default function* rootSaga() {
+  yield all([
+    call(user),
+    call(post),
+  ])
+}
+```
+
+#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\sagas\user.js
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, call, put, delay } from 'redux-saga/effects';
+import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS } from '../reducers/user'
+
+function loginAPI(loginData) {
+  return axios.post('/user/login', loginData);
+}
+
+function* login(action) {
+  try {
+    const result = yield call(loginAPI, action.data);
+    yield put({
+      type: LOG_IN_SUCCESS,
+      data: result.data
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogin() {
+  yield takeLatest(LOG_IN_REQUEST, login);
+}
+
+function signUpAPI(signUpdata) {
+  return axios
+  .post('/user/', signUpdata);
+  // .catch((err) => { console.log(err.response.data); return err.response.data });
+}
+
+function* signUp(action) {
+  try {
+    yield call(signUpAPI, action.data); 
+    yield put({
+      type: SIGN_UP_SUCCESS
+    });
+  } catch (err) {
+    // console.log(err.response.data);
+    yield put({ 
+      type : SIGN_UP_FAILURE,
+      error : err.response.data,
+    });
+  }
+}
+
+function* watchSignUp() {
+  yield takeLatest(SIGN_UP_REQUEST, signUp);
+}
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogin),
+    fork(watchSignUp)
+  ]);
+}
+```

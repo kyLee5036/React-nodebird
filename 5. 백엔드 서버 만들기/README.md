@@ -11,6 +11,7 @@
 + [로그인을 위한 미들웨어들](#로그인을-위한-미들웨어들)
 + [passport와 쿠키 세션 동작 원리](#passport와-쿠키-세션-동작-원리)
 + [passport 로그인 전략](#passport-로그인-전략)
++ [passport 총정리와 실제 로그인](#passport-총정리와-실제-로그인)
 
 
 
@@ -1457,3 +1458,297 @@ router.post('/login', (req, res, next) => { // POST /api/user/login
 여기까지 로그인 싸이클이다. <br>
 
 
+## passport 총정리와 실제 로그인
+[위로가기](#백엔드-서버-만들기)
+
+### 에러 3개가 나오므로 해결방법도 있으니까 참고할 것!!
+
+#### \back\routes\user.js (잠깐 설명이라서 전의 이전 소스 코드랑 동일)
+```js
+...생략
+
+router.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      console.error(err);
+      return next(err);
+    } 
+    if (info) {
+      return res.status(401).send(info.reason);
+    } 
+    return req.login(user, (loginErr) => { 
+      // req.login할 때 serializeUser가 실행된다
+      if (loginErr) { 
+        return next(loginErr);
+      }
+      const filteredUser = Object.assign({}, user);
+      delete filteredUser.password;
+      return res.json(filteredUser);
+    });
+  })(req, res, next);
+});
+...생략
+```
+
+#### \back\passport\index.js (잠깐 설명이라서 전의 이전 소스 코드랑 동일)
+```js
+const passport = require('passport');
+const db = require('../models');
+const local = require('./local');
+
+module.exports = () => {
+  passport.serializeUser( async (user, done) => { 
+    return done(null, user.id);
+  });
+  passport.deserializeUser( async(id, done) => {
+    try {
+      const user = await db.User.findOne({
+        where: {id},
+      });
+      return done(null, user); // 사용자 정보가 들어간다
+    } catch (e) {
+      console.error(e);
+      return done(e);
+    }
+  });
+  local();
+}
+
+```
+
+### passport 정리(cookie, seesion으로 로그인 방법)
+
+대부분의 사이트가 밑에 방식과 비슷하다. <br>
+
+프론트에서 서버는 cookie를 보낸다. <br>
+서버가 쿠기파서(cookie-parser), 익스프레스 세션(express-session)으로 쿠기 검사 후 id 발견한다. <br>
+id가 deserializeUser에 들어감 <br>
+req.user로 사용자 정보가 들어감 <br>
+
+요청 보낼때마다 deserializerUser가 실행된다 (db 요청 1번씩 실행)<br>
+실무에서는 deserializerUser 결과를 캐싱한다.<br>
+
+실무에서는 DB요청을 줄어는게 서버비용 아끼는 일이다.<br>
+<br><br>
+`http://localhost:3065/api`이 자꾸 반복이된다.  <br>
+반복되는 것을 없애기위해서 공통된 부분을   <br>
+
+#### \front\sagas\index.js
+```js
+...생략
+import post from './post';
+// 이렇게 설정을 해준다.
+axios.defaults.baseURL = 'http://localhost:3065/api';
+
+export default function* rootSaga() {
+  ...생략
+}
+```
+
+
+### message: 'Missing credentials 에러 해결
+
+에러 결과가 401나오면서   <br>
+에러 내용이 `{ message: 'Missing credentials' }`로 자꾸 나오고있다.  <br>
+
+#### \back\routes\user.js
+```js
+...생략
+router.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    console.log(err, user, info); // 여기에 콘솔 찍어보면 info쪽에서
+    // { message: 'Missing credentials' }가 나온다.
+    if (err) {
+      console.error(err);
+      return next(err);
+    } 
+    if (info) { // 이 부분이 문제가 있다.
+      return res.status(401).send(info.reason);
+    } 
+    return req.login(user, (loginErr) => {
+      if (loginErr) { 
+        return next(loginErr);
+      }
+      const filteredUser = Object.assign({}, user);
+      delete filteredUser.password;
+      return res.json(filteredUser);
+    });
+  })(req, res, next);
+});
+...생략
+```
+
+<strong>Network</strong>창에 Request PayLoad를 보면 <br>
+{id: "test11", password: "test11"} <br>
+id: "test11" <br>
+password: "test11" <br>
+가 나와있다. 하지만 우리는 id가 아닌 userId로 정의되어져있다. <br>
+바꿔주기 위해서는 프론트쪽에 가서 <br>
+
+#### \front\components\LoginForm.js
+```js
+...생략
+
+const LoginForm = () => {
+  const dispatch = useDispatch();
+  const { isLoggingIn } = useSelector(state => state.user);
+  const [id, onChangeId] = useInput('');
+  const [password, onChangePassword] = useInput('');
+
+  const onsubmitForm = useCallback((e) => {
+    e.preventDefault();
+    dispatch({
+     type: LOG_IN_REQUEST,
+     data: {
+       userId: id,  // 이 부분을 수정해줘야한다.
+       password
+     }, 
+    });
+  }, [id, password]);
+
+ ...생ㄹ약
+  )
+}
+
+export default LoginForm;
+```
+
+또 에러가 나온다.
+
+###  to JSON 에러 해결
+`(node:4268) UnhandledPromiseRejectionWarning: TypeError: Converting circular structure to JSON` <br>
+
+#### \back\routes\user.js
+```js
+// 밑에는 로그아웃 부분이다. 정말로 간단하다....
+router.post('/logout', (req, res) => {
+  req.logout();
+  req.session.destroy(); // 세션을 제거해준다.
+  res.send('로그아웃 성공'); // 메세지 출력하기
+});
+
+router.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    console.log(err, user, info); // console.log 해보기
+    if (err) {
+      console.error(err);
+      return next(err);
+    } 
+    if (info) {
+      return res.status(401).send(info.reason);
+    } 
+    return req.login(user, (loginErr) => {
+      if (loginErr) { 
+        return next(loginErr);
+      }
+      console.log('login sucess', req.user); // req.user로 로그인정보를 확인가능
+      const filteredUser = Object.assign({}, user.toJSON() ); // 여기에 toJSON()을 해줘야한다.
+      // TOSJON을 안해줘서 위와 같은 에러가 발생이 된다.
+      // 이 user는 시퀄라이즈의 user객체라서 순수한 JSON을 만들어줄려고 toJSON을 해줬는 거다.
+    
+      delete filteredUser.password;
+      return res.json(filteredUser);
+    });
+  })(req, res, next);
+});
+```
+
+여기서부터 로그인 성공하면 더미데이터가 아닌 실제데이터를 넣어주겠다. <br>
+
+#### \front\sagas\user.js
+```js
+...생략
+
+function loginAPI(loginData) {
+  // axios의 응답은 여기에서 받는다.
+  return axios.post('/user/login', loginData);
+}
+
+
+function* login(action) {
+  try {
+    const result = yield call(loginAPI, action.data); // 수정해준다.
+    yield put({
+      type: LOG_IN_SUCCESS,
+      data: result.data // 여기에 데이터를 넣어준다.
+      // result안에 data(사용자 정보가 들어있을 것이다.)
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogin() {
+  yield takeLatest(LOG_IN_REQUEST, login);
+}
+
+...생략
+```
+
+#### \front\reducers\user.js
+```js
+...생략
+...생략
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case LOG_IN_REQUEST: {
+      return {
+        ...state,
+        isLoggingIn: true,
+      };
+    }
+    case LOG_IN_SUCCESS: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        isLoggedIn : true,
+        isLoading : false,
+        me: action.data, // 수정해준다. 
+        // dummy데이터가 아닌 실제 데이터를 넣어준다. 실제 사용자 정보로 로그인이 된다.
+      };
+    }
+    ...생략
+  }
+};
+```
+### TypeError: Cannot read property 'length' of undefined 에러 해결 
+
+하지만, `TypeError: Cannot read property 'length' of undefined` <br>
+이렇게 에러가 나오면서 데이터가 없다라는 메세지가 나온다. <br>
+성공적으로 로그인은 되었는데, me의 데이터 객체를 보면 <br>
+```js
+{
+  id: 2,
+  nickname: 'test',
+  userId: 'test',
+  password: '$2b$12$mINXmSC...생략',
+  createdAt: 2020-..생략,
+  updatedAt: 2020-..생략
+},
+```
+`post.Followings`, `post.Followers`가 없어서 에러가 발생이 난다. <br>
+
+#### \front\components\UserProfile.js
+```js
+...생략
+const UserProfile = () => {
+  ...생략
+  return (
+    <Card
+      actions={[
+        // 일단 이부분을 삭제하겠다.
+        // 로그인이 성공적으로 되었는지 확인하기위해서이다!!
+      ]}
+    >
+      ...생략
+    </Card> 
+  )
+}
+
+export default UserProfile;
+```
+
+<h3>기본적으로 로그인을 완료하였다....하.. 힘들다...</h3>

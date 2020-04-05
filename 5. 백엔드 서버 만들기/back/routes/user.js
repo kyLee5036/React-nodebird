@@ -37,11 +37,14 @@ router.get('/:id', (req, res) => {
 
 })
 router.post('/logout', (req, res) => {
-
+  req.logout();
+  req.session.destroy();
+  res.send('로그아웃 성공');
 });
 
 router.post('/login', (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
+    console.log(err, user, info);
     if (err) {
       console.error(err);
       return next(err);
@@ -53,7 +56,7 @@ router.post('/login', (req, res, next) => {
       if (loginErr) { 
         return next(loginErr);
       }
-      const filteredUser = Object.assign({}, user);
+      const filteredUser = Object.assign({}, user.toJSON());
       delete filteredUser.password;
       return res.json(filteredUser);
     });

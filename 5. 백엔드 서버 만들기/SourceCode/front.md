@@ -294,7 +294,7 @@ export default function* userSaga() {
 ## passport 총정리와 실제 로그인
 [위로가기](#백엔드-서버-만들기)
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\components\LoginForm.js
+#### \front\components\LoginForm.js
 ```js
 import React, { useCallback } from 'react'
 import { Form, Input, Button} from 'antd';
@@ -342,7 +342,7 @@ const LoginForm = () => {
 export default LoginForm;
 ```
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\components\UserProfile.js
+#### \front\components\UserProfile.js
 ```js
 import React, { useCallback } from 'react';
 import { Avatar, Card, Button } from 'antd';
@@ -374,7 +374,7 @@ const UserProfile = () => {
 export default UserProfile;
 ```
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\reducers\user.js
+#### \front\reducers\user.js
 ```js
 const dummyUser = {
   nickname: 'LEEKY',
@@ -504,7 +504,7 @@ export default (state = initialState, action) => {
 };
 ```
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\sagas\index.js
+#### \front\sagas\index.js
 ```js
 import { all, call} from 'redux-saga/effects';
 import axios from 'axios';
@@ -521,7 +521,7 @@ export default function* rootSaga() {
 }
 ```
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\sagas\user.js
+#### \front\sagas\user.js
 ```js
 import axios from 'axios';
 import { all, fork, takeLatest, call, put, delay } from 'redux-saga/effects';

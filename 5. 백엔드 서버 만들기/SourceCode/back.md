@@ -1025,7 +1025,7 @@ app.listen(3065, () => {
 ## passport 총정리와 실제 로그인
 [위로가기](#백엔드-서버-만들기)
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\back\routes\user.js
+#### \back\routes\user.js
 ```js
 const express = require('express');
 const bcrypt = require('bcrypt');
@@ -1111,7 +1111,7 @@ module.exports = router;
 
 ```
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\back\index.js
+#### \back\index.js
 ```js
 const express = require('express');
 const morgam = require('morgan');

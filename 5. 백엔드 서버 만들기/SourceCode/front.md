@@ -13,6 +13,7 @@
 + [passport 로그인 전략](#passport-로그인-전략)
 + [passport 총정리와 실제 로그인](#passport-총정리와-실제-로그인)
 + [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
++ [include와 as, foreignKey](#include와-as,-foreignKey)
 
 
 
@@ -649,4 +650,44 @@ export default function* userSaga() {
     fork(watchSignUp)
   ]);
 }
+```
+
+
+## include와 as, foreignKey
+[위로가기](#백엔드-서버-만들기)
+
+#### \front\components\UserProfile.js
+```js
+import React, { useCallback } from 'react';
+import { Avatar, Card, Button } from 'antd';
+import { useSelector, useDispatch } from 'react-redux';
+import { LOG_OUT_REQUEST } from '../reducers/user';
+
+const UserProfile = () => {
+  const { me } = useSelector(state => state.user);
+  const dispatch = useDispatch();
+  const onLogout = useCallback(() => {
+    dispatch({
+      type: LOG_OUT_REQUEST,
+    });
+  }, []);
+
+  return (
+    <Card
+      actions={[
+        <div key="twit">짹짹<br />{me.Posts.length}</div>,
+        <div key="following">팔로잉<br />{me.Followings.length}</div>,
+        <div key="follower">팔로워<br />{me.Followers.length}</div>,
+      ]}
+    >
+      <Card.Meta
+        avatar={<Avatar>{me.nickname[0]}</Avatar>}
+        title={me.nickname}
+      />
+      <Button onClick={onLogout}>로그아웃</Button>
+    </Card> 
+  )
+}
+
+export default UserProfile;
 ```

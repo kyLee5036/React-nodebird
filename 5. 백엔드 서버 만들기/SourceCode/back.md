@@ -13,6 +13,7 @@
 + [passport 로그인 전략](#passport-로그인-전략)
 + [passport 총정리와 실제 로그인](#passport-총정리와-실제-로그인)
 + [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
++ [include와 as, foreignKey](#include와-as,-foreignKey)
 
 
 
@@ -1211,4 +1212,173 @@ app.use('/api/posts', postsAPIRouter);
 app.listen(3065, () => {
   console.log('server is running on (서버주소) : http://localhost:3065');
 });
+```
+
+## include와 as, foreignKey
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\models\index.js
+```js
+const Sequelize = require('sequelize');
+const env = process.env.NODE_ENV || 'development';
+const config = require('../config/config.js')[env];
+const db = {};
+
+const sequelize = new Sequelize(config.database, config.username, config.password, config);
+
+db.Comment = require('./comment')(sequelize, Sequelize);
+db.Hashtag = require('./hashtag')(sequelize, Sequelize);
+db.Image = require('./image')(sequelize, Sequelize);
+db.Post = require('./post')(sequelize, Sequelize);
+db.User = require('./user')(sequelize, Sequelize);
+
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+
+module.exports = db;
+
+```
+
+#### \back\models\user.js
+```js
+module.exports = (sequelilze, DataTypes) => {
+  const User = sequelilze.define('User', {
+    nickname: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    userId: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      unique: true,
+    },
+    password: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+    },
+  }, {
+    charset: 'utf8',
+    collate: 'utf8_general_ci',
+  });
+  User.associate = (db) => {
+    db.User.hasMany(db.Post, {as : 'Posts'} );
+    db.User.hasMany(db.Comment);
+    db.User.belongsToMany(db.Post, { through: 'Like', as: 'Liked' }); 
+    db.User.belongsToMany(db.User, { through: 'Follow', as: 'Followers', foreignKey: 'followingId' }); 
+    db.User.belongsToMany(db.User, { through: 'Follow', as: 'Followings', foreignKey: 'followerId' });
+  };
+  return User;
+};
+
+
+```
+
+#### \back\routes\user.js
+```js
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+const passport = require('passport');
+
+const router = express.Router();
+
+router.get('/', (res, req) => { 
+
+});
+router.post('/',  async (req, res, next) => { 
+  try {
+    const exUser = await db.User.findOne({ 
+      where: {
+        userId: req.body.userId,
+      },
+    });
+    if (exUser) { 
+      // return res.send('이미 사용중인 아이디입니다.');
+      return res.status(403).send('이미 사용중인 아이디입니다.'); 
+    }
+    const hashtPassword = await bcrypt.hash(req.body.password, 12); 
+    const newUser = await db.User.create({
+      nickname : req.body.nickname,
+      userId: req.body.userId,
+      password: hashtPassword,
+    });
+    console.log(newUser);
+    return res.status(200).json(newUser); 
+  } catch (e) {
+    console.error(e);
+    return next(e);
+  }
+
+});
+router.get('/:id', (req, res) => {
+
+})
+router.post('/logout', (req, res) => {
+  req.logout();
+  req.session.destroy();
+  res.send('로그아웃 성공');
+});
+
+router.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      console.error(err);
+      return next(err);
+    } 
+    if (info) {
+      return res.status(401).send(info.reason);
+    } 
+    return req.login(user, async (loginErr) => {
+      try {
+        if (loginErr) { 
+          return next(loginErr);
+        }
+        const fullUser = await db.User.findOne({
+          where : {id : user.id},
+          include: [{ 
+            model: db.Post,
+            as: 'Posts',
+            attributes: ['id'],
+          }, {
+            model: db.User,
+            as: 'Followings',
+            attributes: ['id'],
+          }, {
+            model: db.User,
+            as: 'Followers',
+            attributes: ['id'],
+          }],
+          attributes: ['id', 'nickname', 'userId'], 
+        });
+        return res.json(fullUser);
+      } catch (e) {
+        next(e);
+      }
+    });
+  })(req, res, next);
+});
+router.get('/:id/follow', (req, res) => {
+
+});
+router.post('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follow', (req, res) => {
+
+});
+router.delete('/:id/follower', (req, res) => {
+
+});
+router.get('/:id/posts', (req, res) => {
+
+});
+
+module.exports = router; 
+
 ```

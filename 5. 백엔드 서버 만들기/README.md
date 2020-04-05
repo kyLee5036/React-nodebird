@@ -13,6 +13,7 @@
 + [passport 로그인 전략](#passport-로그인-전략)
 + [passport 총정리와 실제 로그인](#passport-총정리와-실제-로그인)
 + [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
++ [include와 as, foreignKey](#include와-as,-foreignKey)
 
 
 
@@ -1871,3 +1872,198 @@ app.use(expressSession({
 ```
 
 마지막으로, 쿠키 시간설정도 할 수 있다. (인터넷 검색하면 잘 나온다.)
+
+
+## include와 as, foreignKey
+[위로가기](#백엔드-서버-만들기)
+
+잠깐 DB 코드 수정을 하겠다
+#### \back\models\index.js (수정 전)
+
+```js
+...생략
+const sequelize = new Sequelize(config.database, config.username, config.password, config);
+
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
+db.Comment = require('./comment')(sequelize, Sequelize);
+db.Hashtag = require('./hashtag')(sequelize, Sequelize);
+db.Image = require('./image')(sequelize, Sequelize);
+db.Post = require('./post')(sequelize, Sequelize);
+db.User = require('./user')(sequelize, Sequelize);
+
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+
+module.exports = db;
+```
+
+#### \back\models\index.js (수정 후)
+```js
+...생략
+
+const sequelize = new Sequelize(config.database, config.username, config.password, config);
+
+db.Comment = require('./comment')(sequelize, Sequelize);
+db.Hashtag = require('./hashtag')(sequelize, Sequelize);
+db.Image = require('./image')(sequelize, Sequelize);
+db.Post = require('./post')(sequelize, Sequelize);
+db.User = require('./user')(sequelize, Sequelize);
+
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+
+module.exports = db;
+```
+
+왜냐하면, DB라는 객체는 테이블들을 연결하고, DB안에 있는 associate를 불러온다. <br>
+associate를 사용하기위해서 DB가 먼저 존재하기위해서이다. 그래서 DB를 먼저 불러온다. <br>
+
+
+
+#### \back\routes\user.js
+```js
+...생략
+
+router.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      console.error(err);
+      return next(err);
+    } 
+    if (info) {
+      return res.status(401).send(info.reason);
+    } 
+    return req.login(user, async (loginErr) => {
+      try {
+        if (loginErr) { 
+          return next(loginErr);
+        }
+        const fullUser = await db.User.findOne({
+          where : {id : user.id},
+          include: [{ 
+            model: db.Post,
+            as: 'Posts', // DB에 as를 사용하면 as도 넣어줘야한다.
+            attributes: ['id'],
+          }, {
+            model: db.User,
+            as: 'Followings',
+            attributes: ['id'],
+          }, {
+            model: db.User,
+            as: 'Followers',
+            attributes: ['id'],
+          }],
+          // 전체 데이터중 []에 적힌것들만 필터링해준다. 보안에 좋음
+          //attributes는 전체 데이터 중에 원하는 데이터만 가져오는 옵션입니다. 
+          // userId는 사용자의 아이디입니다.(zerohch0같은)
+          // 그냥 id는 MySQL에서 1,2,3,4,5이런 식으로 매기는 자동 생성 아이디입니다.
+          attributes: ['id', 'nickname', 'userId'], // attributes로 비밀번호 필터링해주었다.
+          // 비밀번호만 빼고 유저정보를 프론트에 보낸다.
+        });
+        return res.json(fullUser); 
+        // fullUser 여기 안에 
+        // fullUser.Posts, fullUser.Followings, fullUser.Followers 가 추가된다
+        // 이 데이터가 front에 UserProfile에 있을 것이다.
+      } catch (e) {
+        next(e);
+      }
+    });
+  })(req, res, next);
+});
+...생략
+module.exports = router; 
+
+```
+
+
+
+
+#### \back\models\user.js
+```js
+module.exports = (sequelilze, DataTypes) => {
+  const User = sequelilze.define('User', {
+    ...생략
+  User.associate = (db) => {
+    db.User.hasMany(db.Post, {as : 'Posts'} );
+    db.User.hasMany(db.Comment);
+    db.User.belongsToMany(db.Post, { through: 'Like', as: 'Liked' }); 
+    // 사실 foreignKey는 처음부터 했어야 하는데, 에러가 난다면 follow 테이블을 지웠다 서버를 재시작
+    // 같은 테이블끼리 다대다관계 있을 떄, 테이블에서 userId, retweetID생긴다
+    // 아직 데이터를 추가안해서 컬럼명이 아직까지 없다.
+    db.User.belongsToMany(db.User, { through: 'Follow', as: 'Followers' , foreignKey: 'followingId' }); // foreignKey는 DB컬럼명
+    db.User.belongsToMany(db.User, { through: 'Follow', as: 'Followings', foreignKey: 'followerId' }); // foreignKey는 DB컬럼명
+
+    // foreignKey키는 실제 DB에서 구별
+    // as는 자바스크립트 객체에서 구별하는 것
+  };
+  return User;
+};
+```
+
+사실 foreignKey는 처음부터 했어야 하는데, 에러가 난다면 follow 테이블을 지웠다 서버를 재시작 <br>
+같은 테이블끼리 다대다관계 있을 떄, 테이블에서 userId, retweetID생긴다 <br>
+
+> foreignKey키는 실제 DB에서 구별 ( 반대로 쓰는 foreignKey키가 남의 테이블 id를 가리켜야한다. ) <br>
+> as는 자바스크립트 객체에서 구별하는 것 <br>
+> foreignKey키는 다대다관계에서만 추가하면 된다. <br>
+
+#### \back\models\post.js
+```js
+module.exports = (sequelize, DataTypes) => {
+  ....생략
+  Post.asscoiate = (db) => {
+    db.Post.belongsTo(db.User); //테이블에 UserID 컬럼이 생긴다.
+    db.Post.hasMany(db.Comment);
+    db.Post.hasMany(db.Image);
+    db.Post.belongsTo(db.Post, { as : 'Retweet' });  // RetweetID 컬럼이 생긴다.
+    db.Post.belongsToMany(db.Hashtag, { through: 'PostHashTag' }); 
+    db.Post.belongsToMany(db.User, { through: 'Like', as: 'Likers'}); 
+  };
+  return Post;
+};
+```
+
+#### \front\components\UserProfile.js
+
+```js
+...생략
+
+const UserProfile = () => {
+  ...생략
+
+  return (
+    <Card
+      actions={[   
+        // 여기 추가해주기 위해서 DB를 수정하였다. 
+        <div key="twit">짹짹<br />{me.Posts.length}</div>, // 수정 (뒤에 s 잘보기)
+        <div key="following">팔로잉<br />{me.Followings.length}</div>, // 수정
+        <div key="follower">팔로워<br />{me.Followers.length}</div>, // 수정
+      ]}
+    >
+      <Card.Meta
+        avatar={<Avatar>{me.nickname[0]}</Avatar>}
+        title={me.nickname}
+      />
+      <Button onClick={onLogout}>로그아웃</Button>
+    </Card> 
+  )
+}
+
+export default UserProfile;
+```
+
+### DB 에러 해결
+`SequelizeDatabaseError: Unknown column 'Followings->Follow.followingId' in 'field list'` 
+
+> 테이블삭제하고 다시 `sequelize db:create`를 해보기

@@ -1768,7 +1768,7 @@ password: "test" <br>
 
 ### 도메인 간에 쿠키지정 (프론트, 백엔드)
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\sagas\user.js
+#### \front\sagas\user.js
 ```js
 ...생략
 ...생략
@@ -1805,7 +1805,7 @@ function* watchLogin() {
 ...생략
 ```
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\back\index.js
+#### \back\index.js
 ```js
 ...생략
 ...생략

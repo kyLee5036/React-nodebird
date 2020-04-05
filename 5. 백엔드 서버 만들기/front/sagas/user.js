@@ -3,7 +3,9 @@ import { all, fork, takeLatest, call, put, delay } from 'redux-saga/effects';
 import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS } from '../reducers/user'
 
 function loginAPI(loginData) {
-  return axios.post('/user/login', loginData);
+  return axios.post('/user/login', loginData, {
+    withCredentials: true, 
+  });
 }
 
 function* login(action) {

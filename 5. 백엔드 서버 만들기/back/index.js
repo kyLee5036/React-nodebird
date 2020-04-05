@@ -18,7 +18,10 @@ db.sequelize.sync();
 passportConfig(); 
 
 app.use(morgam('dev'));
-app.use(cors()); 
+app.use(cors({
+  origin: true, 
+  credentials: true,
+})); 
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
@@ -29,7 +32,8 @@ app.use(expressSession({
   cookie: {
     httpOnly: true, 
     secure: false,
-  }
+  },
+  name: 'rnbck',
 }));
 app.use(passport.initialize());
 app.use(passport.session()); 

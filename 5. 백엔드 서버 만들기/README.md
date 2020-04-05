@@ -12,6 +12,7 @@
 + [passport와 쿠키 세션 동작 원리](#passport와-쿠키-세션-동작-원리)
 + [passport 로그인 전략](#passport-로그인-전략)
 + [passport 총정리와 실제 로그인](#passport-총정리와-실제-로그인)
++ [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
 
 
 
@@ -1752,3 +1753,121 @@ export default UserProfile;
 ```
 
 <h3>기본적으로 로그인을 완료하였다....하.. 힘들다...</h3>
+
+
+## 다른 도메인간에 쿠키 주고받기
+[위로가기](#백엔드-서버-만들기)
+
+로그인을 했을 경우에, 비밀번호 그대로 노출이 된다. <br>
+{userId: "test", password: "test"} <br>
+userId: "test" <br>
+password: "test" <br>
+위와 같이 그대로 노출이 되어진 것을 확인할 수가 있다. <br>
+그러면 해커한테 다 털린다. <br>
+그래서 https필수를 사용하는게 위와같은 정보를 다 가려주기 때문에 https를 사용한다. <br><br>
+
+### 도메인 간에 쿠키지정 (프론트, 백엔드)
+
+#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\front\sagas\user.js
+```js
+...생략
+...생략
+function loginAPI(loginData) {
+  return axios.post('/user/login', loginData, {
+    // 세번째 axios설정을 할 수있다.
+    withCredentials: true, // 수정
+    // withCredentials의 내용은 서로 쿠키를 주고받을 수가 있다.
+    // 문제는 프론트, 서버(백엔드) 서로서로 해줘야한다. cors부분의 설정을 해주면된다.
+
+    // 그리고 withCredentials가 쿠키를 생성해준다. 여기에서는 login쿠기를 생성해주었다.
+  });
+}
+
+function* login(action) {
+  try {
+    const result = yield call(loginAPI, action.data);
+    yield put({
+      type: LOG_IN_SUCCESS,
+      data: result.data
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogin() {
+  yield takeLatest(LOG_IN_REQUEST, login);
+}
+
+...생략
+```
+
+#### D:\_React\_ReactStudy_inflearn\React-nodebird\5. 백엔드 서버 만들기\back\index.js
+```js
+...생략
+...생략
+
+app.use(morgam('dev'));
+app.use(cors({
+  // 여기에서 두개를 추가로 적어줘야만, 쿠키가 서로 교환이 된다.
+  origin: true, // 여기에 프론트 도메인 주소 또는 true를 적어줘야한다. 
+  //보통 true를 적어준다.
+
+  credentials: true, // cors(백엔드)에서도 axios(프론트)에서도 해줘야한다
+})); 
+app.use(express.json()); 
+...생략
+
+```
+
+
+#### Network창에서 확인해보면
+```js
+Access-Control-Allow-Credentials: true // 여기가 true가 되어야한다.
+Access-Control-Allow-Origin: http://localhost:3000 // 여기가 프론트주소를 확인해야한다.
+
+Connection: keep-alive
+Content-Length: 120
+...생략
+```
+
+그래서, http를 제대로 알아야만 개발을 할 수가 있다. <br>
+
+#### Application창에서 확인해보면
+
+<table border="1">
+<tr>
+  <td>Name</td>
+  <td>Value</td>
+</tr>
+<tr>
+  <td>connect.sid</td>
+  <td>s%3ArYTCqgQOw1CFWPbiWBGXZ_7IPaLbv...생략</td>
+</tr>
+</table>	
+
+Name, Value가 있어야한다. 하지만 새로고침을 하면 로그인이 안 된다.<br>
+왜냐하면, 쿠키는 남아있는데 처음로딩할 떄 서버한테 사용자 데이터 받는 부분이 없어서
+그 부분도 직접해줘야한다. <br>
+새로고침을 하면 로그인이 풀리는게 아니라, 로그인은 되어있는데 사용자 정보는 서버에서 받아오는 것을 만들어야한다. <br><br>
+
+### connect.sid 이름 변경
+그리고 express는 무조건 `connect.sid`로 되어있으므로, `connect.sid`가 아닌 다른 이름으로 바꿔줘야한다. <br>
+```js
+app.use(expressSession({
+  resave: false, 
+  saveUninitialized: false, 
+  secret: process.env.COOKIE_SECRET,
+  cookie: {
+    httpOnly: true, 
+    secure: false,
+  },
+  // connect.sid를 다른이름으로 바꿔준다.
+  name: 'rnbck', // 여기에서 이름을 수정해준다.
+}));
+```
+
+마지막으로, 쿠키 시간설정도 할 수 있다. (인터넷 검색하면 잘 나온다.)

@@ -12,6 +12,7 @@
 + [passport와 쿠키 세션 동작 원리](#passport와-쿠키-세션-동작-원리)
 + [passport 로그인 전략](#passport-로그인-전략)
 + [passport 총정리와 실제 로그인](#passport-총정리와-실제-로그인)
++ [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
 
 
 
@@ -1145,6 +1146,60 @@ app.use(expressSession({
     httpOnly: true, 
     secure: false,
   }
+}));
+app.use(passport.initialize());
+app.use(passport.session()); 
+
+app.use('/api/user', userAPIRouter);
+app.use('/api/post', postAPIRouter);
+app.use('/api/posts', postsAPIRouter);
+
+app.listen(3065, () => {
+  console.log('server is running on (서버주소) : http://localhost:3065');
+});
+```
+
+## 다른 도메인간에 쿠키 주고받기
+[위로가기](#백엔드-서버-만들기)
+
+#### \back\index.js
+```js
+const express = require('express');
+const morgam = require('morgan');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const expressSession = require('express-session');
+const dotenv = require('dotenv');
+const passport = require('passport');
+
+const passportConfig = require('./passport');
+const db = require('./models');
+const userAPIRouter = require('./routes/user');
+const postAPIRouter = require('./routes/post');
+const postsAPIRouter = require('./routes/posts');
+
+dotenv.config();
+const app = express();
+db.sequelize.sync();
+passportConfig(); 
+
+app.use(morgam('dev'));
+app.use(cors({
+  origin: true, 
+  credentials: true,
+})); 
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser(process.env.COOKIE_SECRET));
+app.use(expressSession({
+  resave: false, 
+  saveUninitialized: false, 
+  secret: process.env.COOKIE_SECRET,
+  cookie: {
+    httpOnly: true, 
+    secure: false,
+  },
+  name: 'rnbck',
 }));
 app.use(passport.initialize());
 app.use(passport.session()); 

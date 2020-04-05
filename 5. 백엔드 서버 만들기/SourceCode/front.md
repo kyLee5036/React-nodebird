@@ -14,6 +14,7 @@
 + [passport 총정리와 실제 로그인](#passport-총정리와-실제-로그인)
 + [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
 + [include와 as, foreignKey](#include와-as,-foreignKey)
++ [로그아웃과 사용자 정보 가져오기](#로그아웃과-사용자-정보-가져오기)
 
 
 
@@ -691,3 +692,341 @@ const UserProfile = () => {
 
 export default UserProfile;
 ```
+
+## 로그아웃과 사용자 정보 가져오기
+[위로가기](#백엔드-서버-만들기)
+
+#### \front\components\App.Layout.js
+```js
+import React, { useEffect } from 'react';
+import { Menu, Input, Row, Col} from 'antd';
+import Link from 'next/link'
+import PropTypes from 'prop-types';
+import LoginForm from './LoginForm';
+import UserProfile from './UserProfile';
+import { useSelector, useDispatch } from 'react-redux';
+import { LOAD_USER_REQUEST } from '../reducers/user';
+
+
+const AppLayout = ({ children }) => {
+  const { me } = useSelector(state => state.user);
+  const dispatch = useDispatch();
+
+  useEffect( () => {
+    if (!me) {
+      dispatch({
+        type: LOAD_USER_REQUEST
+      });
+    }
+  }, []);
+
+  return (
+    <div>
+      <Menu mode="horizontal">
+        <Menu.Item key="home"><Link href="/"><a>노드버드</a></Link></Menu.Item>
+        <Menu.Item key="profile"><Link href="/profile"><a>프로필</a></Link></Menu.Item>
+         <Menu.Item key="mail">
+            <Input.Search enterButton style={{ verticalAlign : 'middle' }} />
+        </Menu.Item>
+      </Menu>
+      <Row gutter={10} >
+        <Col xs={24} md={6} >
+          { me 
+          ? <UserProfile />
+          : <LoginForm />
+        }   
+        </Col> 
+        <Col xs={24} md={12} >
+          {children}
+        </Col>
+        <Col xs={24} md={6} >
+          <Link href="https://github.com/KeonYoungLeee/React-nodebird" prefetch={false} ><a target="_blank">Made by LEEKY</a></Link>
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+AppLayout.prototype = {
+  children: PropTypes.node,
+}
+
+export default AppLayout;
+```
+
+#### \front\reducers\user.js
+```js
+const dummyUser = {
+  nickname: 'LEEKY',
+  Post: [],
+  Followings: [],
+  Followers: [],
+  signUpData: [],
+};
+
+export const initialState = {
+  isLoggingOut : false, // 로그아웃 시도중
+  isLogginIn : false, // 로그인 시도중
+  LoginInErrorReason: '', // 로그인 실패 이유
+  signedUp: false, // 회원가입 성공
+  isSigningUp: false, // 회원가입 시도중
+  isSignedUp : false, // 회원가입이 되어졌음.
+  signUpErrorReason: '', // 회원가입 실패 이유
+  isSignUpSuccesFailure: false, // 회원가입 성공여부
+  me: null, // 내 정보
+  followingList : [], // 팔로잉 리스트
+  followerList: [], // 팔로워 리스트
+  userInfo: [], // 남의 정보
+};
+// 회원가입
+export const SIGN_UP_REQUEST = 'SIGN_UP_REQUEST';
+export const SIGN_UP_SUCCESS = 'SIGN_UP_SUCCESS';
+export const SIGN_UP_FAILURE = 'SIGN_UP_FAILURE';
+// 로그인
+export const LOG_IN_REQUEST = 'LOG_IN_REQUEST'; // 액션의 이름
+export const LOG_IN_SUCCESS = 'LOG_IN_SUCCESS'; // 액션의 이름
+export const LOG_IN_FAILURE = 'LOG_IN_FAILURE'; // 액션의 이름
+// 로그인 후 사용자 정보 불러오기
+export const LOAD_USER_REQUEST = 'LOAD_USER_REQUEST';
+export const LOAD_USER_SUCCESS = 'LOAD_USER_SUCCESS';
+export const LOAD_USER_FAILURE = 'LOAD_USER_FAILURE';
+// 로그아웃
+export const LOG_OUT_REQUEST = 'LOG_OUT_REQUEST';
+export const LOG_OUT_SUCCESS = 'LOG_OUT_SUCCESS';
+export const LOG_OUT_FAILURE = 'LOG_OUT_FAILURE';
+// 팔로워 하는 액션
+export const FOLLOW_USER_REQUEST = 'FOLLOW_USER_REQUEST';
+export const FOLLOW_USER_SUCCESS = 'FOLLOW_USER_SUCCESS';
+export const FOLLOW_USER_FAILURE = 'FOLLOW_USER_FAILURE';
+// 팔로워 목록
+export const LOAD_FOLLOW_REQUEST = 'LOAD_FOLLOW_REQUEST';
+export const LOAD_FOLLOW_SUCCESS = 'LOAD_FOLLOW_SUCCESS';
+export const LOAD_FOLLOW_FAILURE = 'LOAD_FOLLOW_FAILURE';
+// 언팔로우 하는 액션
+export const UNFOLLOW_USER_REQUEST = 'UNFOLLOW_USER_REQUEST';
+export const UNFOLLOW_USER_SUCCESS = 'UNFOLLOW_USER_SUCCESS';
+export const UNFOLLOW_USER_FAILURE = 'UNFOLLOW_USER_FAILURE';
+// 팔로워 삭제
+export const REMOVE_USER_REQUEST = 'REMOVE_USER_REQUEST';
+export const REMOVE_USER_SUCCESS = 'REMOVE_USER_SUCCESS';
+export const REMOVE_USER_FAILURE = 'REMOVE_USER_FAILURE';
+
+// 이건 나중에 설명을 따로 한다. 리듀서의 단점을 보완하기 위한 액션
+export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case LOG_IN_REQUEST: {
+      return {
+        ...state,
+        isLoggingIn: true,
+      };
+    }
+    case LOG_IN_SUCCESS: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        isLoading : false,
+        me: action.data,
+      };
+    }
+    case LOG_IN_FAILURE: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        LoginInErrorReason : action.error,
+        me: null,
+      };
+    }
+
+    case LOG_OUT_REQUEST: {
+      return {
+        ...state,
+        isLoggingOut: true,
+      };
+    }
+    case LOG_OUT_SUCCESS: {
+      return {
+        ...state,
+        isLoggingOut: false,
+        me: null
+      };
+    }
+    case LOG_OUT_FAILURE: {
+      return {
+        ...state,
+        isLoggingOut: false,
+      };
+    }
+
+    case SIGN_UP_REQUEST: { 
+      return { 
+        ...state, 
+        isSigningUp: true,
+        isSignedUp: false,
+        signUpErrorReason: '',
+        isSignUpSuccesFailure: false,
+      }; 
+    }
+    case SIGN_UP_SUCCESS: { 
+      return { 
+        ...state, 
+        isSigningUp: false,
+        isSignedUp: true, 
+        isSignUpSuccesFailure: false,
+      }; 
+    }
+    case SIGN_UP_FAILURE: { 
+      return { 
+        ...state, 
+        isSigningUp : false,
+        signUpErrorReason : action.error, 
+        isSignUpSuccesFailure: true,
+      }; 
+    }
+    
+    case LOAD_USER_REQUEST: { 
+      return { 
+        ...state, 
+      }; 
+    }
+    case LOAD_USER_SUCCESS: { 
+      return { 
+        ...state, 
+        me : action.data, 
+      }; 
+    }
+    case LOAD_USER_FAILURE: { 
+      return { 
+        ...state, 
+      }; 
+    } 
+
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+#### \front\sagas\user.js
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, call, put, delay } from 'redux-saga/effects';
+import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS, LOG_OUT_SUCCESS, LOG_OUT_FAILURE, LOG_OUT_REQUEST, LOAD_USER_SUCCESS, LOAD_USER_FAILURE, LOAD_USER_REQUEST } from '../reducers/user'
+
+function logInAPI(logInData) {
+  return axios.post('/user/login', logInData, {
+    withCredentials: true, 
+  });
+}
+
+function* logIn(action) {
+  try {
+    const result = yield call(logInAPI, action.data);
+    yield put({
+      type: LOG_IN_SUCCESS,
+      data: result.data
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogIn() {
+  yield takeLatest(LOG_IN_REQUEST, logIn);
+}
+
+function signUpAPI(signUpdata) {
+  return axios.post('/user/', signUpdata);
+}
+
+function* signUp(action) {
+  try {
+    yield call(signUpAPI, action.data); 
+    yield put({
+      type: SIGN_UP_SUCCESS
+    });
+  } catch (err) {
+    yield put({ 
+      type : SIGN_UP_FAILURE,
+      error : err.response.data,
+    });
+  }
+}
+
+function* watchSignUp() {
+  yield takeLatest(SIGN_UP_REQUEST, signUp);
+}
+
+
+function logOutAPI() {
+  return axios.post('/user/logout', {}, { 
+    withCredentials: true, 
+  }); 
+  
+}
+
+function* logOut() {
+  try {
+    yield call(logOutAPI); 
+    yield put({
+      type: LOG_OUT_SUCCESS
+    });
+  } catch (err) {
+    yield put({ 
+      type : LOG_OUT_FAILURE,
+      error : err,
+    });
+  }
+}
+
+function* watchLogOut() {
+  yield takeLatest(LOG_OUT_REQUEST, logOut);
+}
+
+
+
+function loadUserAPI(loadUserdata) {
+  return axios.get('/user/', {
+    withCredentials: true, 
+    
+  });
+  
+}
+
+function* loadUser() {
+  try {
+    const result = yield call(loadUserAPI); 
+    yield put({
+      type: LOAD_USER_SUCCESS,
+      data: result.data,
+    });
+  } catch (err) {
+    yield put({ 
+      type : LOAD_USER_FAILURE,
+      error : err,
+    });
+  }
+}
+
+function* watchLoadUser() {
+  yield takeLatest(LOAD_USER_REQUEST, loadUser);
+}
+
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogIn),
+    fork(watchLogOut), 
+    fork(watchLoadUser), 
+    fork(watchSignUp)
+  ]);
+}
+```
+

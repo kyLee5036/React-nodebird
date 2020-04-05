@@ -14,6 +14,7 @@
 + [passport 총정리와 실제 로그인](#passport-총정리와-실제-로그인)
 + [다른 도메인간에 쿠키 주고받기](#다른-도메인간에-쿠키-주고받기)
 + [include와 as, foreignKey](#include와-as,-foreignKey)
++ [로그아웃과 사용자 정보 가져오기](#로그아웃과-사용자-정보-가져오기)
 
 
 
@@ -2067,3 +2068,206 @@ export default UserProfile;
 `SequelizeDatabaseError: Unknown column 'Followings->Follow.followingId' in 'field list'` 
 
 > 테이블삭제하고 다시 `sequelize db:create`를 해보기
+
+## 로그아웃과 사용자 정보 가져오기
+[위로가기](#백엔드-서버-만들기)
+
+새로고침하면 쿠키는 남아있는데, 내 정보를 안 불러와서 불러오도록하겠다.
+
+#### \front\sagas\user.js
+```js
+...생략
+
+function logOutAPI() {
+  return axios.post('/user/logout', {}, { // 로그아웃할 때 데이터가 필요없다.
+    // 데이터가 필요없으니까 두번째 객체는 빈 객체로 해준다.
+    // 데이터가 없더라고 빈 객체 넣어줘야한다.
+    withCredentials: true, // 하지만 쿠키를 판단하기 떄문에 withCredentials를 해준다.
+  }); 
+}
+
+function* logOut() {
+  try {
+    yield call(logOutAPI); 
+    yield put({
+      type: LOG_OUT_SUCCESS
+    });
+  } catch (err) {
+    yield put({ 
+      type : LOG_OUT_FAILURE,
+      error : err,
+    });
+  }
+}
+
+function* watchLogOut() {
+  yield takeLatest(LOG_OUT_REQUEST, logOut);
+}
+
+// *******************************
+
+// 헷갈리지 않도록 loadUser는 로그인하면 내 정보를 받아오는 것이다.
+// 엄연히, 게시글들을 불러오는 것이랑 전혀 다른것이다.
+// 헷갈리지 않도록 조심할 것!!
+
+function loadUserAPI(loadUserdata) {
+  // 여기에서 두 번째 인자가 안들어가는데 axios의 get이라서 안들어가는 것이다
+  return axios.get('/user/', { 
+    withCredentials: true, // get은 참고로 데이터가 없다. 
+    // 그래서 두 번쨰는 바로 설정한다. 
+  });
+}
+
+function* loadUser() {
+  try {
+    const result = yield call(loadUserAPI); 
+    yield put({
+      type: LOAD_USER_SUCCESS,
+      data: result.data,
+    });
+  } catch (err) {
+    yield put({ 
+      type : LOAD_USER_FAILURE,
+      error : err,
+    });
+  }
+}
+
+function* watchLoadUser() {
+  yield takeLatest(LOAD_USER_REQUEST, loadUser);
+}
+
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogIn),
+    fork(watchLogOut), // 로그아웃 
+    fork(watchLoadUser), // 내정보 받아오는 것
+    fork(watchSignUp)
+  ]);
+}
+```
+
+#### \front\reducers\user.js
+```js
+// isLoggedIn 전부 삭제를 해준다. 왜냐하면 me(내정보) 역할이랑 겹치기 떄문이다.
+
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+
+    case LOG_OUT_REQUEST: {
+      return {
+        ...state,
+        isLoggingOut: true,
+      };
+    }
+    case LOG_OUT_SUCCESS: {
+      return {
+        ...state,
+        isLoggingOut: false,
+        isLoggedIn: false,
+        me: null
+      };
+    }
+    case LOG_OUT_FAILURE: {
+      return {
+        ...state,
+        isLoggingOut: false,
+      };
+    }
+
+    ...생략
+    ...생략
+
+    case LOAD_USER_REQUEST: { // 데이터 상세처리부분은 나중에 하는걸로 한다.
+      return { 
+        ...state, 
+      }; 
+    }
+    case LOAD_USER_SUCCESS: { // 데이터 상세처리부분은 나중에 하는걸로 한다.
+      return { 
+        ...state, 
+        me : action.data, // 정보를 불러온다.
+      }; 
+    }
+    case LOAD_USER_FAILURE: { // 데이터 상세처리부분은 나중에 하는걸로 한다.
+      return { 
+        ...state, 
+      }; 
+    } 
+
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+#### \front\components\App.Layout.js
+```js
+...생략
+...생략
+
+const AppLayout = ({ children }) => {
+  const { me } = useSelector(state => state.user); // 수정
+  const dispatch = useDispatch(); // 추가
+
+  // 모든 유저 데이터를 여기에다가 넣어준다. (공통된 부분)
+  useEffect( () => {
+    if (!me) {
+      dispatch({
+        type: LOAD_USER_REQUEST
+      });
+    }
+  }, []);
+
+
+  return (
+    <div>
+      ...생략
+      <Row gutter={10} >
+        <Col xs={24} md={6} >
+          { me  // 수정
+          ? <UserProfile />
+          : <LoginForm />
+        }   
+        </Col> 
+        ...생략
+      </Row>
+    </div>
+  );
+};
+...생략
+...생략
+```
+
+서버가 재시작되면 로그인이 풀려버린다. <br>
+왜냐하면 서버쪽에 메모리를 저장되기때문에, 로그인이 풀려버린다. <br>
+그렇다면, 실제 서비스들은 그렇지가 않다. <br>
+왜냐하면, 세션 데이터(서버, DB)가 있다. (대표적으로 RedisStore라고 있다.) <br>
+
+#### \back\routes\user.js
+```js
+...생략
+
+const router = express.Router();
+
+// 여기에 데이터를 받아온다
+router.get('/', (req, res) => { // api/user
+  if (req.user) {
+    return res.status(401).send('로그인이 필요합니다.'); // 이거는 일부로 에러나오는게 하는것이다 (status역할이 에러 나옴)
+  }
+  const user = Object.assign({}, req.user);
+  // const user = Object.assign({}, req.user.toJSON() );
+  delete user.password; // 패스워드를 삭제해준다.
+  return res.json(req.user);
+});
+...생략
+...생략
+```
+

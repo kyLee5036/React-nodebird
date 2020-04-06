@@ -2406,7 +2406,7 @@ const PostForm = () => {
         content: text, // 여기 부분을 수정해주었다.
       },
     });
-  }, [text]);
+  }, [text]); // 빈 배열에 text 추가해주기, useCallback 특성상 배열안에는 useState를 넣어줘야한다.
 
   ....생략
 
@@ -2499,3 +2499,12 @@ module.exports = router;
 
 위와 같이 2가지 방식이 있다는 것을 잊지말기!!! <br>
 아직 에러가 나오는데, 다음 시간에서 에러 수정을 하겠다. <br>
+
+여기 에러수정 내용 <br>
+```js
+if (!req.user) { // 이 부분이 req.user되어서 !req.user로 바꿔줘야한다.
+  // 유저정보가 없을 때 로그인이 필요하기때문에..
+  return res.status(401).send('로그인이 필요합니다.');
+}
+```
+

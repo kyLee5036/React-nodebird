@@ -16,7 +16,7 @@
 + [include와 as, foreignKey](#include와-as,-foreignKey)
 + [로그아웃과 사용자 정보 가져오기](#로그아웃과-사용자-정보-가져오기)
 + [게시글 작성과 데이터 관계 연결하기](#게시글-작성과-데이터-관계-연결하기)
-
++ [게시글 불러오기](#게시글-불러오기)
 
 
 ## 백엔드 서버 구동에 필요한 모듈들
@@ -2507,4 +2507,191 @@ if (!req.user) { // 이 부분이 req.user되어서 !req.user로 바꿔줘야한
   return res.status(401).send('로그인이 필요합니다.');
 }
 ```
+
+
+## 게시글 불러오기
+[위로가기](#백엔드-서버-만들기)
+
+
+#### \back\routes\posts.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/', async (req, res, next) => {
+  // 새로고침할 때마다 기존 게시글들 가져온다.
+  try {
+    const posts = await db.Post.findAll({ // 다 가져오니까 조건도 필요없다.
+      // 조건은 없는데 작성자도 가져와야한다!!!!!
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'], // 유저 가져 올때 비밀번호 조심하기!!
+      }],
+      // order은 2차원 배열하는 이유가 2번이상 해주기 위해서이다.
+      order: [['createAt', 'DESC'], ['updatedAt', 'ASC']] // 순서 순으로 가져오고 싶으면 order를 사용한다.
+      // DESC 내림차순, ASC 오름차순 
+    }); 
+    // 어떤거는 toJSON붙이고 어떤거는 안 붙이는가?,, 
+    // 왜?? DB객체를 변형하는 경우에는 toJSON을 붙인다.
+    res.json(posts);
+  } catch (e) {
+    console.log(e);
+    next(e);
+  }
+});
+
+
+module.exports = router;
+```
+
+#### \front\sagas\post.js
+```js
+...생략
+...생략
+
+function* loadMainPostsAPI() {
+  return axios.get('/posts'); // 로그인 하지 않아도 게시글 보여주기위해서
+  // withCredentials를 안 넣어주었다.
+}
+function* loadMainPosts() {
+  try {
+    const result = yield call(loadMainPostsAPI)
+    yield put({
+      type: LOAD_MAIN_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.log(e);
+    yield put({
+      type: LOAD_MAIN_POSTS_FAILURE,
+      error: e
+    })
+  }
+}
+function* matchLoadMainPosts() {
+  yield takeLatest(LOAD_MAIN_POSTS_REQUEST, loadMainPosts);
+}
+
+export default function* postSaga() {
+  yield all([
+    fork(matchAddPost),
+    fork(matchLoadMainPosts), // 추가
+    fork(matchAddComment),
+  ]);
+}
+```
+
+#### \front\reducers\post.js
+```js
+// 이거 없었으니까 추가해주기!!!!!!!!!!
+// 게시글들 가져온다 (복수형(여러개임))
+export const LOAD_MAIN_POSTS_REQUEST = 'LOAD_MAIN_POSTS_REQUEST';
+export const LOAD_MAIN_POSTS_SUCCESS = 'LOAD_MAIN_POSTS_SUCCESS';
+export const LOAD_MAIN_POSTS_FAILURE = 'LOAD_MAIN_POSTS_FAILURE';
+
+
+const reducer = (state = initialState, action) => {
+  switch (action.type) {
+    ....생략
+    ...생략
+    case LOAD_MAIN_POSTS_REQUEST: { // 세세한 부분은 나중에 추가하겠다.
+      return {
+        ...state,
+        mainPosts: [],
+      };
+    };
+    case LOAD_MAIN_POSTS_SUCCESS: { // 세세한 부분은 나중에 추가하겠다.
+      return {
+        ...state,
+        mainPosts: action.data,
+      };
+    };
+    case LOAD_MAIN_POSTS_FAILURE: { // 세세한 부분은 나중에 추가하겠다.
+      return {
+        ...state,
+      };
+    };
+
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+export default reducer;
+```
+
+#### \front\pages\index.js
+```js
+...생략
+
+const Home = () => {
+  const { me } = useSelector(state => state.user);
+  const { mainPosts } = useSelector(state => state.post);
+  const dispatch = useDispatch();
+  
+  // 중요!!! 더미 데이터 때부터 설계를 잘 해두면 쉽게 서버 데이터를 붙일 수가 있다.
+  useEffect( () => {  
+    dispatch({
+      type: LOAD_MAIN_POSTS_REQUEST // 추가
+    });
+  }, []);
+
+  return (
+    <div>
+      {me && <PostForm />}
+      {mainPosts.map((c) => {
+        return (
+          <PostCard key={c} post={c} />
+        );
+      })}
+    </div>
+  );
+};
+
+export default Home;
+```
+
+
+#### \front\components\PostForm.js
+```js
+...생략
+
+const PostForm = () => {
+  ...생략
+
+  const onSubmitForm = useCallback((e) => {
+    e.preventDefault();
+    // 해주는 이유 : 게시글에 space bar 치는 사람이 있기때문에이다.
+    if (!text || !text.trim() ) { // 게시글 공백있는지 확인하기위해서, trim()은 공백제거
+      return alert('게시글을 작성하세요!'); // 리턴으로 끊어주는거 잊지말기!!!!
+    }
+    dispatch({
+      type: ADD_POST_REQUEST,
+      data: {
+        content: text,
+      },
+    });
+  }, [text]);
+
+  ...생략
+
+  return (
+    ...생략
+  )
+}
+
+export default PostForm;
+```
+
+정규표현식 만들어주는 사이트 참고: https://regexr.com <br>
+
+하지만, 에러가 자꾸 나온다.....<br>
+에러내용은 `SequelizeEagerLoadingError: User is not associated to Post!` 고쳐보자!!<br>
+
+
 

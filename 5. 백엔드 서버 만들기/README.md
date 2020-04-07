@@ -2690,8 +2690,26 @@ export default PostForm;
 
 정규표현식 만들어주는 사이트 참고: https://regexr.com <br>
 
+* * *
+* * *
+
+
+
 하지만, 에러가 자꾸 나온다.....<br>
 에러내용은 `SequelizeEagerLoadingError: User is not associated to Post!` 고쳐보자!!<br>
+
+> 에러 찾았다. `Post.asscoiate = (db) => {`(수정 전) -> `Post.associate  = (db) => {`(수정 후)
+
+철자가 틀렸다..... <br>
+models의 comment.js, hashtag.js, image.js에서 asscoiate를 associate로 수정해준다... <br>
+
+
+하지만 또.. 에러가 있다 <br>
+그 다음에러 내용은 `SequelizeDatabaseError: Unknown column 'Post.RetweetId' in 'field list'` <br>
+
+> DB삭제 해보고 다시 `sequelize db:create`를 해보았다. <br>
+> 역시, Posts테이블 안에 컬럼(RetweetId)가 생성된다. <br>
+
 
 
 

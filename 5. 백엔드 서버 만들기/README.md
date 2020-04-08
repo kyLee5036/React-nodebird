@@ -2710,6 +2710,23 @@ models의 comment.js, hashtag.js, image.js에서 asscoiate를 associate로 수�
 > DB삭제 해보고 다시 `sequelize db:create`를 해보았다. <br>
 > 역시, Posts테이블 안에 컬럼(RetweetId)가 생성된다. <br>
 
+하지만 또.. 에러가 있다 <br>
+에러내용은 `TypeError: Cannot read property 'length' of undefined` <br>
+또한, ` at UserProfile (UserProfile.js:18)` 음.... <br>
 
+에러 부분을 찾았다. <br>
+#### \back\routes\user.js
+```js
+if (!req.user) {
+  return res.status(401).send('로그인이 필요합니다.'); // 이렇게 수정을 해줘야한다. (수정 후)
+  // return res.send('로그인이 필요합니다.'); // 이전에는 이렇게 있었다. (수정 전)
+}
+```
 
+하지만 또.. 에러가 있다 <br>
+#### \front\components\PostCard.js
+```js
+<Card
+  key={+post.createdAt} //  철자가 틀렸음.. 철자 수정(전 createAt을 createdAt으로 바꿔줬음)
+```
 

@@ -47,7 +47,7 @@ const PostCard = ({post}) => {
   return (
     <div>
       <Card
-        key={+post.createAt}
+        key={+post.createdAt}
         cover={post.img && <img alt="example" src={post.img} />}
         actions={[
           <Icon type="retweet" key="retweet" />,

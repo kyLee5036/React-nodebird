@@ -96,7 +96,7 @@ PostCard.prototypes = {
     User : PropTypes.object,
     content : PropTypes.string,
     img: PropTypes.string,
-    createAt: PropTypes.object,  
+    createdAt: PropTypes.object,  
   }),
 }
 

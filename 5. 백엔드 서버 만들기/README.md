@@ -2730,3 +2730,29 @@ if (!req.user) {
   key={+post.createdAt} //  철자가 틀렸음.. 철자 수정(전 createAt을 createdAt으로 바꿔줬음)
 ```
 
+하지만 또.. 에러가 있다 <br>
+
+test를 로그인하면 잘 되는데 다른아이디로 로그인하면 안되는 로그인 문제가 있다. <br>
+일단 문제는 서버쪽에 있는거 같다. <br>
+routes의 login인 것 같았는데 passport의 local.js가 문제였다. <br>
+
+#### \back\passport\local.js
+```js
+...생략
+
+module.exports = () => {
+  passport.use(new LocalStrategy ({
+    usernameField: 'userId', 
+    passwordField: 'password'
+  }, async ( userId, password, done) => {
+    try {
+      const user = await db.User.findOne({ 
+        // userId // 이전의 모습 (userId만 있었음)
+        where : {userId} // 여기가 문제였음 (이렇게 수정을 해준다.)
+      });
+      ...생략
+    }
+  }
+}
+
+```

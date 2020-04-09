@@ -10,7 +10,7 @@ module.exports = () => {
   }, async ( userId, password, done) => {
     try {
       const user = await db.User.findOne({ 
-        userId
+        where : {userId}
       });
       if (!user) { 
         return done(null, false, {reason: '존재하지 않는 사용자입니다.'});

@@ -1,22 +1,24 @@
 export const initialState = {
   mainPosts: [{
-    id : 1,
+    id: 1,
     User: {
       id: 1,
-      nickname: '제로초',
+      nickname: 'LEEKY',
     },
     content: '첫 번째 게시글',
     img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
     Comments: [],
-  }], 
-  imagePaths: [], 
-  addPostError: false, 
-  isAddingPost: false, 
-  postAdded: false, 
+  }], // 화면에 보일 포스트들
+  imagePaths: [], // 미리보기 이미지 경로
+  addPostErrorReason: '', // 포스트 업로드 실패 사유
+  isAddingPost: false, // 포스트 업로드 중
+  postAdded: false, // 포스트 업로드 성공
   isAddingComment: false,
-  addCommentErrorReason : '',
+  addCommentErrorReason: '',
   commentAdded: false,
 };
+
+
 
 const dummyPost = {
   id : 2,
@@ -88,42 +90,45 @@ export const REMOVE_POST_FAILURE = 'REMOVE_POST_FAILURE';
 export const UPDATE_POST_REQUEST = 'UPDATE_POST_REQUEST';
 export const UPDATE_POST_SUCCESS = 'UPDATE_POST_SUCCESS';
 export const UPDATE_POST_FAILURE = 'UPDATE_POST_FAILURE';
+// 게시글들 가져온다 (복수형(여러개임))
+export const LOAD_MAIN_POSTS_REQUEST = 'LOAD_MAIN_POSTS_REQUEST';
+export const LOAD_MAIN_POSTS_SUCCESS = 'LOAD_MAIN_POSTS_SUCCESS';
+export const LOAD_MAIN_POSTS_FAILURE = 'LOAD_MAIN_POSTS_FAILURE';
 
 
-const reducer = (state = initialState, action) => {
+export default (state = initialState, action) => {
   switch (action.type) {
     case ADD_POST_REQUEST: {
       return {
         ...state,
         isAddingPost: true,
-        addPostError: '',
-        postAdded: false, 
+        addPostErrorReason: '',
+        postAdded: false,
       };
-    };
+    }
     case ADD_POST_SUCCESS: {
       return {
         ...state,
         isAddingPost: false,
-        mainPosts: [action.data, ...state.mainPosts], 
-        postAdded: true, 
+        mainPosts: [action.data, ...state.mainPosts],
+        postAdded: true,
       };
-    };
+    }
     case ADD_POST_FAILURE: {
       return {
         ...state,
         isAddingPost: false,
-        addPostError: action.error,
+        addPostErrorReason: action.error,
       };
-    };
-
+    }
     case ADD_COMMENT_REQUEST: {
       return {
         ...state,
         isAddingComment: true,
-        addCommentError: '',
-        commentAdded: false, 
+        addCommentErrorReason: '',
+        commentAdded: false,
       };
-    };
+    }
     case ADD_COMMENT_SUCCESS: {
       const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postId);
       const post = state.mainPosts[postIndex];
@@ -134,17 +139,33 @@ const reducer = (state = initialState, action) => {
         ...state,
         isAddingComment: false,
         mainPosts,
-        commentAdded: true, 
+        commentAdded: true,
       };
-    };
+    }
     case ADD_COMMENT_FAILURE: {
       return {
         ...state,
-        isAddingPost: false,
+        isAddingComment: false,
         addCommentErrorReason: action.error,
       };
-    };
-
+    }
+    case LOAD_MAIN_POSTS_REQUEST: {
+      return {
+        ...state,
+        mainPosts: [],
+      };
+    }
+    case LOAD_MAIN_POSTS_SUCCESS: {
+      return {
+        ...state,
+        mainPosts: action.data,
+      };
+    }
+    case LOAD_MAIN_POSTS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
     default: {
       return {
         ...state,
@@ -152,5 +173,3 @@ const reducer = (state = initialState, action) => {
     }
   }
 };
-
-export default reducer;

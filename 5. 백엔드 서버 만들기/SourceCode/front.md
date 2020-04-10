@@ -16,6 +16,7 @@
 + [include와 as, foreignKey](#include와-as,-foreignKey)
 + [로그아웃과 사용자 정보 가져오기](#로그아웃과-사용자-정보-가져오기)
 + [게시글 작성과 데이터 관계 연결하기](#게시글-작성과-데이터-관계-연결하기)
++ [게시글 불러오기 및 에러 수정](#게시글-불러오기-및-에러-수정)
 
 
 
@@ -1252,4 +1253,398 @@ export default function* postSaga() {
 }
 ```
 
+## 게시글 불러오기 및 에러 수정
+[위로가기](#백엔드-서버-만들기)
 
+#### \front\reducers\post.js
+```js
+export const initialState = {
+  mainPosts: [{
+    id: 1,
+    User: {
+      id: 1,
+      nickname: 'LEEKY',
+    },
+    content: '첫 번째 게시글',
+    img: 'https://img.freepik.com/free-photo/hooded-computer-hacker-stealing-information-with-laptop_155003-1918.jpg?size=664&ext=jpg',
+    Comments: [],
+  }], // 화면에 보일 포스트들
+  imagePaths: [], // 미리보기 이미지 경로
+  addPostErrorReason: '', // 포스트 업로드 실패 사유
+  isAddingPost: false, // 포스트 업로드 중
+  postAdded: false, // 포스트 업로드 성공
+  isAddingComment: false,
+  addCommentErrorReason: '',
+  commentAdded: false,
+};
+
+
+
+const dummyPost = {
+  id : 2,
+  User: {
+    id: 1,
+    nickname: 'dummyNickName',
+  },
+  content: 'dummyTestContent',
+  Comments: [],
+}
+
+const dummyComment = {
+  id : 1,
+  User: {
+    id: 1,
+    nickname: 'LEEKY',
+  },
+  createAt: new Date(),
+  content: '더미 댓글입니다.',
+};
+
+// 포스트 업로드
+export const ADD_POST_REQUEST = 'ADD_POST_REQUEST';
+export const ADD_POST_SUCCESS = 'ADD_POST_SUCCESS';
+export const ADD_POST_FAILURE = 'ADD_POST_FAILURE';
+// 메인 포스트 로딩
+export const LOAD_MAIN_REQUEST = 'LOAD_MAIN_REQUEST';
+export const LOAD_MAIN_SUCCESS = 'LOAD_MAIN_SUCCESS';
+export const LOAD_MAIN_FAILURE = 'LOAD_MAIN_FAILURE';
+// 해쉬태그 검색했을 결과
+export const LOAD_HASHTAG_POSTS_REQUEST = 'LOAD_HASHTAG_POSTS_REQUEST';
+export const LOAD_HASHTAG_POSTS_SUCCESS = 'LOAD_HASHTAG_POSTS_SUCCESS';
+export const LOAD_HASHTAG_POSTS_FAILURE = 'LOAD_HASHTAG_POSTS_FAILURE';
+// 사용자가 어떤 게시글 작성했는지
+export const LOAD_USER_POSTS_REQUEST = 'LOAD_USER_POSTS_REQUEST';
+export const LOAD_USER_POSTS_SUCCESS = 'LOAD_USER_POSTS_SUCCESS';
+export const LOAD_USER_POSTS_FAILURE = 'LOAD_USER_POSTS_FAILURE';
+// 이미지 업로드 액션
+export const UPLOAD_IMAGES_REQUEST = 'UPLOAD_IMAGES_REQUEST';
+export const UPLOAD_IMAGES_SUCCESS = 'UPLOAD_IMAGES_SUCCESS';
+export const UPLOAD_IMAGES_FAILURE = 'UPLOAD_IMAGES_FAILURE';
+// 이미지 업로드 취소 (유일하게 비동기가 아니다.)
+export const REMOVE_IMAGE = 'REMOVE_IMAGE';
+// 포스트 좋아요 
+export const LIKE_POST_REQUEST = 'LIKE_POST_REQUEST';
+export const LIKE_POST_SUCCESS = 'LIKE_POST_SUCCESS';
+export const LIKE_POST_FAILURE = 'LIKE_POST_FAILURE';
+// 포스트 좋아요(취소)
+export const UNLIKE_POST_REQUEST = 'UNLIKE_POST_REQUEST';
+export const UNLIKE_POST_SUCCESS = 'UNLIKE_POST_SUCCESS';
+export const UNLIKE_POST_FAILURE = 'UNLIKE_POST_FAILURE';
+// 댓글 남기는 거
+export const ADD_COMMENT_REQUEST = 'ADD_COMMENT_REQUEST';
+export const ADD_COMMENT_SUCCESS = 'ADD_COMMENT_SUCCESS';
+export const ADD_COMMENT_FAILURE = 'ADD_COMMENT_FAILURE';
+// 댓글 불러오기
+export const LOAD_COMMENTS_REQUEST = 'LOAD_COMMENTS_REQUEST';
+export const LOAD_COMMENTS_SUCCESS = 'LOAD_COMMENTS_SUCCESS';
+export const LOAD_COMMENTS_FAILURE = 'LOAD_COMMENTS_FAILURE';
+// 리트윗 
+export const RETWEET_REQUEST = 'RETWEET_REQUEST';
+export const RETWEET_SUCCESS = 'RETWEET_SUCCESS';
+export const RETWEET_FAILURE = 'RETWEET_FAILURE';
+// 게시글 삭제 (개인적으로)
+export const REMOVE_POST_REQUEST = 'REMOVE_POST_REQUEST';
+export const REMOVE_POST_SUCCESS = 'REMOVE_POST_SUCCESS';
+export const REMOVE_POST_FAILURE = 'REMOVE_POST_FAILURE';
+// 게시글 수정 (개인적으로)
+export const UPDATE_POST_REQUEST = 'UPDATE_POST_REQUEST';
+export const UPDATE_POST_SUCCESS = 'UPDATE_POST_SUCCESS';
+export const UPDATE_POST_FAILURE = 'UPDATE_POST_FAILURE';
+// 게시글들 가져온다 (복수형(여러개임))
+export const LOAD_MAIN_POSTS_REQUEST = 'LOAD_MAIN_POSTS_REQUEST';
+export const LOAD_MAIN_POSTS_SUCCESS = 'LOAD_MAIN_POSTS_SUCCESS';
+export const LOAD_MAIN_POSTS_FAILURE = 'LOAD_MAIN_POSTS_FAILURE';
+
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case ADD_POST_REQUEST: {
+      return {
+        ...state,
+        isAddingPost: true,
+        addPostErrorReason: '',
+        postAdded: false,
+      };
+    }
+    case ADD_POST_SUCCESS: {
+      return {
+        ...state,
+        isAddingPost: false,
+        mainPosts: [action.data, ...state.mainPosts],
+        postAdded: true,
+      };
+    }
+    case ADD_POST_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addPostErrorReason: action.error,
+      };
+    }
+    case ADD_COMMENT_REQUEST: {
+      return {
+        ...state,
+        isAddingComment: true,
+        addCommentErrorReason: '',
+        commentAdded: false,
+      };
+    }
+    case ADD_COMMENT_SUCCESS: {
+      const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postId);
+      const post = state.mainPosts[postIndex];
+      const Comments = [...post.Comments, dummyComment];
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = { ...post, Comments };
+      return {
+        ...state,
+        isAddingComment: false,
+        mainPosts,
+        commentAdded: true,
+      };
+    }
+    case ADD_COMMENT_FAILURE: {
+      return {
+        ...state,
+        isAddingComment: false,
+        addCommentErrorReason: action.error,
+      };
+    }
+    case LOAD_MAIN_POSTS_REQUEST: {
+      return {
+        ...state,
+        mainPosts: [],
+      };
+    }
+    case LOAD_MAIN_POSTS_SUCCESS: {
+      return {
+        ...state,
+        mainPosts: action.data,
+      };
+    }
+    case LOAD_MAIN_POSTS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+```
+
+
+#### \front\sagas\post.js
+
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, put, delay, call } from 'redux-saga/effects';
+import { ADD_POST_REQUEST, ADD_POST_FAILURE, ADD_POST_SUCCESS, ADD_COMMENT_SUCCESS, ADD_COMMENT_REQUEST, ADD_COMMENT_FAILURE, LOAD_MAIN_POSTS_SUCCESS, LOAD_MAIN_POSTS_FAILURE, LOAD_MAIN_POSTS_REQUEST } from '../reducers/post';
+
+
+function* AddCommentAPI() {
+
+}
+function* AddComment(action) { 
+  try {
+    yield delay(2000);
+    yield put({
+      type: ADD_COMMENT_SUCCESS,
+      data: {
+        postId: action.data.postId, 
+      }
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: ADD_COMMENT_FAILURE,
+      error: e
+    })
+  }
+}
+function* watchAddComment() {
+  yield takeLatest(ADD_COMMENT_REQUEST, AddComment);
+}
+
+
+function* addPostAPI(postData) {
+  return axios.post('/post', postData, {
+    withCredentials: true,
+  });
+}
+function* addPost(action) {
+  try {
+    const result = yield call(addPostAPI, action.data);
+    yield put({
+      type: ADD_POST_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: ADD_POST_FAILURE,
+      error: e
+    })
+  }
+}
+function* watchAddPost() {
+  yield takeLatest(ADD_POST_REQUEST, addPost);
+}
+
+
+function loadMainPostsAPI() {
+  return axios.get('/posts');
+}
+
+function* loadMainPosts() {
+  try {
+    const result = yield call(loadMainPostsAPI);
+    yield put({
+      type: LOAD_MAIN_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_MAIN_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadMainPosts() {
+  yield takeLatest(LOAD_MAIN_POSTS_REQUEST, loadMainPosts);
+}
+
+export default function* postSaga() {
+  yield all([
+    fork(watchAddPost),
+    fork(watchLoadMainPosts),
+    fork(watchAddComment),
+  ]);
+}
+```
+
+#### \front\sagas\user.js
+
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, call, put, takeEvery } from 'redux-saga/effects';
+import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS, LOG_OUT_SUCCESS, LOG_OUT_FAILURE, LOG_OUT_REQUEST, LOAD_USER_SUCCESS, LOAD_USER_FAILURE, LOAD_USER_REQUEST } from '../reducers/user'
+
+function logInAPI(logInData) {
+  return axios.post('/user/login', logInData, {
+    withCredentials: true, 
+  });
+}
+
+function* logIn(action) {
+  try {
+    const result = yield call(logInAPI, action.data);
+    yield put({
+      type: LOG_IN_SUCCESS,
+      data: result.data
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogIn() {
+  yield takeLatest(LOG_IN_REQUEST, logIn);
+}
+
+function signUpAPI(signUpdata) {
+  return axios.post('/user/', signUpdata);
+}
+
+function* signUp(action) {
+  try {
+    yield call(signUpAPI, action.data); 
+    yield put({
+      type: SIGN_UP_SUCCESS
+    });
+  } catch (err) {
+    console.error(err)
+    yield put({ 
+      type : SIGN_UP_FAILURE,
+      error : err.response.data,
+    });
+  }
+}
+
+function* watchSignUp() {
+  yield takeLatest(SIGN_UP_REQUEST, signUp);
+}
+
+
+function logOutAPI() {
+  return axios.post('/user/logout', {}, { 
+    withCredentials: true, 
+  }); 
+  
+}
+
+function* logOut() {
+  try {
+    yield call(logOutAPI); 
+    yield put({
+      type: LOG_OUT_SUCCESS
+    });
+  } catch (err) {
+    console.error(err);
+    yield put({ 
+      type : LOG_OUT_FAILURE,
+      error : err,
+    });
+  }
+}
+
+function* watchLogOut() {
+  yield takeLatest(LOG_OUT_REQUEST, logOut);
+}
+
+
+
+function loadUserAPI() {
+  return axios.get('/user/', {
+    withCredentials: true,
+  });
+}
+
+function* loadUser() {
+  try {
+    const result = yield call(loadUserAPI);
+    yield put({
+      type: LOAD_USER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadUser() {
+  yield takeEvery(LOAD_USER_REQUEST, loadUser);
+}
+
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogIn),
+    fork(watchLogOut), 
+    fork(watchLoadUser), 
+    fork(watchSignUp)
+  ]);
+}
+```

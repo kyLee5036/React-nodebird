@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { all, fork, takeLatest, call, put, delay } from 'redux-saga/effects';
+import { all, fork, takeLatest, call, put, takeEvery } from 'redux-saga/effects';
 import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS, LOG_OUT_SUCCESS, LOG_OUT_FAILURE, LOG_OUT_REQUEST, LOAD_USER_SUCCESS, LOAD_USER_FAILURE, LOAD_USER_REQUEST } from '../reducers/user'
 
 function logInAPI(logInData) {
@@ -38,6 +38,7 @@ function* signUp(action) {
       type: SIGN_UP_SUCCESS
     });
   } catch (err) {
+    console.error(err)
     yield put({ 
       type : SIGN_UP_FAILURE,
       error : err.response.data,
@@ -64,6 +65,7 @@ function* logOut() {
       type: LOG_OUT_SUCCESS
     });
   } catch (err) {
+    console.error(err);
     yield put({ 
       type : LOG_OUT_FAILURE,
       error : err,
@@ -77,31 +79,30 @@ function* watchLogOut() {
 
 
 
-function loadUserAPI(loadUserdata) {
+function loadUserAPI() {
   return axios.get('/user/', {
-    withCredentials: true, 
-    
+    withCredentials: true,
   });
-  
 }
 
 function* loadUser() {
   try {
-    const result = yield call(loadUserAPI); 
+    const result = yield call(loadUserAPI);
     yield put({
       type: LOAD_USER_SUCCESS,
       data: result.data,
     });
-  } catch (err) {
-    yield put({ 
-      type : LOAD_USER_FAILURE,
-      error : err,
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_USER_FAILURE,
+      error: e,
     });
   }
 }
 
 function* watchLoadUser() {
-  yield takeLatest(LOAD_USER_REQUEST, loadUser);
+  yield takeEvery(LOAD_USER_REQUEST, loadUser);
 }
 
 

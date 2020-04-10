@@ -7,10 +7,10 @@ const router = express.Router();
 
 router.get('/', (req, res) => {
   if (!req.user) {
-    return res.status(401).send('로그인이 필요합니다.');
+    return res.status(401).send('로그인이 필요합니다.'); 
   }
-  const user = Object.assign({}, req.user);
-  // const user = Object.assign({}, req.user.toJSON() );
+  // const user = Object.assign({}, req.user);
+  const user = Object.assign({}, req.user.toJSON() );
   delete user.password;
   return res.json(req.user);
 });
@@ -87,6 +87,7 @@ router.post('/login', (req, res, next) => {
     });
   })(req, res, next);
 });
+
 router.get('/:id/follow', (req, res) => {
 
 });

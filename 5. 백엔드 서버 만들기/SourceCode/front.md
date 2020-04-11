@@ -1470,7 +1470,7 @@ function* watchAddComment() {
 }
 
 
-function* addPostAPI(postData) {
+function addPostAPI(postData) {
   return axios.post('/post', postData, {
     withCredentials: true,
   });

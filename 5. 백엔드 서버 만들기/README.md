@@ -2756,3 +2756,58 @@ module.exports = () => {
 }
 
 ```
+
+하지만 또.. 에러가 있다 <br>
+
+### undefined문제 해결
+
+`TypeError: Cannot read property 'length' of undefined`<br>
+
+> LOAD_MAIN_REQUEST에서 에러가 나는 거면 콘솔창에 에러가 표시될 것이다. <br>
+> 로직 상에 오타 등으로 인해서 정상 수행이 안 된 경우 사가가 중간에 멈춰버린다. <br>
+
+> console.log(c)를 하셨는데 아마 c중 하나가 undefined일 것이다. <br>
+> 그 말은 mainPosts 배열 안에 undefined가 하나 이상 들어있다는 소리이다. <br> 
+> mainPosts 안에 왜 undefined가 들어갔는지 추적해보시면 된다. <br>
+
+```js
+...생략
+
+  return (
+    <div>
+      {me && <PostForm />}
+      {mainPosts.map((c, i) => {
+        console.log(c) // 여기에 console.log를 해주었다.
+        // 데이터를 보면 하나가 자꾸 undefined가 되어져있다.
+        // 서버쪽은 게시글 등록하면 200이라서 문제가 없지만
+        // 프론트 쪽에 문제가 있는 것을 확인이 되었다.
+        return (
+          <PostCard key={i} post={c} />
+        );
+      })}
+    </div>
+  );
+};
+
+export default Home;
+```
+
+#### \front\sagas\post.js
+```js
+...생략
+
+// 수정 전 모습
+function* addPostAPI(postData) { // 여기에 철자가 틀렸다.......
+  return axios.post('/post', postData, {
+    withCredentials: true,
+  });
+}
+// 수정 후 모습
+function addPostAPI(postData) { // 여기에 철자가 틀렸다.......
+  ...생략
+}
+
+// 뭐가 문제냐면... function 뒤에 *가 붙여져있다.
+// 문법이 틀려서 자꾸 에러가 나온 것이였다.
+...생략
+```

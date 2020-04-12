@@ -4,12 +4,13 @@ import PropTypes from 'prop-types';
 import WithRedux from 'next-redux-wrapper';
 import { createStore, compose, applyMiddleware } from 'redux';
 import { Provider } from 'react-redux'; 
-import AppLayout from '../components/App.Layout';
-import reducer from '../reducers/index';
 import createSagaMiddleware from 'redux-saga';
+
+import AppLayout from '../components/AppLayout';
+import reducer from '../reducers';
 import rootSaga from '../sagas';
 
-const NodeBird = ({Component, store}) => {
+const NodeBird = ({ Component, store, pageProps }) => {
   return (
     <Provider store={store} > 
       <Head>
@@ -17,16 +18,27 @@ const NodeBird = ({Component, store}) => {
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
       </Head>
       <AppLayout >
-        <Component />
+        <Component {...pageProps} />
       </AppLayout>
     </Provider>
   );
 };
 
-NodeBird.prototype = {
-  Component : PropTypes.elementType.isRequired,
+NodeBird.propTypes = {
+  Component: PropTypes.elementType.isRequired,
   store: PropTypes.object.isRequired,
-}
+  pageProps: PropTypes.object.isRequired,
+};
+
+NodeBird.getInitialProps = async (context) => {
+  const { ctx, Component } = context;
+  console.log(ctx);
+  let pageProps = {};
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+  return { pageProps };
+};
 
 const configureStore = (initalState, options) => {
   const sagaMiddleware = createSagaMiddleware();

@@ -2,6 +2,7 @@
 
 + [해시태그 링크로 만들기](#해시태그-링크로-만들기)
 + [next와 express 연결하기](#next와-express-연결하기)
++ [getInitialProps로 서버 데이터 받기](#getInitialProps로-서버-데이터-받기)
 
 
 
@@ -202,6 +203,402 @@ next에서 안되니 그저 express를 동적라우팅을 쓰기위한 수단으
 
 <br><br>
 이제 여기서부터는 dummy데이터를 삭제하겠다. <br>
+dummy데이터를 삭제는 여기에서 생략하겠다. <br>
+
+
+## getInitialProps로 서버 데이터 받기
+[위로가기](#기능-완성해나가기)
+
+
+#### \front\server.js
+```js
+...생략
+
+  server.get('*', (req, res) => { 
+    return handle(req, res);
+  });
+
+  // 동적인 주소를 처리하기 위해서 라우터 2개를 처리하겠다.
+  server.get('/hashtag/:tag', (req, res) => { // 추가를 해준다
+    // 디신에 return형태가 다르다
+    // 원래는 return res.send(); 이였다.
+
+    // hashtag를 동적으로 사용할 수 있다. 하지만 내용을 전달해야하 한다.
+    // tag라는 정보를 전달한다. 어디에?
+    return app.render(req, res, '/hashtag', { tag: req.params.tag });
+  });
+
+  server.get('/user/:id', (req, res) => { // 추가를 해준다
+    // User를 동적으로 사용할 수 있다.
+    // id라는 정보를 전달한다. 어디에?
+    return app.render(req, res, '/user', { id: req.params.id });
+  });
+
+...생략 
+```
+
+hashtag, user를 사용하기 전에 _app.js에 사전작업을 해줘야한다. <br>
+
+#### \front\pages\_app.js
+```js
+...생략
+...생략
+const NodeBird = ({Component, store, pageProps}) => { // pageProps를 추가해준다. 
+  return (
+    <Provider store={store} > 
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+      </Head>
+      <AppLayout >
+        <Component {...pageProps}/> // 여기에다가 pageProps의 값을 Component에 넘겨준다.
+      </AppLayout>
+    </Provider>
+  );
+};
+
+
+NodeBird.prototype = {
+  Component : PropTypes.elementType.isRequired,
+  store: PropTypes.object.isRequired,
+  pageProps: PropTypes.object.isRequired,
+}
+
+// 이 부분을 추가를 해준다.
+NodeBird.getInitialProps = async(context) = () => { // context는 next안에 있다.
+  console.log(context);
+  const { ctx, Component } = context; // context안에 ctx, Componet, Router가 있다.
+  let pageProps = {};
+  if (Component.getInitialProps) { // getInitialProps가 있으면
+    pageProps = await Component.getInitialProps(ctx); // getInitialProps를 실행한다.
+  }
+  return { pageProps };
+}
+
+const configureStore = (initalState, options) => {
+  ...생략
+}
+
+export default WithRedux(configureStore)(NodeBird);
+```
+설명을 해보자면, getInitialProps가 pageProps를 리턴을 해주면, <br>
+NodeBird의 인수에서 pageProps를 받는다. 그 인수를 Componet에 값을 전달해주어야한다. <br>
+
+
+여기에 `console.log(context)`를 해본다면
+```js
+{
+  AppTree: [Function: AppTree],
+  Component: [Function: Home], // Component를 확인 가능
+  router: ServerRouter { // 라우터를 확인가능
+    route: '/',
+    pathname: '/',
+    query: {},
+    asPath: '/',
+    isFallback: false
+  },
+  ctx: { // 페이지들의 context를 확인가능
+    err: undefined,
+    req: IncomingMessage {
+      _readableState: [ReadableState],
+      readable: true,
+      _events: [Object: null prototype],
+      _eventsCount: 1,
+      _maxListeners: undefined,
+      socket: [Socket],
+      connection: [Socket],
+      httpVersionMajor: 1,
+      httpVersionMinor: 1,
+      httpVersion: '1.1',
+      complete: true,
+      headers: [Object],
+      rawHeaders: [Array],
+      trailers: {},
+      rawTrailers: [],
+      aborted: false,
+      upgrade: false,
+      url: '/',
+      method: 'GET',
+      statusCode: null,
+      statusMessage: null,
+      client: [Socket],
+      _consuming: false,
+      _dumped: false,
+      next: [Function: next],
+      baseUrl: '',
+      originalUrl: '/',
+      _parsedUrl: [Url],
+      params: [Object],
+      query: {},
+      res: [ServerResponse],
+      _startAt: [Array],
+      _startTime: 2020-04-12T07:25:54.342Z,
+      _remoteAddress: '::1',
+      body: {},
+      secret: 'nodebirdcookie',
+      cookies: {},
+      signedCookies: [Object: null prototype],
+      _parsedOriginalUrl: [Url],
+      sessionStore: [MemoryStore],
+      sessionID: 'uknSqus3gzQA4OxYmMUj0APmve_QgU3Z',
+      session: [Session],
+      route: [Route]
+    },
+    res: ServerResponse {
+      _events: [Object: null prototype],
+      _eventsCount: 2,
+      _maxListeners: undefined,
+      outputData: [],
+      outputSize: 0,
+      writable: true,
+      _last: false,
+      chunkedEncoding: false,
+      shouldKeepAlive: true,
+      useChunkedEncodingByDefault: true,
+      sendDate: true,
+      _removedConnection: false,
+      _removedContLen: false,
+      _removedTE: false,
+      _contentLength: null,
+      _hasBody: true,
+      _trailer: '',
+      finished: false,
+      _headerSent: false,
+      socket: [Socket],
+      connection: [Socket],
+      _header: null,
+      _onPendingData: [Function: bound updateOutgoingData],
+      _sent100: false,
+      _expect_continue: false,
+      req: [IncomingMessage],
+      locals: [Object: null prototype] {},
+      _startAt: undefined,
+      _startTime: undefined,
+      writeHead: [Function: writeHead],
+      __onFinished: [Function],
+      end: [Function: end],
+      statusCode: 200,
+      flush: [Function: flush],
+      write: [Function: write],
+      on: [Function: on],
+      [Symbol(kNeedDrain)]: false,
+      [Symbol(isCorked)]: false,
+      [Symbol(kOutHeaders)]: [Object: null prototype]
+    },
+    pathname: '/',
+    query: {},
+    asPath: '/',
+    AppTree: [Function: AppTree],
+    store: {
+      dispatch: [Function],
+      subscribe: [Function: subscribe],
+      getState: [Function: getState],
+      replaceReducer: [Function: replaceReducer],
+      [Symbol(observable)]: [Function: observable]
+    },
+    isServer: true
+  }
+}
+```
+
+
+사전 작업을 완료 후 여기에 getInitalProps를 추가를 해준다. <br>
+
+#### \front\pages\hashtag.js
+```js
+import React from 'react';
+
+const Hashtag = () => {
+  return (
+    <div>Hashtag</div>
+  );
+};
+
+// 사전 작업을 완료 후 여기에 getInitialProps 추가를 해준다.
+Hashtag.getInitialProps = async (context) => { // context라는 매개변수를 받는다.
+  // 서버에서 준 태그의 이름이라는 데이터를 여기에서 받는다.
+  console.log(context);
+  console.log('hashtag getIntitalProps', context.query.tag);
+};
+
+export default Hashtag;
+
+```
+
+next가 임의로 추가해준 getInitialProps는 라이프사이클의 일종인데, <br>
+ComponentDidUpMount보다 더 앞에서 수행을한다. <br>
+getInitialProps는 제일 먼저 실행되서, 가장 최초의 작업을 한다. <br>
+서버쪽에 데이터를 받아오거나, 서버쪽에 실행 할 행동을 가장가장가장 먼저 실행된다. <br>
+
+그래서 서버사이드렌더링할 때에도 `getInitialProps`를 사용한다.
+결국에는 next에서 제일 중요한 라이프사이클은 `getInitialProps`이다.
+
+Hsshtag.js, User.js를 수정하겠다.
+#### \front\pages\hashtag.js
+```js
+import React from 'react';
+import PropTypes from 'prop-types';
+
+const Hashtag = ({ tag }) => {
+  return (
+    <div>Hashtag {tag}</div>
+  );
+};
+
+Hashtag.propTypes = {
+  tag: PropTypes.string.isRequired,
+}
+
+Hashtag.getInitialProps = async (context) => {
+  console.log('hashtag getInitialProps', context.query.tag);
+  return { tag : context.query.tag }  // 여기에서는 context.query.id로 해줘야한다
+  // 서버랑 다르다는 것을 인식해야한다.
+  
+  // Componet데이터를 또 보낼 수가 있다.
+  // 서버 쪽에 데이터를 받아 왔으면, 프론트에서 props로 데이터를 전달 할 수가 있다.
+};
+
+export default Hashtag;
+
+```
+
+#### \front\pages\user.js
+```js
+import React from 'react';
+import PropTypes from 'prop-types';
+
+const User = ({ id }) => {
+  return (
+    <div>userId {id}</div> // 여기에서 id가 전달을 받는다.
+  );
+};
+
+User.propTypes = {
+  id: PropTypes.number.isRequired,
+}
+
+User.getInitialProps = async (context) => {
+  console.log('user getInitialProps', context.query.id);
+  return { id : parseInt(context.query.id, 10) }  // 여기에서는 context.query.id로 해줘야한다
+  // 서버랑 다르다는 것을 인식해야한다.
+  
+  // Componet데이터를 또 보낼 수가 있다.
+  // 서버 쪽에 데이터를 받아 왔으면, 프론트에서 props로 데이터를 전달 할 수가 있다.
+};
+
+export default User;
+
+```
+
+
+### 순서
+1. NodeBird.getInitialProps실행 (참고로, NodeBird.getInitialProps는 next에서 실행) <br>
+2. 그 안에 있는 HashTag.getInitialProps(OR User.getInitialProps)가 실행 <br>
+3. HashTag.getInitialProps(OR User.getInitialProps)가 리턴을 한다. <br>
+4. 그 리턴 값이 pageProps에 전달 <br>
+5. NodeBird의 매개변수 pageProps에 값을 받음 <br>
+6. 다시 Hashtag의 Component에 값을 전달한다. <br>
+
+
+<br><br>
+여기에서 더 내용을 추가하겠다. <br>
+
+#### \front\pages\hashtag.js
+```js
+...생략
+
+const Hashtag = ({ tag }) => {
+  console.log(tag);
+  const dispatch = useDispatch();
+  const { mainPosts } = useSelector(state => state.post);
+
+  useEffect(() => {
+    dispatch({
+      type: LOAD_HASHTAG_POSTS_REQUEST, // 해시태그 정보
+      data: tag,
+    });
+  }, []);
+  return (
+    <div>
+      {mainPosts.map(c => ( // 포스트 정보들을 불러온다.
+        <PostCard key={+c.createdAt} post={c} />
+      ))}
+    </div>
+  );
+};
+
+...생략
+```
+
+
+#### \front\pages\user.js
+```js
+...생략
+
+const User = ({ id }) => {
+  const dispatch = useDispatch();
+  const { mainPosts } = useSelector(state => state.post);
+  const { userInfo } = useSelector(state => state.user);
+
+  useEffect(() => {
+    dispatch({
+      type: LOAD_USER_REQUEST, // 남의 정보를 보여주는 것
+      type: id
+    })
+    dispatch({
+      type: LOAD_USER_POSTS_REQUEST, // 게시글을 보여주는 것
+      data: id,
+    });
+    // (남의 정보, 게시글 보여주는 거)가 있기 떄문에 dispatch가 2개가 있다. 
+  }, []);
+  
+  return (
+    <div>
+      {userInfo // 남의 정보를 알려주는 것
+        ? (
+          <Card
+            actions={[
+              <div key="twit">
+                짹짹
+                <br />
+                {userInfo.Posts}
+              </div>,
+              <div key="following">
+                팔로잉
+                <br />
+                {userInfo.Followings}
+              </div>,
+              <div key="follower">
+                팔로워
+                <br />
+                {userInfo.Followers}
+              </div>,
+            ]}
+          >
+            <Card.Meta
+              avatar={<Avatar>{userInfo.nickname[0]}</Avatar>}
+              title={userInfo.nickname}
+            />
+          </Card>
+        )
+        : null}
+      {mainPosts.map(c => { // 게시글을 보여준다.
+        <PostCard key={+c.createdAt} post={c} />
+      })}
+    </div>
+  );
+};
+
+...생략
+
+```
+참고로, 해시태그 검색, 유저 정보 라우터를 아직 안 들어서 작동이 안 될것이다. <br>
+
+#### \front\server.js (수정했는데, 코드 위치만 바꾸어주었다.)
+
+<br><br>
+
+
 
 
 

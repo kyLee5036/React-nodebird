@@ -2,6 +2,7 @@
 
 + [해시태그 링크로 만들기](#해시태그-링크로-만들기)
 + [next와 express 연결하기](#next와-express-연결하기)
++ [getInitialProps로 서버 데이터 받기](#getInitialProps로-서버-데이터-받기)
 
 
 
@@ -541,6 +542,241 @@ export default (state = initialState, action) => {
     }
   }
 };
+```
+
+
+## getInitialProps로 서버 데이터 받기
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\AppLayout.js (파일 명만 바꿔주기)
+App.Layout(전) -> AppLayout(후) 
+
+#### \front\pages\_app.js
+```js
+import React from 'react';
+import Head from 'next/head';
+import PropTypes from 'prop-types';
+import WithRedux from 'next-redux-wrapper';
+import { createStore, compose, applyMiddleware } from 'redux';
+import { Provider } from 'react-redux'; 
+import createSagaMiddleware from 'redux-saga';
+
+import AppLayout from '../components/AppLayout';
+import reducer from '../reducers';
+import rootSaga from '../sagas';
+
+const NodeBird = ({ Component, store, pageProps }) => {
+  return (
+    <Provider store={store} > 
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+      </Head>
+      <AppLayout >
+        <Component {...pageProps} />
+      </AppLayout>
+    </Provider>
+  );
+};
+
+NodeBird.propTypes = {
+  Component: PropTypes.elementType.isRequired,
+  store: PropTypes.object.isRequired,
+  pageProps: PropTypes.object.isRequired,
+};
+
+NodeBird.getInitialProps = async (context) => {
+  const { ctx, Component } = context;
+  console.log(ctx);
+  let pageProps = {};
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+  return { pageProps };
+};
+
+const configureStore = (initalState, options) => {
+  const sagaMiddleware = createSagaMiddleware();
+  const middlewares = [sagaMiddleware];
+  const enhancer = process.env.NODE_ENV === 'production' 
+  ? compose( 
+    applyMiddleware(...middlewares))
+  : compose(
+    applyMiddleware(...middlewares), 
+      !options.isServer && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  );
+
+  const store = createStore(reducer, initalState, enhancer);
+  sagaMiddleware.run(rootSaga); 
+  return store;
+}
+
+export default WithRedux(configureStore)(NodeBird);
+```
+
+#### \front\pages\hashtag.js
+```js
+import React, { useEffect } from 'react';
+import PropTypes from 'prop-types';
+import { useDispatch, useSelector } from 'react-redux';
+import { LOAD_HASHTAG_POSTS_REQUEST } from '../reducers/post';
+import PostCard from '../components/PostCard';
+
+const Hashtag = ({ tag }) => {
+  const dispatch = useDispatch();
+  const { mainPosts } = useSelector(state => state.post);
+
+  useEffect(() => {
+    dispatch({
+      type: LOAD_HASHTAG_POSTS_REQUEST,
+      data: tag,
+    });
+  }, []);
+  return (
+    <div>
+      {mainPosts.map(c => (
+        <PostCard key={+c.createdAt} post={c} />
+      ))}
+    </div>
+  );
+};
+
+Hashtag.propTypes = {
+  tag: PropTypes.string.isRequired,
+};
+
+Hashtag.getInitialProps = async (context) => {
+  console.log('hashtag getInitialProps', context.query.tag);
+  return { tag: context.query.tag };
+};
+
+export default Hashtag;
+```
+
+#### \front\pages\user.js
+```js
+import React from 'react';
+import PropTypes from 'prop-types';
+import { Avatar, Card } from 'antd';
+import { LOAD_USER_POSTS_REQUEST } from '../reducers/post';
+import { LOAD_USER_REQUEST } from '../reducers/user';
+import PostCard from '../components/PostCard';
+
+const User = ({ id }) => {
+  const dispatch = useDispatch();
+  const { mainPosts } = useSelector(state => state.post);
+  const { userInfo } = useSelector(state => state.user);
+
+  useEffect(() => {
+    dispatch({
+      type: LOAD_USER_REQUEST,
+      type: id
+    })
+    dispatch({
+      type: LOAD_USER_POSTS_REQUEST,
+      data: id,
+    });
+  }, []);
+  
+  return (
+    <div>
+      {userInfo
+        ? (
+          <Card
+            actions={[
+              <div key="twit">
+                짹짹
+                <br />
+                {userInfo.Posts}
+              </div>,
+              <div key="following">
+                팔로잉
+                <br />
+                {userInfo.Followings}
+              </div>,
+              <div key="follower">
+                팔로워
+                <br />
+                {userInfo.Followers}
+              </div>,
+            ]}
+          >
+            <Card.Meta
+              avatar={<Avatar>{userInfo.nickname[0]}</Avatar>}
+              title={userInfo.nickname}
+            />
+          </Card>
+        )
+        : null}
+      {mainPosts.map(c => {
+        <PostCard key={+c.createdAt} post={c} />
+      })}
+    </div>
+  );
+};
+
+User.propTypes = {
+  id: PropTypes.number.isRequired,
+}
+
+User.getInitialProps = async (context) => {
+  console.log('user getInitialProps', context.query.id);
+  return { id : parseInt(context.query.id, 10) } 
+};
+
+export default User;
+
+```
+
+#### \front\server.js
+```js
+const express = require('express');
+const next = require('next');
+const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
+const expressSession = require('express-session');
+const dotenv = require('dotenv');
+
+const dev = process.env.NODE_ENV !== 'production';
+const prod = process.env.NODE_ENV === 'production';
+
+const app = next({ dev });
+const handle = app.getRequestHandler();
+dotenv.config();
+
+app.prepare().then(() => {
+  const server = express();
+
+  server.use(morgan('dev'));
+  server.use(express.json());
+  server.use(express.urlencoded({ extended: true }));
+  server.use(cookieParser(process.env.COOKIE_SECRET));
+  server.use(expressSession({
+    resave: false,
+    saveUninitialized: false,
+    secret: process.env.COOKIE_SECRET,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+    },
+  }));
+
+  server.get('/hashtag/:tag', (req, res) => {
+    return app.render(req, res, '/hashtag', { tag: req.params.tag });
+  });
+
+  server.get('/user/:id', (req, res) => {
+    return app.render(req, res, '/user', { id: req.params.id });
+  });
+
+  server.get('*', (req, res) => {
+    return handle(req, res);
+  });
+
+  server.listen(3060, () => {
+    console.log('next+express running on port 3060');
+  });
+});
 ```
 
 

@@ -2811,3 +2811,43 @@ function addPostAPI(postData) { // 여기에 철자가 틀렸다.......
 // 문법이 틀려서 자꾸 에러가 나온 것이였다.
 ...생략
 ```
+
+
+마지막으로, 에러를 찾아냈다. <br>
+#### \back\passport\index.js
+```js
+...생략
+
+module.exports = () => {
+  ...생략
+  passport.deserializeUser( async(id, done) => {
+    try {
+      const user = await db.User.findOne({
+        where: {id},
+
+        // 여기 이 부분을 추가를 안해서 새로고침을 할 때마다 
+        // 로그인 정보의 데이터를 가져오지를 못한 것이였다.
+        include: [{
+          model: db.Post,
+          as: 'Posts',
+          attributes: ['id'],
+        }, {
+          model: db.User,
+          as: 'Followings',
+          attributes: ['id'],
+        }, {
+          model: db.User,
+          as: 'Followers',
+          attributes: ['id'],
+        }],
+      });
+      return done(null, user);
+    } catch (e) {
+      console.error(e);
+      return done(e);
+    }
+  });
+  local();
+}
+
+```

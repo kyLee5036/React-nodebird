@@ -32,7 +32,6 @@ NodeBird.propTypes = {
 
 NodeBird.getInitialProps = async (context) => {
   const { ctx, Component } = context;
-  console.log(ctx);
   let pageProps = {};
   if (Component.getInitialProps) {
     pageProps = await Component.getInitialProps(ctx);

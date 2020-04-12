@@ -430,8 +430,8 @@ ComponentDidUpMount보다 더 앞에서 수행을한다. <br>
 getInitialProps는 제일 먼저 실행되서, 가장 최초의 작업을 한다. <br>
 서버쪽에 데이터를 받아오거나, 서버쪽에 실행 할 행동을 가장가장가장 먼저 실행된다. <br>
 
-그래서 서버사이드렌더링할 때에도 `getInitialProps`를 사용한다.
-결국에는 next에서 제일 중요한 라이프사이클은 `getInitialProps`이다.
+그래서 서버사이드렌더링할 때에도 `getInitialProps`를 사용한다. <br>
+결국에는 next에서 제일 중요한 라이프사이클은 `getInitialProps`이다. <br>
 
 Hsshtag.js, User.js를 수정하겠다.
 #### \front\pages\hashtag.js
@@ -598,7 +598,39 @@ const User = ({ id }) => {
 
 <br><br>
 
+tag를 클릭하면 tag의 정보가 나와야하는데 안 나오고있다. <br>
+생각대로.... 에러가 나온 것갇다. <br>
 
+해결을 했다!!!!값 전달은 잘 되지만, URL가 좀 이상한 것 같다. <br>
+`http://localhost:3060/hashtag?tag=리액트` <br>
+대략 이런식으로 나오는 것같다.
 
+#### \front\components\PostCard.js
+```js
+...생략
+ <Card.Meta 
+    avatar={<Avatar>{post.User.nickname[0]}</Avatar>}
+    title={post.User.nickname}
+    description={(
+      <div>
+        {post.content.split(/(#[^\s]+)/g).map((v, i) => {
+          if (v.match(/#[^\s]+/)) {
+            return (
+              <Link 
+                href={{ pathname: '/hashtag', // 이런 식으로 추가 해주었다.
+                        query: { tag: v.slice(1) } }} // 이런 식으로 추가 해주었다. 
+                key={+v.createdAt}
+              >
+                <a>{v}</a>
+              </Link>
+            );
+          }
+          return v; 
+        })};
+      </div>
+    )}
+  />
+</Card>
 
-
+...생략
+```

@@ -66,7 +66,12 @@ const PostCard = ({post}) => {
               {post.content.split(/(#[^\s]+)/g).map((v, i) => {
                 if (v.match(/#[^\s]+/)) {
                   return (
-                    <Link href="/hashtag" key={i} ><a>{v}</a></Link>
+                    <Link 
+                      href={{ pathname: '/hashtag', query: { tag: v.slice(1) } }} 
+                      key={+v.createdAt}
+                    >
+                      <a>{v}</a>
+                    </Link>
                   );
                 }
                 return v; 

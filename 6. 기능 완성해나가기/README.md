@@ -3,6 +3,8 @@
 + [해시태그 링크로 만들기](#해시태그-링크로-만들기)
 + [next와 express 연결하기](#next와-express-연결하기)
 + [getInitialProps로 서버 데이터 받기](#getInitialProps로-서버-데이터-받기)
++ [해시태그 검색, 유저 정보 라우터 만들기](#해시태그-검색,-유저-정보-라우터-만들기)
+
 
 
 
@@ -634,3 +636,345 @@ tag를 클릭하면 tag의 정보가 나와야하는데 안 나오고있다. <br
 
 ...생략
 ```
+
+## 해시태그 검색, 유저 정보 라우터 만들기
+[위로가기](#기능-완성해나가기)
+
+먼저 사가부터 바꾸겠다.
+
+#### \front\sagas\post.js
+```js
+...생략
+...생략
+// 계속 재활용이 되어지고있다.
+
+function loadHashtagPostsAPI(tag) {
+  return axios.get(`/hashtag/${tag}`);
+}
+
+function* loadHashtagPosts() {
+  try {
+    const result = yield call(loadHashtagPostsAPI, action.data);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+
+function* watchLoadHashtagPosts() {
+  yield takeLatest(LOAD_HASHTAG_POSTS_REQUEST, loadHashtagPosts);
+}
+
+
+function loadUserPostsAPI(id) {
+  return axios.get(`/posts/${id}/posts`);
+}
+
+function* loadUserPosts(action) {
+  try {
+    const result = yield call(loadUserPostsAPI, action.data);
+    yield put({
+      type: LOAD_USER_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_USER_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadUserPosts() {
+  yield takeLatest(LOAD_USER_POSTS_REQUEST, loadUserPosts);
+}
+
+export default function* postSaga() {
+  yield all([
+    fork(watchAddPost),
+    fork(watchLoadMainPosts),
+    fork(watchAddComment),
+    fork(watchLoadHashtagPosts), // 추가
+    fork(watchLoadUserPosts), // 추가
+  ]);
+}
+```
+
+
+해새태그 라우터를 먼저 추가하겠다.
+
+#### \back\routes\hashtag.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/:tag', async(req, res, next) => { // 해시태그로 검색어로 들어오는 것 설정
+  try {
+    const posts = await db.Post.findAll({ // 해시태그가 포함된 것을 다 찾기
+      include: [{ // 원래 여기에 where절로 조건을 적어주는데, 해새태그의 조건을 찾기 떄문에 where을 적지않는다.
+        model: db.Hashtag, // 해시태그의 관련된 찾기 위해서 모델은 해새티그로 해야한다.
+        where: { name: decodeURIComponent(req.params.name) },
+      }, {
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }],
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+```
+
+### URL에서 한글, 특수문자 처리하는 방법 (decodeURIComponent)
+
+tag가 한글, 특수문자 주소를 통해서 서버로 갈 때에는, url컴포넌트로 바껴버린다. <br>
+서버에서 제대로 처리하기 위해서는, url컴포넌트로를 제대로 처리해줘야한다. <br>
+그래서`decodeURIComponent`를 사용해줘야한다. 프론트, 서버 전부 할 수 있다. <br>
+
+
+#### \back\routes\user.js
+```js
+...생략
+router.delete('/:id/follower', (req, res) => {
+
+});
+router.get('/:id/posts', async (req, res, next) => {
+  try {
+    const posts = await db.Post.findAll({
+      where: { 
+        UserId: parseInt(req.params.id, 10),
+        RetweetId: null,
+      },
+      include: [{
+        model: db.User, // 게시글 작성자
+        attributes: ['id', 'nickname'],
+      }]
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router; 
+
+```
+
+방금 hashtag에서는 where절이 없었는데, user라우터의 posts는 where절이 있다. <br>
+왜냐하면, user라우터의 posts는 유저의 아이디를 찾은 다음에 해당하는 포스트를 다 보여주기 때문에이다. <br>
+hashtag는 hastag에 관한 게시글들을 다 보여주기때문에, 차이가 있다. <br>
+
+#### \front\sagas\user.js
+```js
+...생략
+
+function loadUserAPI(userId) { // 내 정보뿐 만아니라 남의 정보도 받아와야하기떄문에 코드수정하겠다.
+  return axios.get( userId ? `/user/${userId}` : `/user/`, {
+    // 즉, 유저아이디가 있으면 남의 정보 불러오기, 유저 아이디가 없으면 내 정보 불러보기
+    // 사가를 2개만들어서 해도되는데, 이렇게 해도 된다.
+    withCredentials: true,
+  });
+}
+
+function* loadUser(action) {
+  try {
+    const result = yield call(loadUserAPI, action.data);
+    yield put({
+      type: LOAD_USER_SUCCESS,
+      data: result.data,
+      me: !action.data, // 수정
+      // me의 역할은 유저아이디있다.
+      // 유저 아이디가 있으면 다른 사람정보
+      // 유저 아이디가 없으면 내 정보
+
+      // me를 넣어준 이유는 구별해주기위해서, 즉, me데이터가 있으면 내 정보
+      // me데이터가 없으면 남의 정보 
+      // reducer에 보면 안다!!! 밑에있음
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadUser() {
+  yield takeEvery(LOAD_USER_REQUEST, loadUser);
+}
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogIn),
+    fork(watchLogOut), 
+    fork(watchLoadUser), 
+    fork(watchSignUp)
+  ]);
+}
+```
+
+#### \front\reducers\user.js
+```js
+
+export const initialState = {
+  ...생략
+  me: null, // 여기에서는 me가 내정보
+  ...생략
+  userInfo: [], // 여기에서는 userInfo가 남의 정보
+};
+
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    
+    case LOAD_USER_REQUEST: { 
+      return { 
+        ...state, 
+      }; 
+    }
+    case LOAD_USER_SUCCESS: { // 이렇게도 할 수 있다
+      // 여기에서 구별해주기 때문에 saga의 me를 넣어주었다.
+      if (action.me) { // 내 정보일 경우
+        return { 
+          ...state, 
+          me : action.data, 
+        }; 
+      }
+      return { // 남의 정보를 불러올 경우
+        ...state,
+        userInfo: action.data
+      }
+    }
+    case LOAD_USER_FAILURE: { 
+      return { 
+        ...state, 
+      }; 
+    } 
+
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+#### \back\routes\user.js
+```js
+...생략
+...생략
+
+router.get('/:id', async (req, res) => {  // 남의 정보를 찾는거(가져오는 거)
+  try {
+    const user = await db.User.findOne({ // 남의 정보를 가져온다.
+      where: { id: parseInt(req.params.id, 10 )},
+      // 남의 정보를 보낼 떄 게시글, 팔로워, 팔로잉 수 알아내야 한다.
+      include: [{
+        model: db.Post,
+        as: 'Posts',
+        attributes: ['id'],
+      }, {
+        model: db.User,
+        as: 'Followings',
+        attributes: ['id'],
+      }, {
+        model: db.User,
+        as: 'Followers',
+        attributes: ['id'],
+      }],
+      attributes: ['id', 'nickname'],
+    });
+    // 남의 팔로워, 파로잉이 누가했는지 알면 개인사생활 침해이기때문에, 위에 내용을 덛붙여서 수정을 하겠다.
+    const jsonUser = user.toJSON();
+    // 정보를 보내는 대신에 몇 개인지를 알려주는 것이다. (몇 명이 나를 팔로워 했는지 등)
+    jsonUser.Posts = jsonUser.Posts ? jsonUser.Posts.length : 0; // 게시글 수를 알려준다.
+    jsonUser.Followings = jsonUser.Followings ? jsonUser.Followings.length : 0; // 팔로잉 수를 알려준다
+    jsonUser.Followers = jsonUser.Followers ? jsonUser.Followers.length : 0; // 팔로워 수를 알려준다.
+    // 프론트에서 가지않도록 하는 것은 : 비밀번호, 개인사생활은 더더욱 조심해서 코드를 작성해야한다.
+
+    res.json(jsonUser);
+  } catch (e) {
+    console.log(e);
+    next(e);
+  }
+});
+
+...생략
+...생략
+// /:id/post는 추가되어져있어서 생략하겠음
+...생략
+module.exports = router; 
+
+```
+
+
+#### \front\pages\user.js
+```js
+...생략
+...생략
+
+  return (
+    <div>
+      {userInfo
+        ? (
+          <Card
+            actions={[
+              <div key="twit">
+                짹짹
+                <br />  
+                {userInfo.Posts} // 유저의 게시글 수 
+                // 여기에 숫자가 들어간다.
+              </div>,
+              <div key="following">
+                팔로잉
+                <br />
+                {userInfo.Followings} // 팔로잉 수
+                // 여기에 숫자가 들어간다.
+              </div>,
+              <div key="follower">
+                팔로워
+                <br />
+                {userInfo.Followers} // 팔로워 수
+                // 여기에 숫자가 들어간다.
+              </div>,
+            ]}
+          >
+            <Card.Meta
+              avatar={<Avatar>{userInfo.nickname[0]}</Avatar>}
+              title={userInfo.nickname}
+            />
+          </Card>
+        )
+        : null}
+      {mainPosts.map(c => {
+        <PostCard key={+c.createdAt} post={c} />
+      })}
+    </div>
+  );
+};
+...생략
+...생략
+
+```
+
+마지막으로 `\back\index.js` DB접속 연결시키는 것 잊지말기!! <br>
+

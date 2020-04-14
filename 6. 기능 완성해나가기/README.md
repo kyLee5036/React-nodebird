@@ -4,7 +4,7 @@
 + [next와 express 연결하기](#next와-express-연결하기)
 + [getInitialProps로 서버 데이터 받기](#getInitialProps로-서버-데이터-받기)
 + [해시태그 검색, 유저 정보 라우터 만들기](#해시태그-검색,-유저-정보-라우터-만들기)
-
++ [Link 컴포넌트 고급 사용법](#Link-컴포넌트-고급-사용법)
 
 
 
@@ -978,3 +978,74 @@ module.exports = router;
 
 마지막으로 `\back\index.js` DB접속 연결시키는 것 잊지말기!! <br>
 
+
+## Link 컴포넌트 고급 사용법
+[위로가기](#기능-완성해나가기)
+
+
+일단 위에 하던거 계속이어서
+
+#### \front\reducers\post.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+   ...생략
+   ...생략
+    // 이렇게 연달아서 사용하는 이유는 
+    // 3개의 케이스가 똑같은 역할을 수행하니까, 공통된 부분을 줄이기위해서
+    // 이렇게 사용한다. 
+    // 겹치는 부분을 연달아서 사용할 수가 있다.
+    case LOAD_MAIN_POSTS_REQUEST: 
+    case LOAD_HASHTAG_POSTS_REQUEST:
+    case LOAD_USER_POSTS_REQUEST: {
+      return {
+        ...state,
+        mainPosts: [],
+      };
+    }
+    case LOAD_MAIN_POSTS_SUCCESS:
+    case LOAD_HASHTAG_POSTS_SUCCESS:
+    case LOAD_USER_POSTS_SUCCESS: {
+      return {
+        ...state,
+        mainPosts: action.data,
+      };
+    }
+    case LOAD_MAIN_POSTS_FAILURE:
+    case LOAD_HASHTAG_POSTS_FAILURE:
+    case LOAD_USER_POSTS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+```
+
+#### \back\routes\hashtag.js
+```js
+...생략
+
+router.get('/:tag', async(req, res, next) => {
+  try {
+    const posts = await db.Post.findAll({
+      include: [{
+        model: db.Hashtag,
+        where: { name: decodeURIComponent(req.params.tag) }, // 오류 수정
+      }, {
+        ...생략
+});
+...생략
+```
+
+여기까지 바꿔주고, 화면을 보면 아무것도 나오지가않는다... <br>
+에러가 발생하였다... <br>
+지금부터 에러를 찾아야한다... <br>

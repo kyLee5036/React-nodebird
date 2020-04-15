@@ -1061,3 +1061,52 @@ function* watchLoadMainPosts() {
 
 ...생략
 ```
+
+아바타를 누르면 유저정보의 게시글들만 나오게 한다. <br>
+예로들면 유저가 test인 아바타를 클릭하면 test가 작성한 글들만 나오게 한다. <br>
+댓글의 아바타도 같이 추가해주었다. <br>
+
+#### \front\components\PostCard.js
+```js
+...생략
+...생략
+
+  return (
+    <div>
+      ...생략
+        <Card.Meta 
+          avatar={<Link href={`/user/${post.User.id}`}><a><Avatar>{post.User.nickname[0]}</Avatar></a></Link>} //  수정
+          title={post.User.nickname}
+          description={(
+            ...생략
+          )}
+        />
+        ...생략
+      {commentFormOpened && (
+        <>
+          ...생략
+          ...생략
+          <List
+            ...생략
+            renderItem={ item => (
+              <li>
+                <Comment
+                  author={item.User.nickname}
+                  avatar={<Link href={`/user/${post.User.id}`}><a><Avatar>{item.User.nickname[0]}</Avatar></a></Link>} //  수정
+                  content={item.content}
+                />
+              </li>
+            )}
+          />
+        </>
+      )} 
+    </div>
+  )
+};
+...생략
+
+export default PostCard;
+```
+
+
+

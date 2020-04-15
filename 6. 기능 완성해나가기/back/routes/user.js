@@ -41,7 +41,7 @@ router.post('/',  async (req, res, next) => {
 
 });
 
-router.get('/:id', async (req, res) => { 
+router.get('/:id', async (req, res, next) => { 
   try {
     const user = await db.User.findOne({
       where: { id: parseInt(req.params.id, 10 )},
@@ -66,7 +66,7 @@ router.get('/:id', async (req, res) => {
     jsonUser.Followers = jsonUser.Followers ? jsonUser.Followers.length : 0;
     res.json(jsonUser);
   } catch (e) {
-    console.log(e);
+    console.error(e);
     next(e);
   }
 });

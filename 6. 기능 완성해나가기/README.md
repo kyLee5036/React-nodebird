@@ -1108,5 +1108,29 @@ function* watchLoadMainPosts() {
 export default PostCard;
 ```
 
+여기서 다시 에러가 나왔다... 하... <br>
+에러내용은... 유저의 아바타를 클릭하는 순간 `TypeError: Cannot read property '0' of undefined`이다. <br>
+
+#### \front\reducers\user.js
+```js
+export const initialState = {
+  isLoggingOut : false,
+  isLoggingIn : false,
+  logInErrorReason: '',
+  isSigningUp: false,
+  isSignedUp : false,
+  signUpErrorReason: '',
+  isSignUpSuccesFailure: false,
+  me: null,
+  followingList : [],
+  followerList: [],
+  userInfo: null, // 이 부분이 []로 되어있었다.
+  // 빈 배열의 length이므로 자꾸 값아 0이 나온다.
+  // 빈 배열이 아니라 null로 고쳐준다.
+};
+```
+
+
+
 
 

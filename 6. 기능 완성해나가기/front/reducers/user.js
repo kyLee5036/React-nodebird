@@ -1,9 +1,8 @@
 
 export const initialState = {
   isLoggingOut : false,
-  isLogginIn : false,
-  LoginInErrorReason: '',
-  signedUp: false,
+  isLoggingIn : false,
+  logInErrorReason: '',
   isSigningUp: false,
   isSignedUp : false,
   signUpErrorReason: '',
@@ -11,7 +10,7 @@ export const initialState = {
   me: null,
   followingList : [],
   followerList: [],
-  userInfo: [],
+  userInfo: null,
 };
 
 export const SIGN_UP_REQUEST = 'SIGN_UP_REQUEST';
@@ -68,7 +67,7 @@ export default (state = initialState, action) => {
       return {
         ...state,
         isLoggingIn: false,
-        LoginInErrorReason : action.error,
+        logInErrorReason : action.error,
         me: null,
       };
     }

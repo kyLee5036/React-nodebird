@@ -1049,3 +1049,15 @@ router.get('/:tag', async(req, res, next) => {
 여기까지 바꿔주고, 화면을 보면 아무것도 나오지가않는다... <br>
 에러가 발생하였다... <br>
 지금부터 에러를 찾아야한다... <br>
+
+#### \front\sagas\post.js
+```js
+...생략
+
+function* watchLoadMainPosts() {
+  // yield takeLatest(LOAD_MAIN_HASGTAG_REQUEST, loadMainPosts); // 수정 전
+  yield takeLatest(LOAD_MAIN_POSTS_REQUEST, loadMainPosts); // 수정 후
+}
+
+...생략
+```

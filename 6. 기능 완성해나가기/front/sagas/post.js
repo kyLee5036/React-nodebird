@@ -79,7 +79,7 @@ function* loadMainPosts() {
 }
 
 function* watchLoadMainPosts() {
-  yield takeLatest(LOAD_HASHTAG_POSTS_REQUEST, loadMainPosts);
+  yield takeLatest(LOAD_MAIN_POSTS_REQUEST, loadMainPosts);
 }
 
 

@@ -1045,7 +1045,7 @@ router.get('/:tag', async(req, res, next) => {
 });
 ...생략
 ```
-
+<br><br>
 여기까지 바꿔주고, 화면을 보면 아무것도 나오지가않는다... <br>
 에러가 발생하였다... <br>
 지금부터 에러를 찾아야한다... <br>
@@ -1107,7 +1107,7 @@ function* watchLoadMainPosts() {
 
 export default PostCard;
 ```
-
+<br><br>
 여기서 다시 에러가 나왔다... 하... <br>
 에러내용은... 유저의 아바타를 클릭하는 순간 `TypeError: Cannot read property '0' of undefined`이다. <br>
 
@@ -1130,7 +1130,49 @@ export const initialState = {
 };
 ```
 
+하지만...  에러는 아니지만.. `/user/:id`의 화면이 아무것도 보이지않는다.. <br>
 
+#### \front\pages\user.js
+```js
+...생략
 
+const User = ({ id }) => {
+...생략
 
+  useEffect(() => {
+    dispatch({
+      type: LOAD_USER_REQUEST,
+      data: id // 이 부분 수정
+    })
+    dispatch({
+      type: LOAD_USER_POSTS_REQUEST,
+      data: id,
+    });
+  }, []);
+  
+  return (
+    ...생략
+  );
+};
+...생략
+export default User;
 
+```
+
+그 다음에는 유저가 등록한 게시글들이 안 보인다... <br>
+#### \front\sagas\post.js
+```js
+function loadUserPostsAPI(id) {
+  // return axios.get(`/post/${id}/posts`); // 이렇게 되어있어서 get으로 데이터를 받아올 때
+  // 404 응답 메세지가 나온다.
+  return axios.get(`/user/${id}/posts`);
+}
+```
+
+그 이외에 오류 수정 <br>
+#### \front\components\AppLayout.js
+```js
+AppLayout.prototypes = { // 철자를 잘 못 적었음..
+  children: PropTypes.node,
+}
+```

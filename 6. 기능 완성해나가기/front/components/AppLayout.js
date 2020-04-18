@@ -47,7 +47,7 @@ const AppLayout = ({ children }) => {
   );
 };
 
-AppLayout.prototype = {
+AppLayout.prototypes = {
   children: PropTypes.node,
 }
 

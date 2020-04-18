@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
+import { useDispatch, useSelector } from 'react-redux';
 import { Avatar, Card } from 'antd';
 import { LOAD_USER_POSTS_REQUEST } from '../reducers/post';
 import { LOAD_USER_REQUEST } from '../reducers/user';
 import PostCard from '../components/PostCard';
-import { useDispatch, useSelector } from 'react-redux';
 
 const User = ({ id }) => {
   const dispatch = useDispatch();
@@ -14,14 +14,14 @@ const User = ({ id }) => {
   useEffect(() => {
     dispatch({
       type: LOAD_USER_REQUEST,
-      type: id
-    })
+      data: id,
+    });
     dispatch({
       type: LOAD_USER_POSTS_REQUEST,
       data: id,
     });
   }, []);
-  
+
   return (
     <div>
       {userInfo
@@ -52,20 +52,22 @@ const User = ({ id }) => {
           </Card>
         )
         : null}
-      {mainPosts.map(c => {
-        <PostCard key={+c.createdAt} post={c} />
-      })}
+      <div>
+        {mainPosts.map(c => (
+          <PostCard key={+c.createdAt} post={c} />
+        ))}
+      </div>
     </div>
   );
 };
 
 User.propTypes = {
   id: PropTypes.number.isRequired,
-}
+};
 
 User.getInitialProps = async (context) => {
   console.log('user getInitialProps', context.query.id);
-  return { id : parseInt(context.query.id, 10) } 
+  return { id: parseInt(context.query.id, 10) };
 };
 
 export default User;

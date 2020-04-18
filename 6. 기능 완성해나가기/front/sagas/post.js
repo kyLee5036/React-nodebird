@@ -3,20 +3,23 @@ import { all, fork, takeLatest, put, delay, call } from 'redux-saga/effects';
 import { 
   ADD_POST_REQUEST, ADD_POST_FAILURE, ADD_POST_SUCCESS, 
   ADD_COMMENT_SUCCESS, ADD_COMMENT_REQUEST, ADD_COMMENT_FAILURE, 
-  LOAD_MAIN_POSTS_SUCCESS, LOAD_MAIN_POSTS_FAILURE, LOAD_MAIN_POSTS_REQUEST, LOAD_HASHTAG_POSTS_REQUEST, LOAD_HASHTAG_POSTS_SUCCESS, LOAD_HASHTAG_POSTS_FAILURE, LOAD_USER_POSTS_SUCCESS, LOAD_USER_POSTS_FAILURE, LOAD_USER_POSTS_REQUEST 
+  LOAD_MAIN_POSTS_SUCCESS, LOAD_MAIN_POSTS_FAILURE, LOAD_MAIN_POSTS_REQUEST, LOAD_HASHTAG_POSTS_REQUEST, LOAD_HASHTAG_POSTS_SUCCESS, LOAD_HASHTAG_POSTS_FAILURE, LOAD_USER_POSTS_SUCCESS, LOAD_USER_POSTS_FAILURE, LOAD_USER_POSTS_REQUEST, LOAD_COMMENTS_FAILURE, LOAD_COMMENTS_REQUEST, LOAD_COMMENTS_SUCCESS 
 } from '../reducers/post';
 
 
-function* AddCommentAPI() {
-
+function AddCommentAPI(data) {
+  return axios.post(`/post/${data.postId}/comment`, { content: data.content }, {
+    withCredentials: true,
+  });
 }
 function* AddComment(action) { 
   try {
-    yield delay(2000);
+    const result = yield call(AddCommentAPI, action.data);
     yield put({
       type: ADD_COMMENT_SUCCESS,
       data: {
         postId: action.data.postId, 
+        comment: result.data,
       }
     })
   } catch (e) {
@@ -29,6 +32,32 @@ function* AddComment(action) {
 }
 function* watchAddComment() {
   yield takeLatest(ADD_COMMENT_REQUEST, AddComment);
+}
+
+function loadCommentsAPI(postId) {
+  return axios.get(`/post/${postId}/comments`);
+}
+
+function* loadComments(action) {
+  try {
+    const result = yield call(loadCommentsAPI, action.data);
+    yield put({
+      type: LOAD_COMMENTS_SUCCESS,
+      data: {
+        postId: action.data,
+        comments: result.data
+      }
+    });
+  } catch (e) {
+    yield put({
+      type: LOAD_COMMENTS_FAILURE,
+      error: e
+    });
+  }
+}
+
+function* watchLoadComments() {
+  yield takeLatest(LOAD_COMMENTS_REQUEST, loadComments);
 }
 
 
@@ -137,6 +166,7 @@ export default function* postSaga() {
     fork(watchAddPost),
     fork(watchLoadMainPosts),
     fork(watchAddComment),
+    fork(watchLoadComments),
     fork(watchLoadHashtagPosts),
     fork(watchLoadUserPosts),
   ]);

@@ -5,7 +5,7 @@
 + [getInitialProps로 서버 데이터 받기](#getInitialProps로-서버-데이터-받기)
 + [해시태그 검색, 유저 정보 라우터 만들기](#해시태그-검색,-유저-정보-라우터-만들기)
 + [Link 컴포넌트 고급 사용법](#Link-컴포넌트-고급-사용법)
-
++ [댓글 작성, 댓글 로딩](#댓글-작성,-댓글-로딩)
 
 
 
@@ -267,4 +267,109 @@ app.listen(3065, () => {
 [위로가기](#기능-완성해나가기)
 
 코드없음
+
+## 댓글 작성, 댓글 로딩
+[위로가기](#기능-완성해나가기)
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.post('/', async (req, res, next) => { 
+  try {
+    const hashtags = req.body.content.match(/#[^\s]+/g);
+    const newPost = await db.Post.create({
+      content: req.body.content,
+      UserId: req.user.id,
+    });
+    if (hashtags) {
+      const result = await Promise.all(hashtags.map(tag => db.Hashtag.findOrCreate({
+        where: { name: tag.slice(1).toLowerCase() },
+      })));
+      console.log(result);
+      await newPost.addHashtags(result.map(r => r[0]));
+    }
+    const fullPost = await db.Post.findOne({
+      where: { id: newPost.id },
+      include: [{
+        model: db.User,
+      }],
+    });
+    res.json(fullPost);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+router.post('/images', (req, res) => {
+
+});
+
+router.get('/:id/comments', async (req, res, next) => {
+  try {
+    const post = await db.Post.findOne({ 
+      where: { 
+        id: req.params.id 
+      } 
+    });
+    if (!post) {
+      return res.status(404).send('포스트가 존재하지 않습니다.');
+    }
+    const comments = await db.Comment.findAll({
+      where: {
+        PostId: req.params.id,
+      },
+      order: [['createdAt', 'ASC']],
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }],
+    });
+    res.json(comments);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+
+router.post('/:id/comment', async(req, res, next) => {
+  try {
+    if ( !req.user ) {
+      return res.status(401).send('로그인이 필요합니다.');
+    }
+    const post = await db.Post.findOne({ 
+      where: { id: req.params.id }
+     });
+     if ( !post ) {
+       return res.status(404).send('포스트가 존재하지 않습니다.');
+     }
+     const newComment = await db.Comment.create({ 
+       PostId: post.id,
+       UserId: req.user.id,
+       content: req.body.content,
+     });
+     await post.addComment(newComment.id);
+     const comment = await db.Comment.findOne({
+      where : {
+        id: newComment.id,
+      },
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }],
+     });
+     return res.json(comment);
+  } catch (error) {
+    console.error(error);
+    return next(error);
+  }
+});
+
+module.exports = router;
+```
 

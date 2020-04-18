@@ -3,7 +3,7 @@ import { Card, Icon, Button, Avatar, Form, Input, List, Comment } from 'antd';
 import Link from 'next/link'
 import PropTypes from 'prop-types';
 import { useSelector, useDispatch } from 'react-redux';
-import { ADD_COMMENT_REQUEST } from '../reducers/post';
+import { ADD_COMMENT_REQUEST, LOAD_COMMENTS_REQUEST } from '../reducers/post';
 
 const PostCard = ({post}) => {
 
@@ -15,7 +15,13 @@ const PostCard = ({post}) => {
 
   const onToggleComment = useCallback(() => {
     setCommentFormOpened(prev => !prev);
-  }, []);
+    if (!commentFormOpened) {
+      dispatch({
+        type: LOAD_COMMENTS_REQUEST,
+        data: post.id,
+      });
+    }
+  }, [commentFormOpened]);
   
   const onSubmitComment = useCallback((e) => {
     e.preventDefault();
@@ -26,10 +32,11 @@ const PostCard = ({post}) => {
       type: ADD_COMMENT_REQUEST,
       data: {
         postId: post.id,
+        content: commentText,
       }
     })
     
-  }, [me && me.id]);
+  }, [me && me.id, commentText]);
 
   useEffect(() => {
     if (commentAdded) {
@@ -101,7 +108,7 @@ const PostCard = ({post}) => {
                 <Comment
                   author={item.User.nickname}
                   avatar={(
-                    <Link href={{ pathname: '/user', query: { id: item.User.id } }} as={`/user/${item.user.id}`} >
+                    <Link href={{ pathname: '/user', query: { id: item.User.id } }} as={`/user/${item.User.id}`}>
                       <a><Avatar>{item.User.nickname[0]}</Avatar></a>
                     </Link>
                   )}

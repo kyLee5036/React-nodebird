@@ -5,7 +5,7 @@
 + [getInitialProps로 서버 데이터 받기](#getInitialProps로-서버-데이터-받기)
 + [해시태그 검색, 유저 정보 라우터 만들기](#해시태그-검색,-유저-정보-라우터-만들기)
 + [Link 컴포넌트 고급 사용법](#Link-컴포넌트-고급-사용법)
-
++ [댓글 작성, 댓글 로딩](#댓글-작성,-댓글-로딩)
 
 
 ## 해시태그 링크로 만들기
@@ -1179,7 +1179,7 @@ AppLayout.prototypes = { // 철자를 잘 못 적었음..
 
 ### Link를 SPA 적용하기
 
-여기서 SPA를 적용해주기 위해서, `Link부분`을 고쳐줘야한다.
+여기서 SPA를 적용해주기 위해서, `Link부분`을 고쳐줘야한다. <br>
 #### \front\components\PostCard.js
 ```js
 // 이게 프론트 주소가 아니라 서버주소이다.
@@ -1231,10 +1231,10 @@ avatar={<Link href={{ pathname: '/user', query: { id: post.User.id } }}><a><Avat
 
 ```
 
-여기까지 다 좋은데.. 주소가 이상하다.. 해시태그의 `#리액트`를 클릭하면
-주소 : `/hashtag?tag=리액트`; 이런식으로 나온다.
-우리가 원하는 건`/hashtag/리액트` 이다. 그래서 여기에서 옵션에서 설정을 해줘야한다.
-그 설정은 `as`를 추가하면 된다.
+여기까지 다 좋은데.. 주소가 이상하다.. 해시태그의 `#리액트`를 클릭하면 <br>
+주소 : `/hashtag?tag=리액트`; 이런식으로 나온다. <br>
+우리가 원하는 건`/hashtag/리액트` 이다. 그래서 여기에서 옵션에서 설정을 해줘야한다. <br>
+그 설정은 `as`를 추가하면 된다. <br>
 
 #### \front\components\PostCard.js
 ```js
@@ -1274,5 +1274,276 @@ avatar={(
 )}
 
 ...생략
+```
+
+## 댓글 작성, 댓글 로딩
+[위로가기](#기능-완성해나가기)
+
+#### \back\routes\post.js
+```js
+ // 게시글 가져오기
+router.get('/:id/comment', async(req, res, next) => {
+  try {
+    const post = await db.Post.findOne({
+      where: { id: req.params.id }
+    });
+    if (!post) {
+      return res.status(404).send('포스트가 존재하지 않습니다.');
+    }
+    const comments = await db.Comment.findAll({
+      where: {
+        PostId: req.params.id,
+      },
+      order: [['createdAt', 'ASC']],
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }],
+    });
+    return res.json(comments)
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+});
+
+// 게시글 작성하기
+router.post('/:id/comment', async(req, res, next) => { // POST /api/post/10000/comment
+  try {
+    if ( !req.user ) { // 로그인 유무 확인
+      return res.status(401).send('로그인이 필요합니다.');
+    }
+    const post = await db.Post.findOne({  // 게시글이 있는지 화인한다.
+      where: { id: req.params.id }
+     });
+     if ( !post ) {
+       return res.status(404).send('포스트가 존재하지 않습니다.');
+     }
+     // 댓글 생성
+     const newComment = await db.Comment.create({ 
+       PostId: post.id,
+       UserId: req.user.id,
+       content: req.body.content,
+     });
+     // 게시글이랑 관계가 있으니까 서로 이어준다.
+     // 어떻게 이어주냐면? 시퀄라이즈에서 자동 (add, get, remove 등)을 생성해서 이어준다. 
+     await post.addComment(newComment.id);
+     
+     // 다시 조회하는 이유는?
+     // include를 사용하기 위해서 작성해준다. 위에는 include가 없기 때문에
+     const comment = await db.Comment.findOne({
+      where : {
+        id: newComment.id,
+      },
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }],
+     });
+     return res.json(comment);
+  } catch (error) {
+    console.error(error);
+    return next(error);
+  }
+});
+```
+
+프론트 쪽 추가 및 수정을 하겠다.
+#### \front\components\PostCard.js
+```js
+...생략
+
+const PostCard = ({post}) => {
+  ...생략
+
+  const onToggleComment = useCallback(() => {
+    setCommentFormOpened(prev => !prev);
+    if (!commentFormOpened) { // 댓글창이 닫혀있는 경우에 눌렀을 때 켜는경우이다
+      // 눌러서 켜면서 밑에 있는 LOAD_COMMENTS_REQUEST를 실행한다.
+      dispatch({
+        type: LOAD_COMMENTS_REQUEST,
+        data: post.id,
+      });
+    }
+  }, []);
+  
+  const onSubmitComment = useCallback((e) => {
+    e.preventDefault();
+    if (!me) {
+      return alert('로그인이 필요합니다.');
+    };
+    dispatch({
+      type: ADD_COMMENT_REQUEST,
+      data: {
+        postId: post.id,
+        content: commentText, // 추가
+      }
+    })
+    
+  }, [me && me.id, commentText]); // 수정
+
+  ...생략
+  ...생략
+};
+
+...생략
+
+export default PostCard;
+
+
+```
+
+#### \front\sagas\post.js
+```js
+...생략
+// 댓글 작성
+function AddCommentAPI(data) { // 여기 data에는 postId, comment가 2개가 있다.
+  return axios.post(`/post/${data.postId}/comment`, { content: data.comment }, {
+    withCredentials: true,
+  });
+}
+function* AddComment(action) { 
+  try {
+    const result = yield call(AddCommentAPI, action.data);
+    yield put({
+      type: ADD_COMMENT_SUCCESS,
+      data: {
+        postId: action.data.postId, 
+        comment: result.data,
+      }
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: ADD_COMMENT_FAILURE,
+      error: e
+    })
+  }
+}
+function* watchAddComment() {
+  yield takeLatest(ADD_COMMENT_REQUEST, AddComment);
+}
+
+// 댓글 조회
+function loadCommentsAPI(postId) { // 여기에는 action.data가 postId라서 그대로 넣어줬다.
+// 게다가, data 안에 postId 하나라서 이렇게 작성
+  return axios.get(`/post/${postId}/comment`);
+}
+function* loadComments(action) { 
+  try {
+    const result = yield call(loadCommentsAPI, action.data);
+    yield put({
+      type: LOAD_COMMENTS_SUCCESS,
+      data: {
+        postId: action.data.postId, 
+        comment: result.data,
+      }
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_COMMENTS_FAILURE,
+      error: e
+    })
+  }
+}
+function* watchLoadComments() {
+  yield takeLatest(LOAD_COMMENTS_REQUEST, loadComments);
+}
+
+
+...생략
+...생략
+```
+
+댓글 작성을하면 <br>
+`SequelizeValidationError: notNull Violation: Comment.content cannot be null` <br>
+서버쪽에 에러가 있다. 서버 쪽에러라면 네트워크 창을 열어서 확인을 한다. <br>
+데이터가 제대로 전달이 되는데?? <br>
+
+#### \front\sagas\post.js
+```js
+function AddCommentAPI(data) {
+  return axios.post(`/post/${data.postId}/comment`, { content: data.content }, { // 오류가 있었다.
+    withCredentials: true,
+  });
+}
+```
+
+수정을 한 결과, redux창을 다시 해본 결과 `ADD_COMMENT_FAILURE`가 나왔다. <br>
+
+댓글 작성을 하면, 댓글이 나와야하는데, 나오지가 않는다. <br>
+reudcer에서 수정을 해줘야한다. <br>
+
+#### 
+```js
+// 일단 여기만 추가를 해준다.
+case LOAD_COMMENTS_SUCCESS: { // 게시글을 추가할 때랑 똑같이 해줘야한다.
+  // 여기서 의문점이 있는데, 게시글 가져올 때 댓글도 다 가져오는게 낫지 않을까?
+  // 게시글이랑 댓글이랑 같이 가져오면, 데이터를 너무 많이 사용한다.
+  // 프론트에서 데이터를 많이 로딩을 해야기 떄문이다. 굳이 데이터를 서버로부터 많이 가져올 필요가 없다.
+  // 사용자가 보고싶은 것만 서버에서로부터 데이터를 가져오면 된다.
+  // 대신 이하와 같이 똑같은 작업도 같이 해야한다.
+  const postIndex = state.mainPosts.findOne(v => v.id === action.data.postId);
+  const post = state.mainPosts[postIndex];
+  const Comments = action.data.comments; 
+  const mainPosts = [...state.mainPosts];
+  mainPosts[postIndex] = { ...post, Comments };
+  return {
+    ...state,
+    mainPosts,
+  }
+
+}
+```
+여기에서 서버쪽에서는 post, get이 200, 201로 다 성공하였는데, 에러가 나온다.. <br>
+`state.mainPosts.findOne is not a function` <br>
+`findOne`이 아니라 `findIndex`이다.. <br>
+
+그리고 성공을 하였는데, 데이터가 안보인다..왜냐하면 철자가 틀려서이다.<br>
+
+#### \front\reducers\post.js
+```js
+// 철자 수정 (정확하게)
+const Comments = action.data.comments; 
+```
+
+철자 오류 <br>
+#### \front\sagas\post.js
+```js
+...생략
+function* loadComments(action) { 
+  try {
+    const result = yield call(loadCommentsAPI, action.data);
+    yield put({
+      type: LOAD_COMMENTS_SUCCESS,
+      data: {
+        // postId: action.data.postId, // 수정 전
+        postId: action.data, // 수정 후 
+        // comment: result.data, // 수정 전  
+        comments: result.data,  // 수정 후 
+      }
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_COMMENTS_FAILURE,
+      error: e
+    })
+  }
+}
+...생략
+```
+철자 오류... <br>
+
+#### \front\components\PostCard.js
+```js
+<Card.Meta 
+  avatar={(
+    // <Link href={{ pathname: '/user', query: { id: post.User.id } }} as={`/user/${post.user.id}`}> // 수정 전
+    <Link href={{ pathname: '/user', query: { id: post.User.id } }} as={`/user/${post.User.id}`}> // 수정 후
+    // 이 부분(as를 보면)도 수정하였다. post.user.Id -> post.User.id로 수정해야한다. 철자오류...
+      <a><Avatar>{post.User.nickname[0]}</Avatar></a>
+    </Link>)}
 ```
 

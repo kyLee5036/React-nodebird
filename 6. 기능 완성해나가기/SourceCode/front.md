@@ -5,7 +5,7 @@
 + [getInitialProps로 서버 데이터 받기](#getInitialProps로-서버-데이터-받기)
 + [해시태그 검색, 유저 정보 라우터 만들기](#해시태그-검색,-유저-정보-라우터-만들기)
 + [Link 컴포넌트 고급 사용법](#Link-컴포넌트-고급-사용법)
-
++ [댓글 작성, 댓글 로딩](#댓글-작성,-댓글-로딩)
 
 
 
@@ -1423,5 +1423,493 @@ PostCard.prototypes = {
 export default PostCard;
 
 
+```
+
+## 댓글 작성, 댓글 로딩
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\PostCard.js
+```js
+import React, { useState, useCallback, useEffect } from 'react';
+import { Card, Icon, Button, Avatar, Form, Input, List, Comment } from 'antd';
+import Link from 'next/link'
+import PropTypes from 'prop-types';
+import { useSelector, useDispatch } from 'react-redux';
+import { ADD_COMMENT_REQUEST, LOAD_COMMENTS_REQUEST } from '../reducers/post';
+
+const PostCard = ({post}) => {
+
+  const [commentFormOpened, setCommentFormOpened] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const { me } = useSelector(state => state.user);
+  const { commentAdded, isAddingComment } = useSelector(state => state.post);
+  const dispatch = useDispatch();
+
+  const onToggleComment = useCallback(() => {
+    setCommentFormOpened(prev => !prev);
+    if (!commentFormOpened) {
+      dispatch({
+        type: LOAD_COMMENTS_REQUEST,
+        data: post.id,
+      });
+    }
+  }, [commentFormOpened]);
+  
+  const onSubmitComment = useCallback((e) => {
+    e.preventDefault();
+    if (!me) {
+      return alert('로그인이 필요합니다.');
+    };
+    dispatch({
+      type: ADD_COMMENT_REQUEST,
+      data: {
+        postId: post.id,
+        content: commentText,
+      }
+    })
+    
+  }, [me && me.id, commentText]);
+
+  useEffect(() => {
+    if (commentAdded) {
+      setCommentText('');
+    }
+  }, [commentAdded]);
+
+  // useEffect(() => {
+  //   setCommentText('');
+  // }, [commentAdded === true]);
+
+  const onChangeCommentText = useCallback((e) => {
+    setCommentText(e.target.value);
+  }, []);
+
+  return (
+    <div>
+      <Card
+        key={+post.createdAt}
+        cover={post.img && <img alt="example" src={post.img} />}
+        actions={[
+          <Icon type="retweet" key="retweet" />,
+          <Icon type="heart" key="heart" />,
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Icon type="ellipsis" key="ellipsis" />,
+        ]}
+        extra={<Button>팔로우</Button>}
+      >
+        <Card.Meta 
+          avatar={(
+            <Link href={{ pathname: '/user', query: { id: post.User.id } }} as={`/user/${post.User.id}`}>
+              <a><Avatar>{post.User.nickname[0]}</Avatar></a>
+            </Link>)}
+          title={post.User.nickname}
+          description={(
+            <div>
+              {post.content.split(/(#[^\s]+)/g).map((v, i) => {
+                if (v.match(/#[^\s]+/)) {
+                  return (
+                    <Link 
+                      href={{ pathname: '/hashtag', query: { tag: v.slice(1) } }}
+                      as={`/hashtag/${v.slice(1)}`} 
+                      key={+v.createdAt}
+                    >
+                      <a>{v}</a>
+                    </Link>
+                  );
+                }
+                return v; 
+              })};
+            </div>
+          )}
+        />
+      </Card>
+      {commentFormOpened && (
+        <>
+          <Form onSubmit={onSubmitComment}>
+            <Form.Item>
+              <Input.TextArea rows={4} value={commentText} onChange={onChangeCommentText}/>
+            </Form.Item>
+            <Button type="primary" htmlType="submit" loading={isAddingComment}>클릭</Button>
+          </Form>
+          <List
+            header={`${post.Comments ? post.Comments.length : 0} 댓글`}
+            itemLayout="horizontal"
+            dataSource={post.Comments || []}
+            renderItem={ item => (
+              <li>
+                <Comment
+                  author={item.User.nickname}
+                  avatar={(
+                    <Link href={{ pathname: '/user', query: { id: item.User.id } }} as={`/user/${item.User.id}`}>
+                      <a><Avatar>{item.User.nickname[0]}</Avatar></a>
+                    </Link>
+                  )}
+                  content={item.content}
+                />
+              </li>
+            )}
+          />
+        </>
+      )} 
+    </div>
+  )
+};
+
+PostCard.prototypes = {
+  post: PropTypes.shape({
+    User : PropTypes.object,
+    content : PropTypes.string,
+    img: PropTypes.string,
+    createdAt: PropTypes.object,  
+  }),
+}
+
+export default PostCard;
+
+
+```
+
+#### \front\reducers\post.js
+```js
+export const initialState = {
+  mainPosts: [],
+  imagePaths: [],
+  addPostErrorReason: '',
+  isAddingPost: false,
+  postAdded: false,
+  isAddingComment: false,
+  addCommentErrorReason: '',
+  commentAdded: false,
+};
+
+export const ADD_POST_REQUEST = 'ADD_POST_REQUEST';
+export const ADD_POST_SUCCESS = 'ADD_POST_SUCCESS';
+export const ADD_POST_FAILURE = 'ADD_POST_FAILURE';
+
+export const LOAD_MAIN_REQUEST = 'LOAD_MAIN_REQUEST';
+export const LOAD_MAIN_SUCCESS = 'LOAD_MAIN_SUCCESS';
+export const LOAD_MAIN_FAILURE = 'LOAD_MAIN_FAILURE';
+
+export const LOAD_HASHTAG_POSTS_REQUEST = 'LOAD_HASHTAG_POSTS_REQUEST';
+export const LOAD_HASHTAG_POSTS_SUCCESS = 'LOAD_HASHTAG_POSTS_SUCCESS';
+export const LOAD_HASHTAG_POSTS_FAILURE = 'LOAD_HASHTAG_POSTS_FAILURE';
+
+export const LOAD_USER_POSTS_REQUEST = 'LOAD_USER_POSTS_REQUEST';
+export const LOAD_USER_POSTS_SUCCESS = 'LOAD_USER_POSTS_SUCCESS';
+export const LOAD_USER_POSTS_FAILURE = 'LOAD_USER_POSTS_FAILURE';
+
+export const UPLOAD_IMAGES_REQUEST = 'UPLOAD_IMAGES_REQUEST';
+export const UPLOAD_IMAGES_SUCCESS = 'UPLOAD_IMAGES_SUCCESS';
+export const UPLOAD_IMAGES_FAILURE = 'UPLOAD_IMAGES_FAILURE';
+
+export const REMOVE_IMAGE = 'REMOVE_IMAGE';
+
+export const LIKE_POST_REQUEST = 'LIKE_POST_REQUEST';
+export const LIKE_POST_SUCCESS = 'LIKE_POST_SUCCESS';
+export const LIKE_POST_FAILURE = 'LIKE_POST_FAILURE';
+
+export const UNLIKE_POST_REQUEST = 'UNLIKE_POST_REQUEST';
+export const UNLIKE_POST_SUCCESS = 'UNLIKE_POST_SUCCESS';
+export const UNLIKE_POST_FAILURE = 'UNLIKE_POST_FAILURE';
+
+export const ADD_COMMENT_REQUEST = 'ADD_COMMENT_REQUEST';
+export const ADD_COMMENT_SUCCESS = 'ADD_COMMENT_SUCCESS';
+export const ADD_COMMENT_FAILURE = 'ADD_COMMENT_FAILURE';
+
+export const LOAD_COMMENTS_REQUEST = 'LOAD_COMMENTS_REQUEST';
+export const LOAD_COMMENTS_SUCCESS = 'LOAD_COMMENTS_SUCCESS';
+export const LOAD_COMMENTS_FAILURE = 'LOAD_COMMENTS_FAILURE';
+
+export const RETWEET_REQUEST = 'RETWEET_REQUEST';
+export const RETWEET_SUCCESS = 'RETWEET_SUCCESS';
+export const RETWEET_FAILURE = 'RETWEET_FAILURE';
+
+export const REMOVE_POST_REQUEST = 'REMOVE_POST_REQUEST';
+export const REMOVE_POST_SUCCESS = 'REMOVE_POST_SUCCESS';
+export const REMOVE_POST_FAILURE = 'REMOVE_POST_FAILURE';
+
+export const UPDATE_POST_REQUEST = 'UPDATE_POST_REQUEST';
+export const UPDATE_POST_SUCCESS = 'UPDATE_POST_SUCCESS';
+export const UPDATE_POST_FAILURE = 'UPDATE_POST_FAILURE';
+
+export const LOAD_MAIN_POSTS_REQUEST = 'LOAD_MAIN_POSTS_REQUEST';
+export const LOAD_MAIN_POSTS_SUCCESS = 'LOAD_MAIN_POSTS_SUCCESS';
+export const LOAD_MAIN_POSTS_FAILURE = 'LOAD_MAIN_POSTS_FAILURE';
+
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case ADD_POST_REQUEST: {
+      return {
+        ...state,
+        isAddingPost: true,
+        addPostErrorReason: '',
+        postAdded: false,
+      };
+    }
+    case ADD_POST_SUCCESS: {
+      return {
+        ...state,
+        isAddingPost: false,
+        mainPosts: [action.data, ...state.mainPosts],
+        postAdded: true,
+      };
+    }
+    case ADD_POST_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addPostErrorReason: action.error,
+      };
+    }
+    case ADD_COMMENT_REQUEST: {
+      return {
+        ...state,
+        isAddingComment: true,
+        addCommentErrorReason: '',
+        commentAdded: false,
+      };
+    }
+    case ADD_COMMENT_SUCCESS: {
+      const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postId);
+      const post = state.mainPosts[postIndex];
+      const Comments = [...post.Comments, action.data.comment];
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = { ...post, Comments };
+      return {
+        ...state,
+        isAddingComment: false,
+        mainPosts,
+        commentAdded: true,
+      };
+    }
+    case ADD_COMMENT_FAILURE: {
+      return {
+        ...state,
+        isAddingComment: false,
+        addCommentErrorReason: action.error,
+      };
+    }
+    case LOAD_COMMENTS_SUCCESS: {
+      const postIndex = state.mainPosts.findIndex(
+        v => v.id === action.data.postId
+      );
+      const post = state.mainPosts[postIndex];
+      const Comments = action.data.comments;
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = { ...post, Comments };
+      return {
+        ...state,
+        mainPosts
+      };
+    }
+    case LOAD_MAIN_POSTS_REQUEST:
+    case LOAD_HASHTAG_POSTS_REQUEST:
+    case LOAD_USER_POSTS_REQUEST: {
+      return {
+        ...state,
+        mainPosts: [],
+      };
+    }
+    case LOAD_MAIN_POSTS_SUCCESS:
+    case LOAD_HASHTAG_POSTS_SUCCESS:
+    case LOAD_USER_POSTS_SUCCESS: {
+      return {
+        ...state,
+        mainPosts: action.data,
+      };
+    }
+    case LOAD_MAIN_POSTS_FAILURE:yy
+    case LOAD_HASHTAG_POSTS_FAILURE:yy
+    case LOAD_USER_POSTS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+```
+
+#### \front\sagas\post.js
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, put, delay, call } from 'redux-saga/effects';
+import { 
+  ADD_POST_REQUEST, ADD_POST_FAILURE, ADD_POST_SUCCESS, 
+  ADD_COMMENT_SUCCESS, ADD_COMMENT_REQUEST, ADD_COMMENT_FAILURE, 
+  LOAD_MAIN_POSTS_SUCCESS, LOAD_MAIN_POSTS_FAILURE, LOAD_MAIN_POSTS_REQUEST, LOAD_HASHTAG_POSTS_REQUEST, LOAD_HASHTAG_POSTS_SUCCESS, LOAD_HASHTAG_POSTS_FAILURE, LOAD_USER_POSTS_SUCCESS, LOAD_USER_POSTS_FAILURE, LOAD_USER_POSTS_REQUEST, LOAD_COMMENTS_FAILURE, LOAD_COMMENTS_REQUEST, LOAD_COMMENTS_SUCCESS 
+} from '../reducers/post';
+
+
+function AddCommentAPI(data) {
+  return axios.post(`/post/${data.postId}/comment`, { content: data.content }, {
+    withCredentials: true,
+  });
+}
+function* AddComment(action) { 
+  try {
+    const result = yield call(AddCommentAPI, action.data);
+    yield put({
+      type: ADD_COMMENT_SUCCESS,
+      data: {
+        postId: action.data.postId, 
+        comment: result.data,
+      }
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: ADD_COMMENT_FAILURE,
+      error: e
+    })
+  }
+}
+function* watchAddComment() {
+  yield takeLatest(ADD_COMMENT_REQUEST, AddComment);
+}
+
+function loadCommentsAPI(postId) {
+  return axios.get(`/post/${postId}/comments`);
+}
+
+function* loadComments(action) {
+  try {
+    const result = yield call(loadCommentsAPI, action.data);
+    yield put({
+      type: LOAD_COMMENTS_SUCCESS,
+      data: {
+        postId: action.data,
+        comments: result.data
+      }
+    });
+  } catch (e) {
+    yield put({
+      type: LOAD_COMMENTS_FAILURE,
+      error: e
+    });
+  }
+}
+
+function* watchLoadComments() {
+  yield takeLatest(LOAD_COMMENTS_REQUEST, loadComments);
+}
+
+
+function addPostAPI(postData) {
+  return axios.post('/post', postData, {
+    withCredentials: true,
+  });
+}
+
+function* addPost(action) {
+  try {
+    const result = yield call(addPostAPI, action.data);
+    yield put({
+      type: ADD_POST_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    yield put({
+      type: ADD_POST_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchAddPost() {
+  yield takeLatest(ADD_POST_REQUEST, addPost);
+}
+
+
+function loadMainPostsAPI() {
+  return axios.get('/posts');
+}
+
+function* loadMainPosts() {
+  try {
+    const result = yield call(loadMainPostsAPI);
+    yield put({
+      type: LOAD_MAIN_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_MAIN_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadMainPosts() {
+  yield takeLatest(LOAD_MAIN_POSTS_REQUEST, loadMainPosts);
+}
+
+
+function loadHashtagPostsAPI(tag) {
+  return axios.get(`/hashtag/${tag}`);
+}
+
+function* loadHashtagPosts(action) {
+  try {
+    const result = yield call(loadHashtagPostsAPI, action.data);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadHashtagPosts() {
+  yield takeLatest(LOAD_HASHTAG_POSTS_REQUEST, loadHashtagPosts);
+}
+
+
+function loadUserPostsAPI(id) {
+  return axios.get(`/user/${id}/posts`);
+}
+
+function* loadUserPosts(action) {
+  try {
+    const result = yield call(loadUserPostsAPI, action.data);
+    yield put({
+      type: LOAD_USER_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_USER_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadUserPosts() {
+  yield takeLatest(LOAD_USER_POSTS_REQUEST, loadUserPosts);
+}
+
+export default function* postSaga() {
+  yield all([
+    fork(watchAddPost),
+    fork(watchLoadMainPosts),
+    fork(watchAddComment),
+    fork(watchLoadComments),
+    fork(watchLoadHashtagPosts),
+    fork(watchLoadUserPosts),
+  ]);
+}
 ```
 

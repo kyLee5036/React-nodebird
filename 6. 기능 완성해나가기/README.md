@@ -1176,3 +1176,103 @@ AppLayout.prototypes = { // 철자를 잘 못 적었음..
   children: PropTypes.node,
 }
 ```
+
+### Link를 SPA 적용하기
+
+여기서 SPA를 적용해주기 위해서, `Link부분`을 고쳐줘야한다.
+#### \front\components\PostCard.js
+```js
+// 이게 프론트 주소가 아니라 서버주소이다.
+avatar={<Link href={`/user/${post.User.id}`}><a><Avatar>{post.User.nickname[0]}</Avatar></a></Link>}
+// `/user/${post.User.id}`은 프론트에서 처리를 안하고 서버에서 처리를 한다.
+// 그래서 프론트에서 처리할 수 있게 링크를 바꿔줘야한다.
+// 수정 후
+avatar={<Link href={{ pathname: '/user', query: { id: post.User.id } }}><a><Avatar>{post.User.nickname[0]}</Avatar></a></Link>}
+```
+
+#### \front\components\PostCard.js
+```js
+<Card.Meta 
+  // 밑에도 바꿔준 상태이다.
+  avatar={<Link href={{ pathname: '/user', query: { id: post.User.id } }}><a><Avatar>{post.User.nickname[0]}</Avatar></a></Link>}
+  title={post.User.nickname}
+  description={(
+    <div>
+      {post.content.split(/(#[^\s]+)/g).map((v, i) => {
+        if (v.match(/#[^\s]+/)) {
+          return (
+            <Link 
+              // 수정 전
+              href={`/hashtag/${v.slice(1)}`}
+              // 수정 후
+              href={{ pathname: '/hashtag', query: { tag: v.slice(1) } }}                 
+              key={+v.createdAt}
+            >
+              <a>{v}</a>
+            </Link>
+          );
+        }
+        return v; 
+      })};
+    </div>
+  )}
+/>
+
+
+...생략
+  <li>
+    <Comment
+      author={item.User.nickname}
+      // 이 부분도 고쳐줘야한다.
+      avatar={<Link href={{ pathname: '/user', query: { id: item.User.id } }}><a><Avatar>{item.User.nickname[0]}</Avatar></a></Link>}
+      content={item.content}
+    />
+  </li>
+
+```
+
+여기까지 다 좋은데.. 주소가 이상하다.. 해시태그의 `#리액트`를 클릭하면
+주소 : `/hashtag?tag=리액트`; 이런식으로 나온다.
+우리가 원하는 건`/hashtag/리액트` 이다. 그래서 여기에서 옵션에서 설정을 해줘야한다.
+그 설정은 `as`를 추가하면 된다.
+
+#### \front\components\PostCard.js
+```js
+...생략
+...생략
+
+<Card.Meta 
+  avatar={(
+    <Link href={{ pathname: '/user', query: { id: post.User.id } }} as={`/user/${post.user.id}`}>
+      <a><Avatar>{post.User.nickname[0]}</Avatar></a>
+    </Link>)}
+  ...생략
+>
+
+
+return (
+  <Link 
+    href={{ pathname: '/hashtag', query: { tag: v.slice(1) } }} 
+    // 프론트 주소는 href로 작성작성한다.
+    as={`/hashtag/${v.slice(1)}`} // 여기에 as를 추가한다.
+    // 서버쪽 주소는 as로 작성한다.
+    key={+v.createdAt}
+  >
+    <a>{v}</a>
+  </Link>
+);
+
+
+...생략
+avatar={(
+  <Link 
+    href={{ pathname: '/user', query: { id: item.User.id } }} 
+    // 여기에 as를 추가하고 내가 원하는 주소를 적으면 된다.
+    as={`/user/${item.user.id}`} >
+    <a><Avatar>{item.User.nickname[0]}</Avatar></a>
+  </Link>
+)}
+
+...생략
+```
+

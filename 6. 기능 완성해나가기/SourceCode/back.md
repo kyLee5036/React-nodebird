@@ -4,6 +4,7 @@
 + [next와 express 연결하기](#next와-express-연결하기)
 + [getInitialProps로 서버 데이터 받기](#getInitialProps로-서버-데이터-받기)
 + [해시태그 검색, 유저 정보 라우터 만들기](#해시태그-검색,-유저-정보-라우터-만들기)
++ [Link 컴포넌트 고급 사용법](#Link-컴포넌트-고급-사용법)
 
 
 
@@ -261,4 +262,9 @@ app.listen(3065, () => {
   console.log('server is running on (서버주소) : http://localhost:3065');
 });
 ```
+
+## Link 컴포넌트 고급 사용법
+[위로가기](#기능-완성해나가기)
+
+코드없음
 

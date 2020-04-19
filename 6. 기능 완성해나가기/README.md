@@ -7,6 +7,7 @@
 + [Link 컴포넌트 고급 사용법](#Link-컴포넌트-고급-사용법)
 + [댓글 작성, 댓글 로딩](#댓글-작성,-댓글-로딩)
 + [미들웨어로 중복 제거하기](#미들웨어로-중복-제거하기)
++ [이미지 업로드 프론트 구현하기](#이미지-업로드-프론트-구현하기)
 
 
 
@@ -1635,6 +1636,156 @@ router.get('/', isLoggedIn, (req, res) => { // isLoggedIn 추가
 ...생략
 
 module.exports = router; 
+
+```
+
+## 이미지 업로드 프론트 구현하기
+[위로가기](#기능-완성해나가기)
+
+이미지 업로드를 하기위해서 새로운 개념이 등장한다. <br>
+`multipart/form-data` <br>
+
+```html
+<!-- 이 부분이다. -->
+<form enctype="multipart/fomr-data"> 
+```
+
+#### 
+```js
+...생략
+
+const PostForm = () => {
+  ...생략
+  const imageInput = useRef(); // dom을 접근하기 위해서 useRef를 사용한다.
+
+  ...생략
+
+  const onChangeImages = useCallback((e) => { // 이 부분은 실제로 이미지를 업로드 했을 때
+    console.log(e.target.files); // 파일들은 e.target.files안에 들어있다.
+    const imageFormData = new FormData(); // multipart/fomr-data를 사용했기 때문에 formData라는 객체를 사용해야한다.
+    [].forEach.call(e.target.files, (f) => { // 반복문들을 돌려줘서 각각의 데이터들을
+      imageFormData.append('image', f); // (key, value) imageFormData에 append(표시)한다. 
+      // 여기서 'image'의 이름(key)은 서버쪽에서 인식을 하기때문에 이름을 정확하게 지정해야한다.
+
+      // SPA를 유지하기 위해 ajax를 사용해서 imageFormData라는 객체로 'image'를 append를 해준다.
+    });
+    dispatch({
+      type: UPLOAD_IMAGES_REQUEST,
+      data: imageFormData,
+    });
+  }, []);
+
+  const onClickImageUpload = useCallback(() => { // 이미지 input창이 열리게 해준다.
+    imageInput.current.click(); 
+    // 버튼을 눌렀을 때 `<input type="file" multiple hidden ref={imageInput} onChange={onChangeImages} />`를 누른 효과가 나온다.
+  }, [imageInput.current]);
+
+  return (
+    <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data" onSubmit={onSubmitForm}>
+      // 동영상이나 이미지들은  multipart/fomr-data를 사용한다. 
+      // ajax를 할 때에는 FormData에 객채안에다가 key, value 이런 식으로 append를 해서 직접 보내줘야한다.
+      <Input.TextArea maxLength={140} placeholder="어떤 신기한 일이 있었나요?" value={text} onChange={onChangeText} />
+      <div>
+        <input type="file" multiple hidden ref={imageInput} onChange={onChangeImages} /> // imageInput, onChangeImages 추가
+        <Button onClick={onClickImageUpload} >이미지 업로드</Button> // onClickImageUpload 추가
+        <Button type="primary" style={{ float : 'right'}} htmlType="submit" loading={isAddingPost} >업로드</Button>
+
+        // onClickImageUpload를 클릭하면, dom에 접근하여 imageInput를 찾은 다음 후, imageInput에 의해서 onChangeImages가 작동을 한다.
+      </div>  
+      ...생략
+  </Form>
+  )
+}
+
+export default PostForm;
+```
+
+> 이미지, 게시글들을 같이 업로드하면 이미지의 부분이 시간이 걸리니까 먼저 서버에 업로드한다. <br>
+> 유저가 게시글을 작성하는 동안 서버에서 이미지를 압축, 필터등의 작업이 일어난다. <br>
+
+#### \front\sagas\post.js
+```js
+...생략
+
+function uploadImagesAPI(formData) {
+  return axios.post(`/post/images`, formData ,{
+    withCredentials: true,
+  });
+}
+
+function* uploadImages(action) {
+  try {
+    const result = yield call(uploadImagesAPI, action.data);
+    yield put({
+      type: UPLOAD_IMAGES_SUCCESS,
+      data: result.data, // result.data가 서버로부터 받는 응답
+      // 서버쪽에서 저장된 이미지 주소들을 받을 것이다. 
+      // 이미지 업로드 -> 이미지 업로드 완료를 하면 서버는 이미지들은 어디에 저장되었는지 보내줄 것이다.
+      // 이걸 통해서, 이미지 미리보기와 같은 다양한 기능을 만들 수 있다.
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: UPLOAD_IMAGES_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchUploadImages() {
+  yield takeLatest(UPLOAD_IMAGES_REQUEST, uploadImages);
+}
+
+export default function* postSaga() {
+  yield all([
+    fork(watchAddPost),
+    fork(watchLoadMainPosts),
+    fork(watchAddComment),
+    fork(watchLoadComments),
+    fork(watchLoadHashtagPosts),
+    fork(watchLoadUserPosts),
+    fork(watchUploadImages), // 추가
+  ]);
+}
+```
+
+> Tip) IE10, IE11를 해주기위해서는 `babel-polyfill`라는 것을 사용해야한다. <br>
+
+#### \front\reducers\post.js
+
+```js
+...생략
+
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case UPLOAD_IMAGES_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case UPLOAD_IMAGES_SUCCESS: {
+      return {
+        ...state,
+        imagePaths: [...state.imagePaths, ...action.data], 
+        // imagePaths가 이미지 미리보기할 수 있는 경로들이다. 
+        // 새로운 action.data를 합칠 것이다. 
+        // 즉 이미지들을 업로드 할 떄 1개 뿐만 아니라 여러 개 할 수 있도록 한다.
+      };
+    }
+    case UPLOAD_IMAGES_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    ...생략
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
 
 ```
 

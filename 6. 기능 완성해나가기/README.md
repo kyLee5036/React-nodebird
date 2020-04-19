@@ -6,6 +6,8 @@
 + [해시태그 검색, 유저 정보 라우터 만들기](#해시태그-검색,-유저-정보-라우터-만들기)
 + [Link 컴포넌트 고급 사용법](#Link-컴포넌트-고급-사용법)
 + [댓글 작성, 댓글 로딩](#댓글-작성,-댓글-로딩)
++ [미들웨어로 중복 제거하기](#미들웨어로-중복-제거하기)
+
 
 
 ## 해시태그 링크로 만들기
@@ -1545,5 +1547,94 @@ function* loadComments(action) {
     // 이 부분(as를 보면)도 수정하였다. post.user.Id -> post.User.id로 수정해야한다. 철자오류...
       <a><Avatar>{post.User.nickname[0]}</Avatar></a>
     </Link>)}
+```
+
+## 미들웨어로 중복 제거하기
+[위로가기](#기능-완성해나가기)
+
+공통된 부분 -> 중복된 부분은 제거해야 된다. <br>
+그러기 위해서 미들웨어를 활용해서 중복 제거를 하겠다. <br>
+
+#### \back\routes\middlewares.js
+```js
+// 공통된 부분을 제거하기 위해서 생성하였다.
+exports.isLoggedIn = (req, res, next) => {
+  if (req.isAuthenticated()) { // isAuthenticated()로 한다. 
+    next(); // 여기에다가 에러를 넣으면 에러 처리를한다.
+    // 에러를 안 넣으면 다음 미들웨어로 넘어간다.
+  } else {
+    res.status(401).send('로그인이 필요합니다.')
+  }
+};
+
+// 회원가입 페이지일 경우에는 못 가도록한다.
+exports.isNotLoggedIn = (req, res, next) => {  
+  if (!req.isAuthenticated()) {
+    next();
+  } else {
+    res.status(401).send('로그인 한 사용자는 접근할 수 없습니다.');
+  }
+};
+```
+
+<strong>isAuthenticated()</strong>는 로그인했는지 안했는지 판단해주는 공식적인 라우터이다.
+
+#### \back\routes\post.js
+```JS
+...생략
+const { isLoggedIn } = require('./middlewares'); // 추가
+
+const router = express.Router();
+
+router.post('/', isLoggedIn, async (req, res, next) => { // 여기에다가 isLoggedIn을 넣어준다.
+  // 위에 보면 isLoggedIn-> (req, res, next)순서대로 실행한다. 
+  // 그리고, isLoggedIn가 실행 안하면 라우터가 끊난다.
+  try {
+    // if ( !req.user ) {
+    //   return res.status(401).send('로그인이 필요합니다.');
+    // } 
+    // 윗 부분은 제거를 한다. 위에서 isLoggedIn가 처리를 하기 때문이다.
+    
+    
+    const hashtags = req.body.content.match(/#[^\s]+/g);
+    ...생략
+    res.json(fullPost);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
+
+
+router.post('/:id/comment', isLoggedIn, async(req, res, next) => { // isLoggedIn 추가
+  ...생략
+});
+
+module.exports = router;
+```
+
+
+#### \back\routes\user.js
+```js
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+const passport = require('passport');
+const { isLoggedIn } = require('./middlewares'); // 추가
+
+const router = express.Router();
+
+router.get('/', isLoggedIn, (req, res) => { // isLoggedIn 추가
+  const user = Object.assign({}, req.user.toJSON() );
+  delete user.password;
+  return res.json(req.user);
+});
+
+...생략
+
+module.exports = router; 
+
 ```
 

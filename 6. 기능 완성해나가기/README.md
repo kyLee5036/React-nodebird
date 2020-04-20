@@ -8,6 +8,7 @@
 + [댓글 작성, 댓글 로딩](#댓글-작성,-댓글-로딩)
 + [미들웨어로 중복 제거하기](#미들웨어로-중복-제거하기)
 + [이미지 업로드 프론트 구현하기](#이미지-업로드-프론트-구현하기)
++ [multer로 이미지 업로드 받기](#multer로-이미지-업로드-받기)
 
 
 
@@ -1789,3 +1790,92 @@ export default (state = initialState, action) => {
 
 ```
 
+## multer로 이미지 업로드 받기
+[위로가기](#기능-완성해나가기)
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+const multer = require('multer'); // 추가
+const path = require('path'); // 추가
+const db = require('../models');
+const { isLoggedIn } = require('./middlewares');
+
+const router = express.Router();
+
+...생략
+
+
+// multer에 대한 설정을 해야한다.
+const upload = multer({
+  // 여기에다가 옵션을 한다. 
+  // 꼭 이미지 아니더라도, 파일, 동영상 다 가능하다.
+  storage: multer.diskStorage({
+    // 일단 디스크에 업로드하고, 배포할 때에는 실제로 S3를 사용한다.
+
+    destination(req, res, done) { // 어떤 경로에 저장할지를 설정한다.
+      done(null, 'uploads'); // `uploads`라는 폴더에 저장을 한다.
+       // done(서버 에러, 성공했을 때) -> done은 이름 마음대로 정해도된다
+    },
+    filename(req, file, done) {
+      const ext = path.extname(file.originalname); // path모듈 : 확장자를 추출한다.
+      
+      const basename = path.basename(file.originalname, ext); // 확장자를 제외한 이름을 추출
+      // 예로 들면) leeky.png, ext===.png, basenmae===leeky
+
+      // 파일 이름이 중복될 수도 있으니까 시간도 정해준다.
+      done(null, basename + new Date().valueOf() + ext ); // 시간 정보 + 확장자orientation
+      // 파일명이 같더라도 시간을 붙여서 덮어쓰기를 막아준다.
+    },
+  }),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 파일 사이즈를 제한했다.
+});
+
+// upload.array('image')의 image는 imageFormdata의 이름이랑 일치해야한다.
+router.post('/images', upload.array('image'), (req, res) => { 
+  // array는 여러 장 업로드, single는 한 장, none은 파일, 이미지를 하나도 안 올리는 경우
+  res.json(req.files.map(v => v.filename)); // 여기에 이미지들을 저장한다.
+  
+});
+
+...생략
+
+module.exports = router;
+```
+
+<pre><code>["image1587390859457.png"]
+0: "image1587390859457.png"</code></pre>
+Networdk창에 보면 images가 정상적으로 작동하면서 <br>
+Preview를 보면 위와 같은 결과가 나오게 되어있다. <br>
+그리고, uploads 폴더에 보면 이미지 업로드가 되어있을 것이다. <br>
+
+<br><br>
+참고로 이미지 경로부분도 잊을 수도 있으니까 여기서 한 번더 보여주겠다. <br>
+
+#### \front\components\PostForm.js
+```js
+...생략
+
+const PostForm = () => {
+  ...생략
+
+  return (
+    <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data" onSubmit={onSubmitForm}>
+      ...생략
+      <div>
+        // 이 부분은 이미지 미리보기
+        {imagePaths.map((v) => ( // imagePaths가 이미지 경로이다.
+          <div key={v} style={{ display: 'inline-black' }}> 
+            <img src={`http://localhost:3065/${v}`} style={{ width : '200px' }} alt={v} /> 
+            <div>
+              <Button>제거</Button>
+            </div>
+          </div>
+        ))}  
+      </div>  
+  </Form>
+  )
+}
+
+export default PostForm;
+```

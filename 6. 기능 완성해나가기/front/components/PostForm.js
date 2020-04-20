@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Form, Input, Button } from 'antd';
 import { useSelector, useDispatch } from 'react-redux';
-import { ADD_POST_REQUEST, UPLOAD_IMAGES_REQUEST } from '../reducers/post';
+import { ADD_POST_REQUEST, UPLOAD_IMAGES_REQUEST, REMOVE_IMAGE } from '../reducers/post';
 
 const PostForm = () => {
   const { imagePaths, isAddingPost, postAdded } = useSelector(state => state.post);
@@ -45,8 +45,14 @@ const PostForm = () => {
   }, []);
   const onClickImageUpload = useCallback(() => {
     imageInput.current.click(); 
-  
   }, [imageInput.current]);
+
+  const onRemoveImage = useCallback( index => () => {
+    dispatch({
+      type: REMOVE_IMAGE,
+      index,
+    })
+  }, []);
 
   return (
     <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data" onSubmit={onSubmitForm}>
@@ -57,11 +63,11 @@ const PostForm = () => {
         <Button type="primary" style={{ float : 'right'}} htmlType="submit" loading={isAddingPost} >업로드</Button>
       </div>
       <div>
-        {imagePaths.map((v) => (
+        {imagePaths.map((v, i) => (
           <div key={v} style={{ display: 'inline-black' }}>
             <img src={`http://localhost:3065/${v}`} style={{ width : '200px' }} alt={v} />
             <div>
-              <Button>제거</Button>
+              <Button onClick={onRemoveImage(i)}>제거</Button>
             </div>
           </div>
         ))}  

@@ -19,6 +19,7 @@ db.sequelize.sync();
 passportConfig(); 
 
 app.use(morgam('dev'));
+app.use('/', express.static('uploads'));
 app.use(cors({
   origin: true, 
   credentials: true,

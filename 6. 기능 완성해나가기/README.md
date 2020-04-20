@@ -9,6 +9,7 @@
 + [미들웨어로 중복 제거하기](#미들웨어로-중복-제거하기)
 + [이미지 업로드 프론트 구현하기](#이미지-업로드-프론트-구현하기)
 + [multer로 이미지 업로드 받기](#multer로-이미지-업로드-받기)
++ [express static과 이미지 제거](#express-static과-이미지-제거)
 
 
 
@@ -1879,3 +1880,95 @@ const PostForm = () => {
 
 export default PostForm;
 ```
+
+## express static과 이미지 제거
+[위로가기](#기능-완성해나가기)
+
+<strong>미리보기</strong> 서버쪽에 이미지를 가져와야하는데.. 안된다.. <br>
+업로드쪽에 있는 폴더를 가져와야한다. <br>
+
+#### \back\index.js
+```js
+...생략
+
+app.use(morgam('dev'));
+
+//--> '/' : 프론트에서 접근하는 주소, express.static : 실제 서버의 주소 
+app.use('/', express.static('uploads')); // static미들웨어는 경로를 지정해주면, 
+// 다른서버에서 자유롭게 데이터를 가져갈 수가 있다.
+// '/'의 의미는 : /(루트) -> 즉, 루트폴더 인 마냥 쓸 수 있게한다. 
+
+app.use(cors({
+  origin: true, 
+  credentials: true,
+})); 
+app.use(express.json()); 
+...생략
+```
+
+이미지 업로드를 하면, 주소랑 이미지를 전달해줄 수가 있다. <br><br>
+
+그리고 이미지를 제거하는 버튼도 만들어보겠다. <br>
+
+#### \front\components\PostForm.js
+```js
+....생략
+
+const PostForm = () => {
+  ....생략
+
+  // 고차함수 : HOC처럼 기존함수를 가능을 확장한다.
+  const onRemoveImage = useCallback((index) => () => { // 밑에 괄호가 한개 있으니까 여기에는 괄호를 2개 해준다. 
+    dispatch({
+      type: REMOVE_IMAGE,
+      index, // index를 적어줘야한다.
+    })
+  }, []);
+
+  return (
+    <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data" onSubmit={onSubmitForm}>
+      ....생략
+      <div>
+        {imagePaths.map((v, i) => (
+          <div key={v} style={{ display: 'inline-black' }}>
+            <img src={`http://localhost:3065/${v}`} style={{ width : '200px' }} alt={v} />
+            <div>
+              <Button onClick={onRemoveImage(i)}>제거</Button> {/* 여기 괄호가 있으면 위에 함수에는 괄호가 2개가 있어야한다. 이건 패턴이다. */}
+            </div>
+          </div>
+        ))}  
+      </div>  
+  </Form>
+  )
+}
+
+export default PostForm;
+```
+
+#### \front\reducers\post.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case REMOVE_IMAGE: {
+      return {
+        ...state,
+        // 이렇게 추가해줘야한다.
+        imagePaths: state.imagePaths.filter((v, i) => i !== action.index), 
+      }
+    }
+    ...생략
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+```
+
+saga를 안해준 이유는, 프론트에서도 간단하게 reudcer를 사용하여 삭제를 가능하기 때문이다. <br>
+

@@ -10,7 +10,8 @@
 + [이미지 업로드 프론트 구현하기](#이미지-업로드-프론트-구현하기)
 + [multer로 이미지 업로드 받기](#multer로-이미지-업로드-받기)
 + [express static과 이미지 제거](#express-static과-이미지-제거)
-
++ [폼데이터로 게시글 올리기](#폼데이터로-게시글-올리기)
+ #### j
 
 
 ## 해시태그 링크로 만들기
@@ -2563,3 +2564,219 @@ export default (state = initialState, action) => {
 };
 
 ```
+
+## 폼데이터로 게시글 올리기
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\PostForm.js
+```js
+import React, { useCallback, useState, useEffect, useRef } from 'react';
+import { Form, Input, Button } from 'antd';
+import { useSelector, useDispatch } from 'react-redux';
+import { ADD_POST_REQUEST, UPLOAD_IMAGES_REQUEST, REMOVE_IMAGE } from '../reducers/post';
+
+const PostForm = () => {
+  const { imagePaths, isAddingPost, postAdded } = useSelector(state => state.post);
+  const dispatch = useDispatch();
+  const [text, setText] = useState('');
+  const imageInput = useRef();
+
+  const onSubmitForm = useCallback((e) => {
+    e.preventDefault();
+    if (!text || !text.trim()) {
+      return alert('게시글을 작성하세요!');
+    }
+    const formData = new FormData();
+    imagePaths.forEach((i) => {
+      formData.append('image', i);
+    });
+    formData.append('content', text);
+    dispatch({
+      type: ADD_POST_REQUEST,
+      data: formData,
+    });
+  }, [text, imagePaths]);
+
+  const onChangeText = useCallback((e) => {
+    setText(e.target.value);
+  }, []);
+
+  useEffect(() => {
+    if (postAdded) {
+      setText('');
+    }
+  }, [postAdded]);
+
+  const onChangeImages = useCallback((e) => {
+    console.log(e.target.files);
+    const imageFormData = new FormData();
+    [].forEach.call(e.target.files, (f) => {
+      imageFormData.append('image', f);
+    });
+    dispatch({
+      type: UPLOAD_IMAGES_REQUEST,
+      data: imageFormData,
+    });
+  }, []);
+  const onClickImageUpload = useCallback(() => {
+    imageInput.current.click(); 
+  }, [imageInput.current]);
+
+  const onRemoveImage = useCallback( index => () => {
+    dispatch({
+      type: REMOVE_IMAGE,
+      index,
+    })
+  }, []);
+
+  return (
+    <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data" onSubmit={onSubmitForm}>
+      <Input.TextArea maxLength={140} placeholder="어떤 신기한 일이 있었나요?" value={text} onChange={onChangeText} />  
+      <div>
+        <input type="file" multiple hidden ref={imageInput} onChange={onChangeImages} />
+        <Button onClick={onClickImageUpload} >이미지 업로드</Button>
+        <Button type="primary" style={{ float : 'right'}} htmlType="submit" loading={isAddingPost} >업로드</Button>
+      </div>
+      <div>
+        {imagePaths.map((v, i) => (
+          <div key={v} style={{ display: 'inline-black' }}>
+            <img src={`http://localhost:3065/${v}`} style={{ width : '200px' }} alt={v} />
+            <div>
+              <Button onClick={onRemoveImage(i)}>제거</Button>
+            </div>
+          </div>
+        ))}  
+      </div>  
+  </Form>
+  )
+}
+
+export default PostForm;
+```
+
+#### \front\reducers\post.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case UPLOAD_IMAGES_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case UPLOAD_IMAGES_SUCCESS: {
+      return {
+        ...state,
+        imagePaths: [...state.imagePaths, ...action.data],
+      };
+    }
+    case UPLOAD_IMAGES_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case REMOVE_IMAGE: {
+      return {
+        ...state,
+        imagePaths: state.imagePaths.filter((v, i) => i !== action.index),
+      }
+    }
+    case ADD_POST_REQUEST: {
+      return {
+        ...state,
+        isAddingPost: true,
+        addPostErrorReason: '',
+        postAdded: false,
+      };
+    }
+    case ADD_POST_SUCCESS: {
+      return {
+        ...state,
+        isAddingPost: false,
+        mainPosts: [action.data, ...state.mainPosts],
+        postAdded: true,
+        imagePaths: [], // 이 부부문 추가...
+      };
+    }
+    case ADD_POST_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addPostErrorReason: action.error,
+      };
+    }
+    case ADD_COMMENT_REQUEST: {
+      return {
+        ...state,
+        isAddingComment: true,
+        addCommentErrorReason: '',
+        commentAdded: false,
+      };
+    }
+    case ADD_COMMENT_SUCCESS: {
+      const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postId);
+      const post = state.mainPosts[postIndex];
+      const Comments = [...post.Comments, action.data.comment];
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = { ...post, Comments };
+      return {
+        ...state,
+        isAddingComment: false,
+        mainPosts,
+        commentAdded: true,
+      };
+    }
+    case ADD_COMMENT_FAILURE: {
+      return {
+        ...state,
+        isAddingComment: false,
+        addCommentErrorReason: action.error,
+      };
+    }
+    case LOAD_COMMENTS_SUCCESS: {
+      const postIndex = state.mainPosts.findIndex(
+        v => v.id === action.data.postId
+      );
+      const post = state.mainPosts[postIndex];
+      const Comments = action.data.comments;
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = { ...post, Comments };
+      return {
+        ...state,
+        mainPosts
+      };
+    }
+    case LOAD_MAIN_POSTS_REQUEST:
+    case LOAD_HASHTAG_POSTS_REQUEST:
+    case LOAD_USER_POSTS_REQUEST: {
+      return {
+        ...state,
+        mainPosts: [],
+      };
+    }
+    case LOAD_MAIN_POSTS_SUCCESS:
+    case LOAD_HASHTAG_POSTS_SUCCESS:
+    case LOAD_USER_POSTS_SUCCESS: {
+      return {
+        ...state,
+        mainPosts: action.data,
+      };
+    }
+    case LOAD_MAIN_POSTS_FAILURE:yy
+    case LOAD_HASHTAG_POSTS_FAILURE:yy
+    case LOAD_USER_POSTS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+```
+

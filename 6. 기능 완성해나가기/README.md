@@ -10,7 +10,8 @@
 + [이미지 업로드 프론트 구현하기](#이미지-업로드-프론트-구현하기)
 + [multer로 이미지 업로드 받기](#multer로-이미지-업로드-받기)
 + [express static과 이미지 제거](#express-static과-이미지-제거)
-
++ [폼데이터로 게시글 올리기](#폼데이터로-게시글-올리기)
+  
 
 
 ## 해시태그 링크로 만들기
@@ -1972,3 +1973,306 @@ export default (state = initialState, action) => {
 
 saga를 안해준 이유는, 프론트에서도 간단하게 reudcer를 사용하여 삭제를 가능하기 때문이다. <br>
 
+
+## 폼데이터로 게시글 올리기
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\PostForm.js
+```js
+...생략
+
+const PostForm = () => {
+  const { imagePaths, isAddingPost, postAdded } = useSelector(state => state.post);
+  ...생략
+
+  const onSubmitForm = useCallback((e) => {
+    e.preventDefault();
+    if (!text || !text.trim()) {
+      return alert('게시글을 작성하세요!');
+    }
+
+    const formData = new FormData(); // formData로 데이터를 보내고 있는것이다.
+    imagePaths.forEach((i) => {
+      formData.append('image', i); // text라서 req.body.image
+                                  // 파일였으면, req.files
+    });
+    formData.append('content', text); // 마찬가지로, text라서 req.body.content
+
+    dispatch({
+      type: ADD_POST_REQUEST,
+      data: formData,
+    });
+  }, [text, imagePaths]);
+
+  ...생략
+
+  const onChangeImages = useCallback((e) => {
+    console.log(e.target.files);
+    const imageFormData = new FormData();
+    [].forEach.call(e.target.files, (f) => {
+      imageFormData.append('image', f);
+    });
+    dispatch({
+      type: UPLOAD_IMAGES_REQUEST,
+      data: imageFormData,
+    });
+  }, []);
+  ...생략
+  ...생략
+
+  return (
+    <Form style={{ margin: '10px 0 20px' }} encType="multipart/fomr-data" onSubmit={onSubmitForm}>
+      ...생략
+      <div>
+        <input type="file" multiple hidden ref={imageInput} onChange={onChangeImages} />
+        <Button onClick={onClickImageUpload} >이미지 업로드</Button>
+        <Button type="primary" style={{ float : 'right'}} htmlType="submit" loading={isAddingPost} >업로드</Button>
+      </div>
+      <div>
+        {imagePaths.map((v, i) => (
+          <div key={v} style={{ display: 'inline-black' }}>
+            <img src={`http://localhost:3065/${v}`} style={{ width : '200px' }} alt={v} />
+            <div>
+              <Button onClick={onRemoveImage(i)}>제거</Button>
+            </div>
+          </div>
+        ))}  
+      </div>  
+  </Form>
+  )
+}
+
+export default PostForm;
+```
+
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const db = require('../models');
+const { isLoggedIn } = require('./middlewares');
+
+const router = express.Router();
+
+const upload = multer({ // 위치 이동하였음 (맨 위로)
+    destination(req, res, done) {
+      done(null, 'uploads');
+    },
+    filename(req, file, done) {
+      const ext = path.extname(file.originalname);
+      const basename = path.basename(file.originalname, ext);
+      done(null, basename + new Date().valueOf() + ext );
+    },
+  }),
+  limits: { fileSize: 20 * 1024 * 1024 },
+});
+
+// 이미지 주소는 text라서 이미지 업로드가 아니라서, upload.none을 사용,
+router.post('/', isLoggedIn, upload.none(), async (req, res, next) => {
+  // 그러면 뭘까? 이미지나 동영상, 파일 : req.file(s) 
+  // 폼데이터 파일 -> req.file(s)
+  // 폼데이터 일반 값 -> req-body
+  try {
+    const hashtags = req.body.content.match(/#[^\s]+/g);
+    const newPost = await db.Post.create({
+      content: req.body.content,
+      UserId: req.user.id,
+    });
+    if (hashtags) {
+      const result = await Promise.all(hashtags.map(tag => db.Hashtag.findOrCreate({
+        where: { name: tag.slice(1).toLowerCase() },
+      })));
+      console.log(result);
+      await newPost.addHashtags(result.map(r => r[0]));
+    }
+
+    // 이미지 주소를 따로 DB에 저장한 후 게시글과 연결한다.
+    // 이미지 추가하는 부분
+    if ( req.body.image ) { // 이미지 주소를 여러개 올리면 배열이 된다 ex) image: [주소1, 주소2]
+      if (Array.isArray(req.body.image)) { // 배열인지, 아닌지 구별을 한다.
+
+        // 이미지 생성(db.Image.create)하는 것을 반복문(req.body.images.map)으로 Promise.all로 인해 한 방에 이미지 생성
+        // -> 동시에 여러가지 DB 쿼리를 하는 것이다.
+        // 즉, 배열에 들어있는 작업들을 한 방에 처리된다. (await 필요없다.) .
+        const images = await Promise.all(req.body.image.map((image) => {
+          return db.Image.create({ src: image });
+        }));
+        await newPost.addImages(images); // 마지막에는 await으로 사용한다.
+
+      } else { // 이미지를 하나만 올리면 image : 주소1
+        const image = await db.Image.create({ src : req.body.image });
+        await newPost.addImage(image);
+      }
+    }
+    const fullPost = await db.Post.findOne({ // 이제는 사용자 정보뿐만 아니라, 이미지들도 불러온다.
+      where: { id: newPost.id },
+      include: [{
+        model: db.User,
+      }, {
+        model: db.Image, // 추가해준다. 이미지 테이블도 불러와야해서.
+      }],
+    });
+    res.json(fullPost);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+router.post('/images', upload.array('image'), (req, res) => { 
+  res.json(req.files.map(v => v.filename));
+});
+
+...생략
+
+module.exports = router;
+```
+
+#### \back\routes\hashtag.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/:tag', async(req, res, next) => {
+  try {
+    const posts = await db.Post.findAll({
+      include: [{
+        model: db.Hashtag,
+        where: { name: decodeURIComponent(req.params.tag) },
+      }, {
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image, // 추가해준다. 이미지 테이블도 불러와야해서.
+      }],
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+```
+
+#### \back\routes\posts.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/', async (req, res, next) => { 
+  try {
+    const posts = await db.Post.findAll({
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image, // 추가해준다. 이미지 테이블도 불러와야해서
+      }],
+      order: [['createdAt', 'DESC']], 
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+```
+
+#### \back\routes\user.js
+```js
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+const passport = require('passport');
+const { isLoggedIn } = require('./middlewares'); 
+
+const router = express.Router();
+
+....생략
+
+router.get('/:id/posts', async (req, res, next) => {
+  try {
+    const posts = await db.Post.findAll({
+      where: {
+        UserId: parseInt(req.params.id, 10),
+        RetweetId: null,
+      },
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image, // 추가해준다. 이미지 테이블도 불러와야해서
+      }]
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router; 
+
+```
+
+업로드를 하면 성공적으로 되고 추가가 되는데, 아직 이미지르 표시하는 부분을 안 만들었다. <br>
+그리고, 업로드 하는 순간 이미지 초기화가 안 된다. <br>
+
+#### \front\reducers\post.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case ADD_POST_REQUEST: {
+      return {
+        ...state,
+        isAddingPost: true,
+        addPostErrorReason: '',
+        postAdded: false,
+      };
+    }
+    case ADD_POST_SUCCESS: {
+      return {
+        ...state,
+        isAddingPost: false,
+        mainPosts: [action.data, ...state.mainPosts],
+        postAdded: true,
+        imagePaths: [], 
+        // 이미지 성공하면 게시글동록할 떄의 이미지들을 없애주기위해서 빈 배열로 하였다.
+        // 업로드 되는 순간 초기화해준다.
+      };
+    }
+    case ADD_POST_FAILURE: {
+      return {
+        ...state,
+        isAddingPost: false,
+        addPostErrorReason: action.error,
+      };
+    }
+    case ADD_COMMENT_REQUEST: {
+      return {
+        ...state,
+        isAddingComment: true,
+        addCommentErrorReason: '',
+        commentAdded: false,
+      };
+    }
+   ...생략
+  }
+};
+
+```
+
+다음 강의에서 프론트화면을 보여주게 할 것이다. <br>

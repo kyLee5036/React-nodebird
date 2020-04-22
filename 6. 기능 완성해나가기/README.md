@@ -11,7 +11,8 @@
 + [multer로 이미지 업로드 받기](#multer로-이미지-업로드-받기)
 + [express static과 이미지 제거](#express-static과-이미지-제거)
 + [폼데이터로 게시글 올리기](#폼데이터로-게시글-올리기)
-  
++ [게시글 이미지 표시하기](#게시글-이미지-표시하기)  
+
 
 
 ## 해시태그 링크로 만들기
@@ -2276,3 +2277,123 @@ export default (state = initialState, action) => {
 ```
 
 다음 강의에서 프론트화면을 보여주게 할 것이다. <br>
+
+## 게시글 이미지 표시하기
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\PostCard.js
+```js
+...생략
+
+const PostCard = ({post}) => {
+...생략
+
+  return (
+    <div>
+      <Card
+        key={+post.createdAt}
+        // http://백엔드주소/ -> 는 백엔드 주소로한다. 하지만, 2장올렸는데 1장만 나온다.
+        cover={post.Images[0] && <img alt="example" src={`http://localhost:3065/`+post.Images[0].src} />} // cover라는 속성으로 이지미를 가져온다.
+        actions={[
+          <Icon type="retweet" key="retweet" />,
+          <Icon type="heart" key="heart" />,
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Icon type="ellipsis" key="ellipsis" />,
+        ]}
+        extra={<Button>팔로우</Button>}
+      >
+      ...생략
+        </>
+      )} 
+    </div>
+  )
+};
+...생략
+
+export default PostCard;
+
+
+```
+하지만 여기에서는 2장올렸는데 1장만 나온다. <br>
+그리고, 2장을 업로드 경우, 여러 장 업로드 경우를 나누어서 처리를 할 것이다. <br>
+그래서 `PostImages`라는 컴포넌트를 만들어줄 것이다. <br>
+
+### 이미지 1장, 2장, 여러장 처리하기
+
+#### \front\components\PostCard.js
+```js
+...생략
+import PostImages from './PostImages'; // 추가하기
+
+const PostCard = ({post}) => {
+...생략
+  return (
+    <div>
+      <Card
+        key={+post.createdAt}
+        cover={post.Images[0] && <PostImages images={post.Images} />}
+        actions={[
+          <Icon type="retweet" key="retweet" />,
+          <Icon type="heart" key="heart" />,
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Icon type="ellipsis" key="ellipsis" />,
+        ]}
+        extra={<Button>팔로우</Button>}
+      >
+      ...생략
+      ...생략
+    </div>
+  )
+};
+
+...생략
+
+export default PostCard;
+
+```
+
+#### \front\components\PostImages.js
+```js
+import React from 'react';
+import PropTypes from 'prop-types';
+import { Icon } from 'antd';
+
+const PostImages = ({ images }) => {
+  if ( images.length === 1 ) { // 이미지가 1개 일 경우
+    return (
+      <img src={`http://localhost:3065/${images[0].src}`} />
+    );
+  } 
+  if ( images.length === 2 ) { // 이미지가 2개 일 경우
+   return (
+    <div>
+      <img src={`http://localhost:3065/${images[0].src}`} width="50%" />
+      <img src={`http://localhost:3065/${images[1].src}`} width="50%" />
+    </div>
+   ); 
+  } 
+  return ( // 이미지가 여러 개 일 경우 `더보기`
+    <div>
+      <img src={`http://localhost:3065/${images[0].src}`} width="50%" />
+      <div style={{ display: 'inline-block', width: "50%", textAlign: 'center', verticalAlign: 'center'}} >
+        <Icon type="plus" />
+        <br />
+        {images.length - 1}
+        개의 사진 더보기
+      </div>
+    </div>
+  );
+};
+
+PostImages.propTypes = {
+  // object나 arrayof를 좀 더 구체적으로 적어주기위해서 사용하였고, 
+  // 그리고 shape도 같이 사용한다.
+  images: PropTypes.arrayOf(PropTypes.shape({ 
+    src: PropTypes.string,
+  })).isRequired,
+}
+
+export default PostImages;
+```
+
+> 여기까지 multer을 통해서 이미지 업로드, 이미지 데이터 처리등을 해 보았다.

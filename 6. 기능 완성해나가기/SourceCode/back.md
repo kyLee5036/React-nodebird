@@ -11,6 +11,7 @@
 + [multer로 이미지 업로드 받기](#multer로-이미지-업로드-받기)
 + [express static과 이미지 제거](#express-static과-이미지-제거)
 + [폼데이터로 게시글 올리기](#폼데이터로-게시글-올리기)
++ [게시글 이미지 표시하기](#게시글-이미지-표시하기)  
 
 
 
@@ -1177,4 +1178,9 @@ router.get('/:id/posts', async (req, res, next) => {
 module.exports = router; 
 
 ```
+
+## 게시글 이미지 표시하기
+[위로가기](#기능-완성해나가기)
+
+코드없음
 

@@ -12,6 +12,7 @@
 + [express static과 이미지 제거](#express-static과-이미지-제거)
 + [폼데이터로 게시글 올리기](#폼데이터로-게시글-올리기)
 + [게시글 이미지 표시하기](#게시글-이미지-표시하기)  
++ [react slick으로 이미지 슬라이더 구현](#react-slick으로-이미지-슬라이더-구현)
 
 
 
@@ -2397,3 +2398,152 @@ export default PostImages;
 ```
 
 > 여기까지 multer을 통해서 이미지 업로드, 이미지 데이터 처리등을 해 보았다.
+
+
+## react slick으로 이미지 슬라이더 구현
+[위로가기](#기능-완성해나가기)
+
+이미지 더보기를 만들어 줄것이다. <br>
+`ImagesZoom`을 만든다. ImagesZoom은 이미지 클릭하면 이미지 확대하는 것이다. <br>
+
+#### \front\components\ImagesZoom.js
+```js
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
+import { Icon } from 'antd';
+import Slick from 'react-slick' // 이미지 슬라이드 역할을 한다.
+
+const ImagesZoom = ({ images }) => {
+  // currentSlide는 이미지가 여러 개있으면 넘겨보는데 전체 이미지중에 몇 번이지를 확인하는 지
+  const [currentSlide, setCurrentSlide] = useState(0); 
+
+  return (
+    <div>
+      <div>
+        <h1>상세 이미지</h1>
+        <Icon type="close" onClick={onClose} />
+      </div>
+      <div>
+        <div>
+          <Slick>
+            {/* Slick 안에다가 이미지 객체를 넣어준다 */}
+            { images.map((v) => {
+              return (
+                <div>
+                  <img src={`http://localhost:3065/${v.src}`} />
+                </div>
+              );
+            }) }
+          </Slick>
+          <div>
+            <div>{currentSlide + 1} / {images.length}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+};
+
+ImagesZoom.propTypes = {
+  images: PropTypes.arrayOf(PropTypes.shape({ 
+    src: PropTypes.string,
+  })).isRequired,
+}
+
+export default ImagesZoom;
+```
+
+#### \front\components\PostImages.js
+```js
+import React, { useCallback, useState } from 'react';
+import PropTypes from 'prop-types';
+import { Icon } from 'antd';
+import ImagesZoom from './ImagesZoom'; // 이미지 확대하는 컴포넌들 불러온다.
+
+const PostImages = ({ images }) => {
+  const [showImagesZoom, setShowImagesZoom ] = useState(false); // ImagesZoom을 보여줄지(true) 안 보여줄지(false)
+  
+  // 이미지를 확대하는 부분
+  const onZoom = useCallback(() => { // 이미지를 클릭을 하면
+    // ImagesZoom을 로딩할 것이다.
+    setShowImagesZoom(true);
+  }, [showImagesZoom]);
+
+  // 이미지 확대를 끄는 부분
+  const onClose = useCallback(() => {
+    setShowImagesZoom(false);
+  }, [showImagesZoom]);
+
+  if ( images.length === 1 ) {
+    return (
+      <>
+        <img src={`http://localhost:3065/${images[0].src}`} onClick={onZoom} /> {/* // 이미지를 클릭을 하면 */}
+        {showImagesZoom && <ImagesZoom images={images} onClose={onClose} />} {/*  // onClose는 props로 넘겨준다.  */}
+      </>
+    );
+  } 
+  if ( images.length === 2 ) {
+    return (
+      <>
+        <div>
+          <img src={`http://localhost:3065/${images[0].src}`} width="50%" onClick={onZoom} />
+          <img src={`http://localhost:3065/${images[1].src}`} width="50%" onClick={onZoom} />
+        </div>
+        {showImagesZoom && <ImagesZoom images={images}  onClose={onClose} />}
+      </>
+    ); 
+  } 
+  return (
+    <>
+      <div>
+        <img src={`http://localhost:3065/${images[0].src}`} width="50%" onClick={onZoom} />
+        <div style={{ display: 'inline-block', width: "50%", textAlign: 'center', verticalAlign: 'center'}} onClick={onZoom} >
+          <Icon type="plus" />
+          <br />
+          {images.length - 1}
+          개의 사진 더보기
+        </div>
+      </div>
+      {showImagesZoom && <ImagesZoom images={images}  onClose={onClose} />}
+    </>
+  );
+};
+
+PostImages.propTypes = {
+  images: PropTypes.arrayOf(PropTypes.shape({ 
+    src: PropTypes.string,
+  })).isRequired,
+}
+
+export default PostImages;
+```
+
+#### \front\components\ImagesZoom.js
+```js
+...생략하기
+
+const ImagesZoom = ({ images, onClose }) => { //  부모로 받은 onclose
+  
+  const [currentSlide, setCurrentSlide] = useState(0); 
+
+  return (
+    <div>
+      <div>
+        <h1>상세 이미지</h1>
+        <Icon type="close" onClick={onClose} />  {/* // 추가해주기 */}
+      </div>
+      ...생략하기
+    </div>
+  )
+};
+
+ImagesZoom.propTypes = {
+  images: PropTypes.arrayOf(PropTypes.shape({ 
+    src: PropTypes.string,
+  })).isRequired,
+  onClose: PropTypes.func.isRequired, // 추가해주기 함수는 func이다.
+}
+
+export default ImagesZoom;
+```
+

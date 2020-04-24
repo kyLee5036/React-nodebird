@@ -12,6 +12,7 @@
 + [express static과 이미지 제거](#express-static과-이미지-제거)
 + [폼데이터로 게시글 올리기](#폼데이터로-게시글-올리기)
 + [게시글 이미지 표시하기](#게시글-이미지-표시하기)  
++ [react slick으로 이미지 슬라이더 구현](#react-slick으로-이미지-슬라이더-구현)
 
 
 
@@ -2966,4 +2967,190 @@ PostImages.propTypes = {
 }
 
 export default PostImages;
+```
+
+## react slick으로 이미지 슬라이더 구현
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\PostImages.js
+```JS
+import React, { useCallback, useState } from 'react';
+import PropTypes from 'prop-types';
+import { Icon } from 'antd';
+import ImagesZoom from './ImagesZoom';
+
+const PostImages = ({ images }) => {
+  const [showImagesZoom, setShowImagesZoom] = useState(false);
+  
+  const onZoom = useCallback(() => {
+    setShowImagesZoom(true);
+  }, [showImagesZoom]);
+
+  const onClose = useCallback(() => {
+    setShowImagesZoom(false);
+  }, [showImagesZoom]);
+
+  if ( images.length === 1 ) {
+    return (
+      <>
+        <img src={`http://localhost:3065/${images[0].src}`} onClick={onZoom} />
+        {showImagesZoom && <ImagesZoom images={images} onClose={onClose} />}
+      </>
+    );
+  } 
+  if ( images.length === 2 ) {
+    return (
+      <>
+        <div>
+          <img src={`http://localhost:3065/${images[0].src}`} width="50%" onClick={onZoom} />
+          <img src={`http://localhost:3065/${images[1].src}`} width="50%" onClick={onZoom} />
+        </div>
+        {showImagesZoom && <ImagesZoom images={images} onClose={onClose} />}
+      </>
+    ); 
+  } 
+  return (
+    <>
+      <div>
+        <img src={`http://localhost:3065/${images[0].src}`} width="50%" onClick={onZoom} />
+        <div style={{ display: 'inline-block', width: "50%", textAlign: 'center', verticalAlign: 'center'}} onClick={onZoom} >
+          <Icon type="plus" />
+          <br />
+          {images.length - 1}
+          개의 사진 더보기
+        </div>
+      </div>
+      {showImagesZoom && <ImagesZoom images={images} onClose={onClose} />}
+    </>
+  );
+};
+
+PostImages.propTypes = {
+  images: PropTypes.arrayOf(PropTypes.shape({ 
+    src: PropTypes.string,
+  })).isRequired,
+}
+
+export default PostImages;
+```
+
+#### \front\components\ImagesZoom.js
+```js
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
+import { Icon } from 'antd';
+import Slick from 'react-slick'
+
+const ImagesZoom = ({ images, onClose }) => {
+  
+  const [currentSlide, setCurrentSlide] = useState(0); 
+
+  return (
+    <div style={{ position: 'fixed', zIndex: 5000, top: 0, left: 0, right: 0, bottom: 0 }}>
+      <header style={{ height: 44, background: 'white', position: 'relative', padding: 0, textAlign: 'center'}}>
+        <h1 style={{ margin: 0, fontSize: '17px', color: '#333', lineHeight: '44px' }}>상세 이미지</h1>
+        <Icon type="close" onClick={onClose} style={{ position: 'absolute', right: 0, top: 0, padding: 15, lineHeight: '14px', cursor: 'pointer' }} />
+      </header>
+      <div style={{ height: 'calc(100% - 44px)', background: '#090909' }}>
+        <div>
+          <Slick
+            initialSlide={0}
+            afterChange={slide => setCurrentSlide(slide)}
+            infinite={false}
+            arrows
+            slidesToShow={1}
+            slidesToScroll={1}
+          >
+            {images.map((v) => {
+              return (
+                <div style={{ padding: 32, textAlign: 'center' }}>
+                  <img src={`http://localhost:3065/${v.src}`} style={{ margin: '0 auto', maxHeight: 750 }} />
+                </div>
+              );
+            })}
+          </Slick>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ width: 75, height: 30, lineHeight: '30px', borderRadius: 15, background: '#313131', display: 'inline-block', textAlign: 'center', color: 'white', fontSize: '15px' }}>
+              {currentSlide + 1} / {images.length}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+};
+
+ImagesZoom.propTypes = {
+  images: PropTypes.arrayOf(PropTypes.shape({
+    src: PropTypes.string,
+  })).isRequired,
+  onClose: PropTypes.func.isRequired,
+};
+
+export default ImagesZoom;
+```
+
+#### \front\pages\_app.js
+```js
+import React from 'react';
+import Head from 'next/head';
+import PropTypes from 'prop-types';
+import WithRedux from 'next-redux-wrapper';
+import { createStore, compose, applyMiddleware } from 'redux';
+import { Provider } from 'react-redux'; 
+import createSagaMiddleware from 'redux-saga';
+
+import AppLayout from '../components/AppLayout';
+import reducer from '../reducers';
+import rootSaga from '../sagas';
+
+const NodeBird = ({ Component, store, pageProps }) => {
+  return (
+    <Provider store={store} > 
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+        {/* 이미지 슬라이드를 하기위해서 밑에 2개를 추가해줘야한다. */}
+        <link rel="stylesheet" type="text/css" charSet="UTF-8" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick.min.css" /> 
+        <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick-theme.min.css" />
+      </Head>
+      <AppLayout >
+        <Component {...pageProps} />
+      </AppLayout>
+    </Provider>
+  );
+};
+
+NodeBird.propTypes = {
+  Component: PropTypes.elementType.isRequired,
+  store: PropTypes.object.isRequired,
+  pageProps: PropTypes.object.isRequired,
+};
+
+NodeBird.getInitialProps = async (context) => {
+  const { ctx, Component } = context;
+  let pageProps = {};
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+  return { pageProps };
+};
+
+const configureStore = (initalState, options) => {
+  const sagaMiddleware = createSagaMiddleware();
+  const middlewares = [sagaMiddleware];
+  const enhancer = process.env.NODE_ENV === 'production' 
+  ? compose( 
+    applyMiddleware(...middlewares))
+  : compose(
+    applyMiddleware(...middlewares), 
+      !options.isServer && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  );
+
+  const store = createStore(reducer, initalState, enhancer);
+  sagaMiddleware.run(rootSaga); 
+  return store;
+}
+
+export default WithRedux(configureStore)(NodeBird);
 ```

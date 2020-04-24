@@ -14,22 +14,27 @@ const ImagesZoom = ({ images, onClose }) => {
         <Icon type="close" onClick={onClose} style={{ position: 'absolute', right: 0, top: 0, padding: 15, lineHeight: '14px', cursor: 'pointer' }} />
       </header>
       <div style={{ height: 'calc(100% - 44px)', background: '#090909' }}>
-        <h1>상세 이미지</h1>
-        <Icon type="close" onClick={onClose} /> 
-      </div>
-      <div>
         <div>
-          <Slick>
-            { images.map((v) => {
+          <Slick
+            initialSlide={0}
+            afterChange={slide => setCurrentSlide(slide)}
+            infinite={false}
+            arrows
+            slidesToShow={1}
+            slidesToScroll={1}
+          >
+            {images.map((v) => {
               return (
                 <div style={{ padding: 32, textAlign: 'center' }}>
                   <img src={`http://localhost:3065/${v.src}`} style={{ margin: '0 auto', maxHeight: 750 }} />
                 </div>
               );
-            }) }
+            })}
           </Slick>
-          <div>
-            <div>{currentSlide + 1} / {images.length}</div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ width: 75, height: 30, lineHeight: '30px', borderRadius: 15, background: '#313131', display: 'inline-block', textAlign: 'center', color: 'white', fontSize: '15px' }}>
+              {currentSlide + 1} / {images.length}
+            </div>
           </div>
         </div>
       </div>
@@ -38,10 +43,10 @@ const ImagesZoom = ({ images, onClose }) => {
 };
 
 ImagesZoom.propTypes = {
-  images: PropTypes.arrayOf(PropTypes.shape({ 
+  images: PropTypes.arrayOf(PropTypes.shape({
     src: PropTypes.string,
   })).isRequired,
   onClose: PropTypes.func.isRequired,
-}
+};
 
 export default ImagesZoom;

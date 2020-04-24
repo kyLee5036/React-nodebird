@@ -2547,3 +2547,131 @@ ImagesZoom.propTypes = {
 export default ImagesZoom;
 ```
 
+실무에서는 Sass나 style-component를 사용한다.
+
+#### \front\components\ImagesZoom.js
+```js
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
+import { Icon } from 'antd';
+import Slick from 'react-slick'
+
+const ImagesZoom = ({ images, onClose }) => {
+  
+  const [currentSlide, setCurrentSlide] = useState(0); 
+
+  return (
+    <div style={{ position: 'fixed', zIndex: 5000, top: 0, left: 0, right: 0, bottom: 0 }}> {/* 추가 */}
+      <header style={{ height: 44, background: 'white', position: 'relative', padding: 0, textAlign: 'center'}}>  {/* 추가 */}
+        <h1 style={{ margin: 0, fontSize: '17px', color: '#333', lineHeight: '44px' }}>상세 이미지</h1>  {/* 추가 */}
+        <Icon type="close" onClick={onClose} style={{ position: 'absolute', right: 0, top: 0, padding: 15, lineHeight: '14px', cursor: 'pointer' }} />  {/* 추가 */}
+      </header>
+      <div style={{ height: 'calc(100% - 44px)', background: '#090909' }}>  {/* 추가 */}
+        <div>
+          <div>
+            <Slick
+              // 슬릭에 대한 설정도 해야한다. 
+              initialSlide={0} // 첫 번째 이미지
+              afterChange={(slide) => setCurrentSlide(slide)} // 슬라이드 할 때마다 하는 바뀌는 인덱스
+              infinite={false} // 무한으로 슬라이드 1,2,3,4 있으면 4 다음에 1이다 -> 하지만 이 기능을 막아준다.
+              arrows // 화살표
+              slidesToShow={1} // 한 번에 한장만 보여준다.
+              slidesToScroll={1} // 한 번에 한장만 스크롤을 한다.
+            >
+              { images.map((v) => {
+                return (
+                  <div style={{ padding: 32, textAlign: 'center' }}>  {/* 추가 */}
+                    <img src={`http://localhost:3065/${v.src}`} style={{ margin: '0 auto', maxHeight: 750 }} />  {/* 추가 */}
+                  </div>
+                );
+              }) }
+            </Slick>
+            <div style={{ textAlign: 'center' }}> {/* 추가 */}
+              <div style={{ width : 75, height: 30, lineHeight: '30px', borderRadius: 15, background: '#313131', display: 'inline-block', textAlign: 'center', color: 'white', fontSize: '15px' }}>{currentSlide + 1} / {images.length}</div> {/* 추가 */}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+};
+
+...생략
+
+export default ImagesZoom;
+```
+
+#### \front\pages\_app.js
+```js
+...생략
+
+const NodeBird = ({ Component, store, pageProps }) => {
+  return (
+    <Provider store={store} > 
+      <Head>
+        <title>NodeBird</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+        {/* 이미지 슬라이드를 하기위해서 밑에 2개를 추가해줘야한다. */}
+        <link rel="stylesheet" type="text/css" charSet="UTF-8" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick.min.css" /> // 추가
+        <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick-theme.min.css" /> // 추가
+      </Head>
+      <AppLayout >
+        <Component {...pageProps} />
+      </AppLayout>
+    </Provider>
+  );
+};
+
+...생략
+
+export default WithRedux(configureStore)(NodeBird);
+```
+ 
+
+#### \front\components\ImagesZoom.js (이미지 스타일 오류있어서 수정 함)
+```js
+...생략
+
+const ImagesZoom = ({ images, onClose }) => {
+  
+  const [currentSlide, setCurrentSlide] = useState(0); 
+
+  return (
+    <div style={{ position: 'fixed', zIndex: 5000, top: 0, left: 0, right: 0, bottom: 0 }}>
+      <header style={{ height: 44, background: 'white', position: 'relative', padding: 0, textAlign: 'center'}}>
+        <h1 style={{ margin: 0, fontSize: '17px', color: '#333', lineHeight: '44px' }}>상세 이미지</h1>
+        <Icon type="close" onClick={onClose} style={{ position: 'absolute', right: 0, top: 0, padding: 15, lineHeight: '14px', cursor: 'pointer' }} />
+      </header>
+      <div style={{ height: 'calc(100% - 44px)', background: '#090909' }}>
+        <div>
+          <Slick
+            initialSlide={0}
+            afterChange={slide => setCurrentSlide(slide)}
+            infinite={false}
+            arrows
+            slidesToShow={1}
+            slidesToScroll={1}
+          >
+            {images.map((v) => {
+              return (
+                <div style={{ padding: 32, textAlign: 'center' }}>
+                  <img src={`http://localhost:3065/${v.src}`} style={{ margin: '0 auto', maxHeight: 750 }} />
+                </div>
+              );
+            })}
+          </Slick>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ width: 75, height: 30, lineHeight: '30px', borderRadius: 15, background: '#313131', display: 'inline-block', textAlign: 'center', color: 'white', fontSize: '15px' }}>
+              {currentSlide + 1} / {images.length}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+};
+...생략
+
+export default ImagesZoom;
+```
+

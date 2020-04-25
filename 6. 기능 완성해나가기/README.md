@@ -14,6 +14,7 @@
 + [게시글 이미지 표시하기](#게시글-이미지-표시하기)  
 + [react slick으로 이미지 슬라이더 구현](#react-slick으로-이미지-슬라이더-구현)
 + [게시글 좋아요, 좋아요 취소](#게시글-좋아요,-좋아요-취소)
++ [리트윗 API 만들기](#리트윗-API-만들기)
 
 
 
@@ -2917,9 +2918,9 @@ router.delete('/:id/like', isLoggedIn, async(req, res, next) => {
 module.exports = router;
 ~~~
 
-좋아요 버튼을 누르면 `LIKE_POST_FAILURE`가 나왔다.
-console.log를 보면
-`Invalid attempt to spread non-iterable instance`으로 나와서 자바스크립트쪽에서 문제가 있다.
+좋아요 버튼을 누르면 `LIKE_POST_FAILURE`가 나왔다. <br>
+console.log를 보면 <br>
+`Invalid attempt to spread non-iterable instance`으로 나와서 자바스크립트쪽에서 문제가 있다. <br>
 
 #### \back\routes\hashtag.js
 ~~~js
@@ -3099,4 +3100,234 @@ const PostCard = ({post}) => {
 
 export default PostCard;
 ~~~
+
+## 리트윗 API 만들기
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\PostCard.js
+```js
+...생략
+
+const PostCard = ({post}) => {
+...생략
+
+  const onToggleLike = useCallback(() => {
+    if (!me) {
+      return alert('로그인이 필요합니다!');
+    }
+    if (liked) {
+      dispatch({
+        type: UNLIKE_POST_REQUEST,
+        data: post.id,
+      });
+    } else {
+      dispatch({
+        type: LIKE_POST_REQUEST,
+        data: post.id,
+      });
+    }
+  }, [me && me.id, post && post.id, liked]);
+
+  const onRetweet = useCallback(() => {
+    if (!me) {
+      return alert('로그인이 필요합니다');
+    }
+    return dispatch({
+      type: RETWEET_REQUEST,
+      data: post.id,
+    })
+  }, [me && me.id, post && post.id]);
+
+  return (
+    <div>
+      <Card
+        key={+post.createdAt}
+        cover={post.Images[0] && <PostImages images={post.Images} />}
+        actions={[
+          <Icon type="retweet" key="retweet" onClick={onRetweet} />, // 추가를 해준다.
+          <Icon
+            type="heart"
+            key="heart"
+            theme={liked ? 'twoTone' : 'outlined'}
+            twoToneColor="#eb2f96"
+            onClick={onToggleLike}
+          />,
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Icon type="ellipsis" key="ellipsis" />,
+        ]}
+        extra={<Button>팔로우</Button>}
+      >
+        ...생략
+      </Card>
+      ...생략
+    </div>
+  )
+};
+
+...생략
+
+export default PostCard;
+
+
+```
+
+#### \front\sagas\post.js
+
+> 항상 post요청할 때 데이터가 없어도 `{}` 빈 객체를 넣어줘야한다.
+```js
+...생략
+import { 
+  ...생략
+  RETWEET_SUCCESS, RETWEET_FAILURE, RETWEET_REQUEST 
+} from '../reducers/post';
+
+
+...생략
+
+function retweetAPI(postId) {
+  // 항상 post요청할 때 데이터가 없어도 {} 빈 객체를 넣어줘야한다.
+  return axios.post(`/post/${postId}/retweet`,{} , {
+    withCredentials: true,
+  });
+}
+
+function* retweet(action) {
+  try {
+    const result = yield call(retweetAPI, action.data);
+    yield put({
+      type: RETWEET_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: RETWEET_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchRetweet() {
+  yield takeLatest(RETWEET_REQUEST, retweet);
+}
+
+export default function* postSaga() {
+  yield all([
+    ...생략
+    fork(watchRetweet), // 추가
+  ]);
+}
+```
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const db = require('../models');
+const { isLoggedIn } = require('./middlewares');
+
+const router = express.Router();
+
+...생략
+...생략
+
+// 리트윗
+router.post('/:id/retweet', isLoggedIn, async (req, res, next) => { 
+  try {
+    const post = await db.Post.findOne({ where: {id: req.params.id }});
+    if (!post) {
+      return res.status(404).send('포스트가 존재하지 않습니다.');
+    }
+    if ( req.user.id === post.UserId) {
+      return res.status(403).send('자신의 글은 리트윗할 수 없습니다.');
+    }
+    // 리트윗을 한 게시글을 또 리트윗할 수도 있으니까 동시에 처리하는 코드
+    const retweetTargetId = post.RetweetId || post.id;  
+    const exPost = await db.Post.findOne({ 
+      where: {
+        UserId: req.user.id,
+        RetweetId: retweetTargetId,
+      },
+    });
+    if (exPost) { // 2번 리트윗은 필요없다
+      return res.status(403).send('이미 리트윗했습니다');
+    }
+    // 리트윗 게시글 등록
+    const retweet = await db.Post.create({ 
+      UserId: req.user.id,
+      RetweetId: retweetTargetId,
+      content: 'retweet' // content가 Allow-null : false라서 뭐든 넣어줘야한다.
+    });
+
+    // 리트윗은 이전 게시글을 가져있어야한다. 
+    // 내 게시글뿐만 아니라 남의 게시글도 가져와야한다.
+    const retweetWithPrevPost = await db.Post.findOne({ 
+      // 내 게시글들의 정보를 불러온다.
+      where: { id: retweet.id }, 
+      include: [{
+        model: db.User,
+      }, {
+        // 리트윗한 사용자정보, 이미지들을 불러온다.
+        model: db.Post,
+        as: 'Retweet',
+        include: [{
+          model: db.User,
+          attributes: ['id']
+        }, {
+          model: db.Image,
+        }],
+      }],
+    });
+    res.json(retweetWithPrevPost);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+```
+
+#### \front\reducers\post.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case RETWEET_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case RETWEET_SUCCESS: {
+      return {
+        ...state,
+        // 기존의 게시글을 받아오기
+        mainPosts: [action.data, ...state.mainPosts],
+      };
+    }
+    case RETWEET_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+```
+
+### 에러
+
+여기서 자신의 글을 리트윗하면 alert로 자신의 글을 리트윗했다고 나온다. <br>
+하지만, 다른 사람 게시글을 리트윗하면 `undefined`나오면서 안 된다. <br>
+그 이유는, postcard.js에 리트윗한 게시글을 보여줄 수 있는 부분이 추가되어져있지않다. <br>
+지금까지 일반 게시글들만 만들었기 떄문이다. <br>
+다음 시간에 직접만들것이다. <br>
 

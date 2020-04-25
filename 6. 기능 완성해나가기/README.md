@@ -13,6 +13,7 @@
 + [폼데이터로 게시글 올리기](#폼데이터로-게시글-올리기)
 + [게시글 이미지 표시하기](#게시글-이미지-표시하기)  
 + [react slick으로 이미지 슬라이더 구현](#react-slick으로-이미지-슬라이더-구현)
++ [게시글 좋아요, 좋아요 취소](#게시글-좋아요,-좋아요-취소)
 
 
 
@@ -2397,7 +2398,7 @@ PostImages.propTypes = {
 export default PostImages;
 ```
 
-> 여기까지 multer을 통해서 이미지 업로드, 이미지 데이터 처리등을 해 보았다.
+> 여기까지 multer을 통해서 이미지 업로드, 이미지 데이터 처리등을 해 보았다. <br>
 
 
 ## react slick으로 이미지 슬라이더 구현
@@ -2547,7 +2548,7 @@ ImagesZoom.propTypes = {
 export default ImagesZoom;
 ```
 
-실무에서는 Sass나 style-component를 사용한다.
+실무에서는 Sass나 style-component를 사용한다. <br>
 
 #### \front\components\ImagesZoom.js
 ```js
@@ -2674,4 +2675,428 @@ const ImagesZoom = ({ images, onClose }) => {
 
 export default ImagesZoom;
 ```
+
+## 게시글 좋아요, 좋아요 취소
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\PostCard.js
+~~~js
+...생략
+import { ADD_COMMENT_REQUEST, LOAD_COMMENTS_REQUEST, UNLIKE_POST_REQUEST, LIKE_POST_REQUEST } from '../reducers/post';
+import PostImages from './PostImages';
+
+const PostCard = ({post}) => {
+  ...생략
+
+  const onToggleLike = useCallback(() => {
+    if (!me) {
+      return alert('로그인이 필요합니다.');
+    }
+
+    // 사람과 게시글의 관계 
+    // Likers 배열 안에 `좋아요`를 누른 아이디가 들어있다.
+    if (post.Likers && post.Likers.find(v => v.id === me.id)) { // 좋아요 누른 상태
+      dispatch({
+        type: UNLIKE_POST_REQUEST,
+        data: post.id
+      })
+    } else { // 좋아요 안 누른 상태
+      dispatch({
+        type: LIKE_POST_REQUEST,
+        data: post.id
+      })
+    }
+  }, [me && me.id && post.id]);
+
+  return (
+    <div>
+      <Card
+        key={+post.createdAt}
+        cover={post.Images[0] && <PostImages images={post.Images} />}
+        actions={[
+          <Icon type="retweet" key="retweet" />,
+          <Icon type="heart" key="heart" onClick={onToggleLike} />, // 하트를 눌렀을 때 좋아요 및 좋아요 취소가 되어야한다.
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Icon type="ellipsis" key="ellipsis" />,
+        ]}
+        extra={<Button>팔로우</Button>}
+      >
+       ...생략
+      </Card>
+      ...생략
+    </div>
+  )
+};
+
+...생략
+
+export default PostCard;
+
+
+~~~
+
+#### \front\sagas\post.js
+~~~js
+...생략
+import { 
+  ...생략
+  LIKE_POST_SUCCESS, LIKE_POST_FAILURE, LIKE_POST_REQUEST, UNLIKE_POST_SUCCESS, UNLIKE_POST_FAILURE, UNLIKE_POST_REQUEST 
+} from '../reducers/post';
+...생략
+
+...생략
+
+function likePostAPI(postId) {
+  return axios.post(`/post/${postId}/like`, {} ,{
+    withCredentials: true,
+  });
+}
+
+function* likePost(action) {
+  try {
+    const result = yield call(likePostAPI, action.data);
+    yield put({
+      type: LIKE_POST_SUCCESS,
+      data: { // 서버 쪽에서는 데이터를 좋아요 누른 사람의 아이디를 보내준다.
+        postId: action.data,
+        userId: result.data.userId,
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LIKE_POST_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLikePost() {
+  yield takeLatest(LIKE_POST_REQUEST, likePost);
+}
+
+function unlikePostAPI(postId) {
+  return axios.delete(`/post/${postId}/unlike`, {
+    withCredentials: true,
+  });
+}
+
+function* unlikePost(action) {
+  try {
+    const result = yield call(unlikePostAPI, action.data);
+    yield put({
+      type: UNLIKE_POST_SUCCESS,
+      data: { 
+        postId: action.data,
+        userId: result.data.userId,
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: UNLIKE_POST_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchUnlikePost() {
+  yield takeLatest(UNLIKE_POST_REQUEST, unlikePost);
+}
+
+export default function* postSaga() {
+  yield all([
+    ...생략
+    fork(watchLikePost), // 추가
+    fork(watchUnlikePost), // 추가
+  ]);
+}
+~~~
+
+#### \front\reducers\post.js
+~~~js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+
+    case LIKE_POST_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case LIKE_POST_SUCCESS: {
+      const postIndex = state.mainPosts.findIndex(
+        v => v.id === action.data.postId
+      );
+      const post = state.mainPosts[postIndex];
+      //좋아요 누른 게시글목록에 내 아이디 추가
+      const Likers = [{ id: action.data.userId}, ...post.Likers]; 
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = { ...post, Likers };
+      return {
+        ...state,
+        mainPosts,
+      };
+    }
+    case LIKE_POST_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case UNLIKE_POST_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case UNLIKE_POST_SUCCESS: {
+      const postIndex = state.mainPosts.findIndex(
+        v => v.id === action.data.postId
+      );
+      const post = state.mainPosts[postIndex];
+      //좋아요 누른 게시글목록에 내 아이디를 필터링을 해줘야한다.
+      const Likers = post.Likers.filter(v => v.id !== action.data.userId);
+      const mainPosts = [...state.mainPosts];
+      mainPosts[postIndex] = { ...post, Likers };
+      return {
+        ...state,
+        mainPosts,
+      };
+    }
+    case UNLIKE_POST_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+~~~
+
+#### \back\routes\post.js
+~~~js
+...생략
+const router = express.Router();
+
+...생략
+
+router.post('/:id/like', isLoggedIn, async(req, res, next) => {
+  try {
+    const post = await db.Post.findOne({ where: {id: req.params.id }});
+    if (!post) {
+      return res.status(404).send('포스트가 존재하지 않습니다.');
+    }
+    await post.addLiker(req.user.id); // addLiker
+    res.send({ userId: req.user.id });
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+router.delete('/:id/like', isLoggedIn, async(req, res, next) => {
+  try {
+    const post = await db.Post.findOne({ where: {id: req.params.id }});
+    if (!post) {
+      return res.status(404).send('포스트가 존재하지 않습니다.');
+    }
+    await post.removeLiker(req.user.id);  // removeLiker
+    res.send({ userId: req.user.id });
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+~~~
+
+좋아요 버튼을 누르면 `LIKE_POST_FAILURE`가 나왔다.
+console.log를 보면
+`Invalid attempt to spread non-iterable instance`으로 나와서 자바스크립트쪽에서 문제가 있다.
+
+#### \back\routes\hashtag.js
+~~~js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/:tag', async(req, res, next) => {
+  try {
+    const posts = await db.Post.findAll({
+      include: [{
+        model: db.Hashtag,
+        where: { name: decodeURIComponent(req.params.tag) },
+      }, {
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User, // 좋아요 테이블도 같이 불러와야 된다.
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }],
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+~~~
+
+#### \back\routes\posts.js
+~~~js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/', async (req, res, next) => { 
+  try {
+    const posts = await db.Post.findAll({
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User, // 좋아요 테이블도 같이 불러와야 된다.
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }],
+      order: [['createdAt', 'DESC']], 
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+~~~
+
+#### \back\routes\user.js
+~~~js
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+const passport = require('passport');
+const { isLoggedIn } = require('./middlewares'); 
+
+const router = express.Router();
+
+...생략 
+
+router.get('/:id/posts', async (req, res, next) => {
+  try {
+    const posts = await db.Post.findAll({
+      where: {
+        UserId: parseInt(req.params.id, 10),
+        RetweetId: null,
+      },
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User, // 좋아요 테이블도 같이 불러와야 된다.
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }]
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router; 
+
+~~~
+ 
+spread문법에서 실제로 객체가 존재해야하는데 객체가 존재하지 않아서 안되었던 것이였다. <br>
+> 즉, 좋아요 테이블을 불러오지 않아서 오류가 났던 것이다. <br>
+위와 같이, 테이블을 추가해야한다. <br><br>
+
+
+좋아요 시각적인 효과를 위해서 `theme`을 추가하겠다.<br>
+Icon 기본 테마는 outlined인데 색을 주고 싶으면 towTone으로 바꿔주면 된다. <br>
+#### \front\components\PostCard.js
+~~~js
+....생략
+
+const PostCard = ({post}) => {
+  ....생략
+
+  // liked 변수로 설정
+  const liked = me && post.Likers && post.Likers.find(v => v.id === me.id); // 좋아요 눌렀는 안 눌렀는 지 구분
+
+  ....생략
+
+  const onToggleLike = useCallback(() => {
+    if (!me) {
+      return alert('로그인이 필요합니다.');
+    }
+    if (liked) { // 여기있던 것을 변수로 바꾸어주었다.
+      dispatch({
+        type: UNLIKE_POST_REQUEST,
+        data: post.id
+      })
+    } else {
+      dispatch({
+        type: LIKE_POST_REQUEST,
+        data: post.id
+      })
+    }
+  }, [me && me.id, post && post.id, liked]); // liked 추가해주기
+
+  return (
+    <div>
+      <Card
+        key={+post.createdAt}
+        cover={post.Images[0] && <PostImages images={post.Images} />}
+        actions={[
+          <Icon type="retweet" key="retweet" />,
+          // 좋아요, 좋아요 취소 구분을 하기위해서 liked를 변수로 설정해서 빨강, 기본으로 구분해주었다.
+          // 좋아요 누르면 twoTone, 좋아요 안 누르면 outlined
+          <Icon
+            type="heart"
+            key="heart"
+            theme={liked ? 'twoTone' : 'outlined'}
+            twoToneColor="#eb2f96"
+            onClick={onToggleLike}
+          />,
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Icon type="ellipsis" key="ellipsis" />,
+        ]}
+        extra={<Button>팔로우</Button>}
+      >
+        ...생략
+      </Card>
+      ...생략
+    </div>
+  )
+};
+
+...생략
+
+export default PostCard;
+~~~
 

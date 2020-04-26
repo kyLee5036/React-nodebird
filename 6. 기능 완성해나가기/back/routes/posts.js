@@ -18,6 +18,15 @@ router.get('/', async (req, res, next) => {
         attributes: ['id'],
       }],
       order: [['createdAt', 'DESC']], 
+    }, {
+      model: db.Post,
+      as: 'Retweet',
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }]
     });
     res.json(posts);
   } catch (e) {

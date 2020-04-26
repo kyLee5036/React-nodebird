@@ -15,6 +15,7 @@
 + [react slick으로 이미지 슬라이더 구현](#react-slick으로-이미지-슬라이더-구현)
 + [게시글 좋아요, 좋아요 취소](#게시글-좋아요,-좋아요-취소)
 + [리트윗 API 만들기](#리트윗-API-만들기)
++ [리트윗 프론트 화면 만들기](#리트윗-프론트-화면-만들기)
 
 
 
@@ -3331,3 +3332,283 @@ export default (state = initialState, action) => {
 지금까지 일반 게시글들만 만들었기 떄문이다. <br>
 다음 시간에 직접만들것이다. <br>
 
+## 리트윗 프론트 화면 만들기
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\PostCard.js
+```js
+...생략
+import PostCardContent from './PostCardContent' // 추가
+
+const PostCard = ({post}) => {
+  ...생략
+  ...생략
+
+  return (
+    <div>
+      <Card
+        key={+post.createdAt}
+        cover={post.Images[0] && <PostImages images={post.Images} />}
+        actions={[
+          <Icon type="retweet" key="retweet" onClick={onRetweet} />,
+          <Icon
+            type="heart"
+            key="heart"
+            theme={liked ? 'twoTone' : 'outlined'}
+            twoToneColor="#eb2f96"
+            onClick={onToggleLike}
+          />,
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Icon type="ellipsis" key="ellipsis" />,
+        ]}
+        title={post.Retweet ? `${post.User.nickname}님이 리트윗하셨습니다.` : null } // 추가하기
+        extra={<Button>팔로우</Button>}
+      >
+        {/* 여기서 리트윗 한 게시글, 본 게시글을 분리할 것이다. */}
+        { post.RetweetId && post.Retweet  
+        // 리트윗 한 경우에는 카드 안에 카드를 생성
+          ? (
+            <Card
+             cover={post.Retweet.Image[0] && <PostImages images={post.Retweet.Images} />} // 추가
+            >
+              <Card.Meta 
+                avatar={(
+                  <Link 
+                    href={{ pathname: '/user', query: { id: post.Retweet.User.id } }} 
+                    as={`/user/${post.Retweet.User.id}`}
+                  >
+                    <a><Avatar>{post.Retweet.User.nickname[0]}</Avatar></a>
+                  </Link>)}
+                title={post.Retweet.User.nickname}
+                description={<PostCardContent postData={post.Retweet.content} />} // 리트윗이면 여기에 post.Retweet.content
+                // 리트윗 한 경우랑 안 한 경우랑 중복되므로 구별을 해주었다.
+              />
+            </Card>
+          ) 
+          : (
+            // 리트윗 안 한 경우 카드 안에 내용물이 들어있다.
+          <Card.Meta 
+            avatar={(
+              <Link href={{ pathname: '/user', query: { id: post.User.id } }} as={`/user/${post.User.id}`}>
+                <a><Avatar>{post.User.nickname[0]}</Avatar></a>
+              </Link>)}
+            title={post.User.nickname}
+            description={<PostCardContent postData={post.content} />} // 리트윗이 아니면 post.content
+          />
+        )}
+        
+      </Card>
+      ...생략
+    </div>
+  )
+};
+...생략
+
+export default PostCard;
+
+```
+
+#### \front\components\PostCardContent.js
+```js
+import React from 'react';
+import Link from 'next/link';
+import PropTypes from 'prop-types';
+
+const PostCardContent = ({ postData }) => {
+  return (
+    // 이렇게 분리한 이유가 카드 구별하기 위해서이다.
+    <div>
+      {postData.split(/(#[^\s]+)/g).map((v, i) => {
+        if (v.match(/#[^\s]+/)) {
+          return (
+            <Link 
+              href={{ pathname: '/hashtag', query: { tag: v.slice(1) } }}
+              as={`/hashtag/${v.slice(1)}`} 
+              key={+v.createdAt}
+            >
+              <a>{v}</a>
+            </Link>
+          );
+        }
+        return v; 
+      })};
+    </div>
+  )
+};
+
+PostCardContent.PropTypes ={
+  postData: PropTypes.string.isRequired,
+}
+
+export default PostCardContent;
+```
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const db = require('../models');
+const { isLoggedIn } = require('./middlewares');
+
+const router = express.Router();
+
+...생략
+
+router.post('/:id/retweet', isLoggedIn, async (req, res, next) => {
+  try {
+    const post = await db.Post.findOne({ 
+      // 타인 게시글이 내 리트윗한 것을 내가 리트윗 한 리트윗 게시글을 하지 못하도록 추가하였다.
+      where: {id: req.params.id }, // 수정해주기
+      include: [{ // 수정해주기
+        model: db.Post, // 수정해주기
+        as: 'Retweet', // 수정해주기
+      }] // 수정해주기
+    });
+    if (!post) {
+      return res.status(404).send('포스트가 존재하지 않습니다.');
+    }
+    // 타인 게시글이 내 리트윗한 것을 내가 리트윗 한 리트윗 게시글을 하지 못하도록 추가하였다.
+    if ( req.user.id === post.UserId || (post.Retweet && post.Retweet.UserId == req.user.id)) { // 수정해주기
+      return res.status(403).send('자신의 글은 리트윗할 수 없습니다.');
+    }
+    const retweetTargetId = post.RetweetId || post.id;  
+    const exPost = await db.Post.findOne({ 
+      where: {
+        UserId: req.user.id,
+        RetweetId: retweetTargetId,
+      },
+    });
+    if (exPost) {
+      return res.status(403).send('이미 리트윗했습니다');
+    }
+    const retweet = await db.Post.create({ 
+      UserId: req.user.id,
+      RetweetId: retweetTargetId,
+      content: 'retweet'
+    });
+    const retweetWithPrevPost = await db.Post.findOne({ 
+      where: { id: retweet.id }, 
+      include: [{
+        model: db.User,
+      }, {
+        model: db.Post,
+        as: 'Retweet',
+        include: [{
+          model: db.User,
+          attributes: ['id']
+        }, {
+          model: db.Image,
+        }],
+      }],
+    });
+    res.json(retweetWithPrevPost);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+```
+
+#### \back\routes\posts.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/', async (req, res, next) => { 
+  try {
+    const posts = await db.Post.findAll({
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User,
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }],
+      order: [['createdAt', 'DESC']], 
+    }, {
+      model: db.Post, // 추가하기
+      as: 'Retweet', // 추가하기
+      include: [{ // 추가하기
+        model: db.User, // 추가하기
+        attributes: ['id', 'nickname'], // 추가하기
+      }, { // 추가하기
+        model: db.Image, // 추가하기
+      }] // 추가하기
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+```
+
+#### \front\components\PostCard.js
+```js
+...생략
+
+const PostCard = ({post}) => {
+...생략
+
+  return (
+    <div>
+      <Card
+        key={+post.createdAt}
+        cover={post.Images && post.Images[0] && <PostImages images={post.Images} />} // 2차 수정!!!!!!!!!!!!!!!
+        ...생략
+        title={post.RetweetId ? `${post.User.nickname}님이 리트윗하셨습니다.` : null} // 2차 수정!!!!!!!!!!!!!!!
+        extra={<Button>팔로우</Button>}
+      >
+        {post.RetweetId && post.Retweet
+          ? (
+            <Card
+              cover={post.Retweet.Images[0] && <PostImages images={post.Retweet.Images} />}
+            >
+              <Card.Meta
+                avatar={(
+                  <Link
+                    href={{ pathname: '/user', query: { id: post.Retweet.User.id } }}
+                    as={`/user/${post.Retweet.User.id}`}
+                  >
+                    <a><Avatar>{post.Retweet.User.nickname[0]}</Avatar></a>
+                  </Link>
+                )}
+                title={post.Retweet.User.nickname}
+                description={<PostCardContent postData={post.Retweet.content} />} // a tag x -> Link
+              />
+            </Card>
+          )
+          : (
+            <Card.Meta
+              avatar={(
+                <Link href={{ pathname: '/user', query: { id: post.User.id } }} as={`/user/${post.User.id}`}>
+                  <a><Avatar>{post.User.nickname[0]}</Avatar></a>
+                </Link>
+              )}
+              title={post.User.nickname}
+              description={<PostCardContent postData={post.content} />} 
+            />
+          )}
+      </Card>
+      ...생략
+    </div>
+  )
+};
+
+...생략
+
+export default PostCard;
+
+
+```

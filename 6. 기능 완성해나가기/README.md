@@ -16,6 +16,7 @@
 + [게시글 좋아요, 좋아요 취소](#게시글-좋아요,-좋아요-취소)
 + [리트윗 API 만들기](#리트윗-API-만들기)
 + [리트윗 프론트 화면 만들기](#리트윗-프론트-화면-만들기)
++ [팔로우 언팔로우](#팔로우-언팔로우)
 
 
 
@@ -3611,4 +3612,239 @@ const PostCard = ({post}) => {
 export default PostCard;
 
 
+```
+
+## 팔로우 언팔로우
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\PostCard.js
+```js
+
+...생략
+import { FOLLOW_USER_REQUEST, UNFOLLOW_USER_REQUEST } from '../reducers/user'; // 추가
+
+const PostCard = ({post}) => {
+...생략
+
+  const onFollow = useCallback(userId => () => {
+    dispatch({
+      type: FOLLOW_USER_REQUEST,
+      data: userId,
+    });
+  }, []);
+
+  const onUnFollow = useCallback(userId => () => {
+    dispatch({
+      type: UNFOLLOW_USER_REQUEST,
+      data: userId,
+    })
+  }, []);
+
+  return (
+    <div>
+      <Card
+        key={+post.createdAt}
+        cover={post.Images && post.Images[0] && <PostImages images={post.Images} />}
+        actions={[
+          <Icon type="retweet" key="retweet" onClick={onRetweet} />,
+          <Icon
+            type="heart"
+            key="heart"
+            theme={liked ? 'twoTone' : 'outlined'}
+            twoToneColor="#eb2f96"
+            onClick={onToggleLike}
+          />,
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Icon type="ellipsis" key="ellipsis" />,
+        ]}
+        title={post.RetweetId ? `${post.User.nickname}님이 리트윗하셨습니다.` : null}
+        extra={
+          // 로그인을 안했거나 내 게시글을 보고있으면 팔로워 팔로워 취소 버튼이 필요없다.
+          !me || post.User.id === me.id
+            ? null 
+            // 로그인했고, 남의 게시글을 보고있으면 작성아이디를 찾는다.
+            : me.Followings && me.Followings.find(v => v.id === post.User.id)
+              ? <Button onClick={onUnfollow(post.User.id)}>언팔로우</Button>
+              : <Button onClick={onFollow(post.User.id)}>팔로우</Button>
+        }
+      >
+      ...생략
+    </div>
+  )
+};
+...생략
+
+export default PostCard;
+
+
+```
+
+
+#### \front\sagas\user.js
+```js
+
+...생략
+
+function followAPI(userId) {
+  return axios.post(`/user/${userId}/follow`, {}, {
+    withCredentials: true,
+  });
+}
+
+function* follow(action) {
+  try {
+    const result = yield call(followAPI, action.data);
+    yield put({
+      type: FOLLOW_USER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: FOLLOW_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchFollow() {
+  yield takeEvery(FOLLOW_USER_REQUEST, follow);
+}
+
+function unfollowAPI(userId) {
+  return axios.delete(`/user/${userId}/unfollow`, {
+    withCredentials: true,
+  })
+}
+
+function* unfollow(action) {
+  try {
+    const result = yield call(unfollowAPI, action.data);
+    yield put({
+      type: UNFOLLOW_USER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: UNFOLLOW_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchUnfollow() {
+  yield takeEvery(UNFOLLOW_USER_REQUEST, unfollow);
+}
+
+
+export default function* userSaga() {
+  yield all([
+    ...생략
+    fork(watchFollow), // 추가
+    fork(watchUnFollow), / 추가
+  ]);
+}
+```
+
+#### \back\routes\user.js
+```js
+...생략
+
+const router = express.Router();
+
+...생략
+
+router.get('/:id/follow', (req, res) => {
+
+});
+
+router.post('/:id/follow', isLoggedIn, async (req, res, next) => {
+  try {
+    const me = await db.User.findOne({
+      where: { id: req.user.id },
+    });
+    await me.addFollowing(req.params.id);
+    res.send(req.params.id);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+router.delete('/:id/unfollow', isLoggedIn, async (req, res, next) => {
+  try {
+    const me = await db.User.findOne({
+      where: { id: req.user.id },
+    });
+    await me.removeFollowing(req.params.id);
+    res.send(req.params.id);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
+
+module.exports = router; 
+
+```
+
+#### \front\reducers\user.js
+```js
+...생략
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+   ...생략
+   ...생략
+    case FOLLOW_USER_REQUEST: { 
+      return { 
+        ...state, 
+      }; 
+    }
+    case FOLLOW_USER_SUCCESS: { 
+      return { 
+        ...state, 
+        me : { // 내 정보안에
+          ...state.me,
+          // 팔로잉 목록 : [목록(...state.me.Followings)에다가 남의 아이디(action.data)를 추가한다.]
+          Followings: [{ id: action.data, ...state.me.Followings}], 
+        }
+      }; 
+    }
+    case FOLLOW_USER_FAILURE: { 
+      return { 
+        ...state, 
+      }; 
+    }
+    case UNFOLLOW_USER_REQUEST: { 
+      return { 
+        ...state, 
+      }; 
+    }
+    case UNFOLLOW_USER_SUCCESS: { 
+      return { 
+        ...state, 
+        me : {
+          ...state.me,
+          // Followings목록: [나의 목록에서 그 사람 아이디를 팔로워 취소를 한.]
+          Followings: state.me.Followings.filter(v => v.id !== action.data), 
+        }
+      }; 
+    }
+    case UNFOLLOW_USER_FAILURE: { 
+      return { 
+        ...state, 
+      }; 
+    }   
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
 ```

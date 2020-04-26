@@ -169,8 +169,8 @@ export default (state = initialState, action) => {
         mainPosts: action.data,
       };
     }
-    case LOAD_MAIN_POSTS_FAILURE:yy
-    case LOAD_HASHTAG_POSTS_FAILURE:yy
+    case LOAD_MAIN_POSTS_FAILURE:
+    case LOAD_HASHTAG_POSTS_FAILURE:
     case LOAD_USER_POSTS_FAILURE: {
       return {
         ...state,

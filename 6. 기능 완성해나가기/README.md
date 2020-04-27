@@ -17,6 +17,7 @@
 + [리트윗 API 만들기](#리트윗-API-만들기)
 + [리트윗 프론트 화면 만들기](#리트윗-프론트-화면-만들기)
 + [팔로우 언팔로우](#팔로우-언팔로우)
++ [다른 리듀서 데이터 조작하기](#다른-리듀서-데이터-조작하기)
 
 
 
@@ -3848,3 +3849,99 @@ export default (state = initialState, action) => {
   }
 };
 ```
+
+## 다른 리듀서 데이터 조작하기
+[위로가기](#기능-완성해나가기)
+
+여기서 게시글을 올렸는데, 게시글의 수가 안 올라간다. <br>
+새로고침을 했을 떄 올라간다. <br>
+
+글을 작성하면 `ADD_POST_SUCESS`가 mainPosts안에 게시글이 들어간다. <br>
+하지만 여기에서 `ADD_POST_SUCESS`를 하면 post의 reducer안에 mainPosts에 데이터를 추가하고 있다. <br>
+me에서의 Posts안에 id를 추가할 수 없다 <br>
+> 리덕스의 한계가 post의 post(reducer)에서만 데이터 조작가능하다 <br>
+> user는 user(reducer)만 데이터 조작가능하다. <br>
+그러기 위해서 어쩔 수 없이 post에서 user(reudcer)를 사용할려면 안에 user(reudcer) 데이터를 호출해야한다. <br>
+
+#### \front\sagas\post.js
+```js
+import axios from 'axios';
+...생략
+import { ADD_POST_TO_ME } from '../reducers/user' // 여기서 드디어 나온다.
+
+...생략
+
+function addPostAPI(postData) {
+  return axios.post('/post', postData, {
+    withCredentials: true,
+  });
+}
+
+function* addPost(action) {
+  try {
+    const result = yield call(addPostAPI, action.data);
+    yield put({ // post -> reducer의 데이터를 수정
+      type: ADD_POST_SUCCESS,
+      data: result.data,
+    });
+    // 리듀서의 단점을 극복하기 위해서 액션을 2개 호출한다.
+    yield put({ // user -> reducer의 데이터를 수정
+      type: ADD_POST_TO_ME,
+      data: result.data.id
+    })
+  } catch (e) {
+    yield put({
+      type: ADD_POST_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchAddPost() {
+  yield takeLatest(ADD_POST_REQUEST, addPost);
+}
+
+...생략
+
+export default function* postSaga() {
+  yield all([
+    ...생략
+  ]);
+}
+```
+
+#### \front\reducers\user.js
+```js
+...생략
+
+export const ADD_POST_TO_ME = 'ADD_POST_TO_ME'; // 드디어 사용한다.
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case UNFOLLOW_USER_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case ADD_POST_TO_ME: {
+      return {
+        ...state,
+        me : {
+          ...state.me,
+          Posts: [{ id: action.data}, ...state.me.Posts],
+        },
+      };
+    }
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+> reducer가 다르면 그 해당하는 action을 만들어야만 다른 리듀서를 사용할 수 있다. <br>
+>> reducer는 원래 그 속한 데이터만 바꾸는데 다른 것을 사용하게 되면 복잡도 증가하게 되어있다. <br>
+

@@ -18,6 +18,7 @@
 + [리트윗 프론트 화면 만들기](#리트윗-프론트-화면-만들기)
 + [팔로우 언팔로우](#팔로우-언팔로우)
 + [다른 리듀서 데이터 조작하기](#다른-리듀서-데이터-조작하기)
++ [프로필 및 데이터 로딩하기](#프로필-및-데이터-로딩하기)
 
 
 
@@ -3944,4 +3945,375 @@ export default (state = initialState, action) => {
 
 > reducer가 다르면 그 해당하는 action을 만들어야만 다른 리듀서를 사용할 수 있다. <br>
 >> reducer는 원래 그 속한 데이터만 바꾸는데 다른 것을 사용하게 되면 복잡도 증가하게 되어있다. <br>
+
+
+## 프로필 및 데이터 로딩하기
+[위로가기](#기능-완성해나가기)
+
+프로필 목록을 보면 dummy데이터이다. <br>
+그래서 팔로워 목록, 팔로잉 목록을 실제로 데이터로 불러오겠다. <br>
+
+팔로잉 목록, 팔로워 목록, 팔로워 목록 지우기 : 3개의 사가가 필요하다. <br>
+
+#### \front\sagas\user.js
+```js
+...생략
+...생략
+
+function loadFollowersAPI(userId) {
+  return axios.get(`/user/${userId}/followers`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowers(action) {
+  try {
+    const result = yield call(loadFollowersAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWERS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWERS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowers() {
+  yield takeEvery(LOAD_FOLLOWERS_REQUEST, loadFollowers);
+}
+
+function loadFollowingsAPI(userId) {
+  return axios.get(`/user/${userId}/followings`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowings(action) {
+  try {
+    const result = yield call(loadFollowingsAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWINGS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWINGS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowings() {
+  yield takeEvery(LOAD_FOLLOWINGS_REQUEST, loadFollowings);
+}
+
+function removeFollowerAPI(userId) {
+  return axios.delete(`/user/${userId}/follower`, {
+    withCredentials: true,
+  })
+}
+
+function* removeFollower(action) {
+  try {
+    const result = yield call(removeFollowerAPI, action.data);
+    yield put({
+      type: REMOVE_FOLLOWER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: REMOVE_FOLLOWER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchRemoveFollower() {
+  yield takeEvery(REMOVE_FOLLOWER_REQUEST, removeFollower);
+}
+
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogIn),
+    fork(watchLogOut), 
+    fork(watchLoadUser), 
+    fork(watchSignUp),
+    fork(watchFollow), 
+    fork(watchUnfollow),
+    fork(watchLoadFollowers),
+    fork(watchLoadFollowings),
+    fork(watchRemoveFollower),
+  ]);
+}
+```
+
+#### \back\routes\user.js
+```js
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+const passport = require('passport');
+const { isLoggedIn } = require('./middlewares'); 
+
+const router = express.Router();
+
+...생략
+
+router.get('/:id/followings', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await db.User.findOne({ 
+      where: { id: parseInt(req.params.id, 10) },
+    });
+    const followings = await user.getFollowings({ 
+      // 여기에다가 옵션을 줄 수 있다. where, attrubutes 등등
+      attributes: ['id', 'nickname'],
+    });
+    res.json(followings);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+router.get('/:id/followers', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await db.User.findOne({ 
+      where: { id: parseInt(req.params.id, 10) },
+    });
+    const followers = await user.getFollowers({ 
+      // 여기에다가 옵션을 줄 수 있다. where, attrubutes 등등
+      attributes: ['id', 'nickname'],
+    });
+    res.json(followers);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+router.delete('/:id/follower', isLoggedIn, async (req, res, next) => {
+  try {
+    const me = await db.User.findOne({
+      where: { id: req.user.id },
+    });
+    await me.removeFollower(req.params.id); // 나와 그 대상 관계를 끊는다.
+    res.json(req.params.id);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
+
+module.exports = router; 
+
+```
+
+#### \front\reducers\user.js
+```js
+...생략
+
+export const LOAD_FOLLOWERS_REQUEST = 'LOAD_FOLLOWERS_REQUEST'; // 추가
+export const LOAD_FOLLOWERS_SUCCESS = 'LOAD_FOLLOWERS_SUCCESS'; // 추가
+export const LOAD_FOLLOWERS_FAILURE = 'LOAD_FOLLOWERS_FAILURE'; // 추가
+
+export const LOAD_FOLLOWINGS_REQUEST = 'LOAD_FOLLOWINGS_REQUEST'; // 추가
+export const LOAD_FOLLOWINGS_SUCCESS = 'LOAD_FOLLOWINGS_SUCCESS'; // 추가
+export const LOAD_FOLLOWINGS_FAILURE = 'LOAD_FOLLOWINGS_FAILURE'; // 추가
+
+export const REMOVE_FOLLOWER_REQUEST = 'REMOVE_FOLLOWER_REQUEST'; // 추가
+export const REMOVE_FOLLOWER_SUCCESS = 'REMOVE_FOLLOWER_SUCCESS'; // 추가
+export const REMOVE_FOLLOWER_FAILURE = 'REMOVE_FOLLOWER_FAILURE'; // 추가
+
+...생략
+
+export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case ADD_POST_TO_ME: {
+      return {
+        ...state,
+        me : {
+          ...state.me,
+          Posts: [{ id: action.data}, ...state.me.Posts],
+        },
+      };
+    }
+
+    case LOAD_FOLLOWERS_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWERS_SUCCESS: {
+      return {
+        ...state,
+        followerList: action.data
+      };
+    }
+    case LOAD_FOLLOWERS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+
+    case LOAD_FOLLOWINGS_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWINGS_SUCCESS: {
+      return {
+        ...state,
+        followingList: action.data,
+      };
+    }
+    case LOAD_FOLLOWINGS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+
+    case REMOVE_FOLLOWER_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case REMOVE_FOLLOWER_SUCCESS: {
+      return {
+        ...state,
+        me: {
+          ...state.me,
+          // 팔로워에서 리스트르 제거해줘야한다.
+          Followers: state.me.Followers.filter(v => v.id !== action.data), 
+        },
+        // 팔로워 리스트에서 리스트르 제거해줘야한다.
+        followerList: state.followerList.filter(v => v.id !== action.data),
+      };
+    }
+    case REMOVE_FOLLOWER_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+#### \front\pages\profile.js
+```js
+import React, { useEffect, useCallback } from 'react';
+import {Form, Input, Button, List, Card, Icon} from 'antd';
+import { useDispatch, useSelector } from 'react-redux';
+import NickNameEditForm from '../components/NickNameEditForm';
+import { LOAD_FOLLOWERS_REQUEST, LOAD_FOLLOWINGS_REQUEST, UNFOLLOW_USER_REQUEST, REMOVE_FOLLOWER_REQUEST } from '../reducers/user';
+import { LOAD_USER_POSTS_REQUEST } from '../reducers/post';
+import PostCard from '../components/PostCard';
+
+const Profile = () => {
+
+  const dispatch = useDispatch();
+  const { me, followingList, followerList } = useSelector(state => state.user);
+  const { mainPosts } = useSelector(state => state.post);
+
+  useEffect(() => {
+    // 내 프로필 목록에 들어가면 3개 동시를 불러온다.
+
+    if (me) { // 내가 로그인 했을 경우에만
+      dispatch({
+        type: LOAD_FOLLOWERS_REQUEST,
+        data: me.id,
+      });
+      dispatch({
+        type: LOAD_FOLLOWINGS_REQUEST,
+        data: me.id,
+      });
+      dispatch({
+        type: LOAD_USER_POSTS_REQUEST,
+        data: me.id,
+      });
+    }
+    
+  }, [me && me.id]);
+
+const onUnfollow = useCallback(userId => () => {
+  dispatch({
+    type: UNFOLLOW_USER_REQUEST,
+    data: userId,
+  });
+}, []);
+
+const onRemoveFollower = useCallback(userId => () => {
+  dispatch({
+    type: REMOVE_FOLLOWER_REQUEST,
+    data: userId,
+  })
+}, []);
+
+  return (
+    <div>
+      <NickNameEditForm />
+      <List
+        style={{ marginBottom: '20px'}}
+        grid={{ gutter:4, xs:2, md: 3}} 
+        size="small"
+        header={<div>팔로잉 목록</div>} 
+        loadMore={<Button style={{width: '100%'}}>더 보기</Button>}
+        bordered
+        // dataSource에 실제 데이터를 넣어줄 것이다. 
+        dataSource={followingList} 
+        renderItem={ item => (
+          <List.Item style={{ marginTop: '20px'}}>
+            <Card actions={[<Icon type="stop" key="stop" onClick={onUnfollow(item.id)} />]}>
+              <Card.Meta description={item.nickname} /></Card> {/* 수정 : item => item.nickname으로 수정 */}
+          </List.Item>
+        )}
+      />
+
+      <List
+        style={{ marginBottom: '20px'}}
+        grid={{ gutter:4, xs:2, md: 3}}
+        size="small"
+        header={<div>팔로워 목록</div>} 
+        loadMore={<Button style={{width: '100%'}}>더 보기</Button>} 
+        bordered
+        // dataSource에 실제 데이터를 넣어줄 것이다. 
+        dataSource={followerList} 
+        renderItem={ item => ( // 반복문
+          <List.Item style={{ marginTop: '20px'}}>
+            <Card actions={[<Icon type="stop" key="stop" onClick={onRemoveFollower(item.id)} />]}>
+              <Card.Meta description={item.nickname} /></Card> {/* 수정 : item => item.nickname으로 수정 */}
+          </List.Item>
+        )}
+      />
+      <div>
+        {mainPosts.map(c => ( // 게시글들을 불러온다.
+          <PostCard key={+c.createdAt} post={c} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default Profile;
+```
+
+여기서 react-redux를 보면 `LOAD_FOLLOWERS_FAILURE`, `LOAD_FOLLOWINGS_FAILURE`가 나온다. <br>
+에러가 발생하였다....<br>
 

@@ -1,40 +1,87 @@
-import React from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {Form, Input, Button, List, Card, Icon} from 'antd';
+import { useDispatch, useSelector } from 'react-redux';
 import NickNameEditForm from '../components/NickNameEditForm';
+import { LOAD_FOLLOWERS_REQUEST, LOAD_FOLLOWINGS_REQUEST, UNFOLLOW_USER_REQUEST, REMOVE_FOLLOWER_REQUEST } from '../reducers/user';
+import { LOAD_USER_POSTS_REQUEST } from '../reducers/post';
+import PostCard from '../components/PostCard';
 
 const Profile = () => {
+  const dispatch = useDispatch();
+  const { me, followingList, followerList } = useSelector(state => state.user);
+  const { mainPosts } = useSelector(state => state.post);
+
+  useEffect(() => {
+    if (me) {
+      dispatch({
+        type: LOAD_FOLLOWERS_REQUEST,
+        data: me.id,
+      });
+      dispatch({
+        type: LOAD_FOLLOWINGS_REQUEST,
+        data: me.id,
+      });
+      dispatch({
+        type: LOAD_USER_POSTS_REQUEST,
+        data: me.id,
+      });
+    }
+  }, [me && me.id]);
+
+  const onUnfollow = useCallback(userId => () => {
+    dispatch({
+      type: UNFOLLOW_USER_REQUEST,
+      data: userId,
+    });
+  }, []);
+
+  const onRemoveFollower = useCallback(userId => () => {
+    dispatch({
+      type: REMOVE_FOLLOWER_REQUEST,
+      data: userId,
+    });
+  }, []);
+
   return (
     <div>
       <NickNameEditForm />
       <List
-        style={{ marginBottom: '20px'}}
-        grid={{ gutter:4, xs:2, md: 3}} 
+        style={{ marginBottom: '20px' }}
+        grid={{ gutter: 4, xs: 2, md: 3 }}
         size="small"
-        header={<div>팔로워 목록</div>} 
-        loadMore={<Button style={{width: '100%'}}>더 보기</Button>}
+        header={<div>팔로잉 목록</div>}
+        loadMore={<Button style={{ width: '100%' }}>더 보기</Button>}
         bordered
-        dataSource={['영이', '건이', '얏호']} 
-        renderItem={ item => (
-          <List.Item style={{ marginTop: '20px'}}>
-            <Card actions={[<Icon type="stop" key="stop" />]}><Card.Meta description={item} /></Card>
+        dataSource={followingList}
+        renderItem={item => (
+          <List.Item style={{ marginTop: '20px' }}>
+            <Card actions={[<Icon key="stop" type="stop" onClick={onUnfollow(item.id)} />]}>
+              <Card.Meta description={item.nickname} />
+            </Card>
           </List.Item>
         )}
       />
-
       <List
-        style={{ marginBottom: '20px'}}
-        grid={{ gutter:4, xs:2, md: 3}}
+        style={{ marginBottom: '20px' }}
+        grid={{ gutter: 4, xs: 2, md: 3 }}
         size="small"
-        header={<div>팔로잉 목록</div>} 
-        loadMore={<Button style={{width: '100%'}}>더 보기</Button>} 
-        bordered // 테두리 디자인 옵션
-        dataSource={['영이', '건이', '얏호']} 
-        renderItem={ item => (
-          <List.Item style={{ marginTop: '20px'}}>
-            <Card actions={[<Icon type="stop" key="stop" />]}><Card.Meta description={item} /></Card>
+        header={<div>팔로워 목록</div>}
+        loadMore={<Button style={{ width: '100%' }}>더 보기</Button>}
+        bordered
+        dataSource={followerList}
+        renderItem={item => (
+          <List.Item style={{ marginTop: '20px' }}>
+            <Card actions={[<Icon key="stop" type="stop" onClick={onRemoveFollower(item.id)} />]}>
+              <Card.Meta description={item.nickname} />
+            </Card>
           </List.Item>
         )}
       />
+      <div>
+        {mainPosts.map(c => (
+          <PostCard key={+c.createdAt} post={c} />
+        ))}
+      </div>
     </div>
   );
 };

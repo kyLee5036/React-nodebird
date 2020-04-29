@@ -4140,6 +4140,28 @@ export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
 export default (state = initialState, action) => {
   switch (action.type) {
     ...생략
+
+    case UNFOLLOW_USER_REQUEST: {
+        return {
+          ...state,
+        };
+      }
+      case UNFOLLOW_USER_SUCCESS: {
+        return {
+          ...state,
+          me: {
+            ...state.me,
+            Followings: state.me.Followings.filter(v => v.id !== action.data),
+          },
+          // 이 밑부분도 추가해준다.
+          followingList: state.followingList.filter(v => v.id !== action.data), // followingList 제거하기 위해서 생성
+        };
+      }
+      case UNFOLLOW_USER_FAILURE: {
+        return {
+          ...state,
+        };
+      }
     case ADD_POST_TO_ME: {
       return {
         ...state,
@@ -4316,4 +4338,27 @@ export default Profile;
 
 여기서 react-redux를 보면 `LOAD_FOLLOWERS_FAILURE`, `LOAD_FOLLOWINGS_FAILURE`가 나온다. <br>
 에러가 발생하였다....<br>
+윗 부분은, import가 제대로 되어있지않아서 문제가 있었다. <br><br>
+
+
+버그를 발견 <br>
+팔로워해제를 하면 팔로워가 금방 사라져야하는데, <br>
+금방사라지지 않고,새로고침을 한 후에 사라진다. <br>
+
+#### \back\routes\user.js
+```js
+router.delete('/:id/follower', isLoggedIn, async (req, res, next) => {
+  try {
+    const me = await db.User.findOne({
+      where: { id: req.user.id },
+    });
+    await me.removeFollower(req.params.id);
+    // res.join(req.params.id); // 이 부분을 밑 부분으로 수정해줘야한다.
+    res.send(req.params.id);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+```
 

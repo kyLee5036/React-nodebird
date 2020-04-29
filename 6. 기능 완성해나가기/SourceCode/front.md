@@ -18,6 +18,7 @@
 + [리트윗 프론트 화면 만들기](#리트윗-프론트-화면-만들기)
 + [팔로우 언팔로우](#팔로우-언팔로우)
 + [다른 리듀서 데이터 조작하기](#다른-리듀서-데이터-조작하기)
++ [프로필 및 데이터 로딩하기](#프로필-및-데이터-로딩하기)
 
 
 
@@ -5630,4 +5631,616 @@ export default function* postSaga() {
   ]);
 }
 ```
+## 프로필 및 데이터 로딩하기
+[위로가기](#기능-완성해나가기)
 
+#### \front\pages\profile.js
+```js
+import React, { useEffect, useCallback } from 'react';
+import {Form, Input, Button, List, Card, Icon} from 'antd';
+import { useDispatch, useSelector } from 'react-redux';
+import NickNameEditForm from '../components/NickNameEditForm';
+import { LOAD_FOLLOWERS_REQUEST, LOAD_FOLLOWINGS_REQUEST, UNFOLLOW_USER_REQUEST, REMOVE_FOLLOWER_REQUEST } from '../reducers/user';
+import { LOAD_USER_POSTS_REQUEST } from '../reducers/post';
+import PostCard from '../components/PostCard';
+
+const Profile = () => {
+  const dispatch = useDispatch();
+  const { me, followingList, followerList } = useSelector(state => state.user);
+  const { mainPosts } = useSelector(state => state.post);
+
+  useEffect(() => {
+    if (me) {
+      dispatch({
+        type: LOAD_FOLLOWERS_REQUEST,
+        data: me.id,
+      });
+      dispatch({
+        type: LOAD_FOLLOWINGS_REQUEST,
+        data: me.id,
+      });
+      dispatch({
+        type: LOAD_USER_POSTS_REQUEST,
+        data: me.id,
+      });
+    }
+  }, [me && me.id]);
+
+  const onUnfollow = useCallback(userId => () => {
+    dispatch({
+      type: UNFOLLOW_USER_REQUEST,
+      data: userId,
+    });
+  }, []);
+
+  const onRemoveFollower = useCallback(userId => () => {
+    dispatch({
+      type: REMOVE_FOLLOWER_REQUEST,
+      data: userId,
+    });
+  }, []);
+
+  return (
+    <div>
+      <NickNameEditForm />
+      <List
+        style={{ marginBottom: '20px' }}
+        grid={{ gutter: 4, xs: 2, md: 3 }}
+        size="small"
+        header={<div>팔로잉 목록</div>}
+        loadMore={<Button style={{ width: '100%' }}>더 보기</Button>}
+        bordered
+        dataSource={followingList}
+        renderItem={item => (
+          <List.Item style={{ marginTop: '20px' }}>
+            <Card actions={[<Icon key="stop" type="stop" onClick={onUnfollow(item.id)} />]}>
+              <Card.Meta description={item.nickname} />
+            </Card>
+          </List.Item>
+        )}
+      />
+      <List
+        style={{ marginBottom: '20px' }}
+        grid={{ gutter: 4, xs: 2, md: 3 }}
+        size="small"
+        header={<div>팔로워 목록</div>}
+        loadMore={<Button style={{ width: '100%' }}>더 보기</Button>}
+        bordered
+        dataSource={followerList}
+        renderItem={item => (
+          <List.Item style={{ marginTop: '20px' }}>
+            <Card actions={[<Icon key="stop" type="stop" onClick={onRemoveFollower(item.id)} />]}>
+              <Card.Meta description={item.nickname} />
+            </Card>
+          </List.Item>
+        )}
+      />
+      <div>
+        {mainPosts.map(c => (
+          <PostCard key={+c.createdAt} post={c} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default Profile;
+```
+
+#### \front\reducers\user.js
+```js
+
+export const initialState = {
+  isLoggingOut : false,
+  isLoggingIn : false,
+  logInErrorReason: '',
+  isSigningUp: false,
+  isSignedUp : false,
+  signUpErrorReason: '',
+  isSignUpSuccesFailure: false,
+  me: null,
+  followingList : [],
+  followerList: [],
+  userInfo: null,
+};
+
+export const SIGN_UP_REQUEST = 'SIGN_UP_REQUEST';
+export const SIGN_UP_SUCCESS = 'SIGN_UP_SUCCESS';
+export const SIGN_UP_FAILURE = 'SIGN_UP_FAILURE';
+
+export const LOG_IN_REQUEST = 'LOG_IN_REQUEST';
+export const LOG_IN_SUCCESS = 'LOG_IN_SUCCESS';
+export const LOG_IN_FAILURE = 'LOG_IN_FAILURE';
+
+export const LOAD_USER_REQUEST = 'LOAD_USER_REQUEST';
+export const LOAD_USER_SUCCESS = 'LOAD_USER_SUCCESS';
+export const LOAD_USER_FAILURE = 'LOAD_USER_FAILURE';
+
+export const LOG_OUT_REQUEST = 'LOG_OUT_REQUEST';
+export const LOG_OUT_SUCCESS = 'LOG_OUT_SUCCESS';
+export const LOG_OUT_FAILURE = 'LOG_OUT_FAILURE';
+
+export const FOLLOW_USER_REQUEST = 'FOLLOW_USER_REQUEST';
+export const FOLLOW_USER_SUCCESS = 'FOLLOW_USER_SUCCESS';
+export const FOLLOW_USER_FAILURE = 'FOLLOW_USER_FAILURE';
+
+export const LOAD_FOLLOWERS_REQUEST = 'LOAD_FOLLOWERS_REQUEST';
+export const LOAD_FOLLOWERS_SUCCESS = 'LOAD_FOLLOWERS_SUCCESS';
+export const LOAD_FOLLOWERS_FAILURE = 'LOAD_FOLLOWERS_FAILURE';
+
+export const LOAD_FOLLOWINGS_REQUEST = 'LOAD_FOLLOWINGS_REQUEST';
+export const LOAD_FOLLOWINGS_SUCCESS = 'LOAD_FOLLOWINGS_SUCCESS';
+export const LOAD_FOLLOWINGS_FAILURE = 'LOAD_FOLLOWINGS_FAILURE';
+
+export const REMOVE_FOLLOWER_REQUEST = 'REMOVE_FOLLOWER_REQUEST';
+export const REMOVE_FOLLOWER_SUCCESS = 'REMOVE_FOLLOWER_SUCCESS';
+export const REMOVE_FOLLOWER_FAILURE = 'REMOVE_FOLLOWER_FAILURE';
+
+export const UNFOLLOW_USER_REQUEST = 'UNFOLLOW_USER_REQUEST';
+export const UNFOLLOW_USER_SUCCESS = 'UNFOLLOW_USER_SUCCESS';
+export const UNFOLLOW_USER_FAILURE = 'UNFOLLOW_USER_FAILURE';
+
+export const REMOVE_USER_REQUEST = 'REMOVE_USER_REQUEST';
+export const REMOVE_USER_SUCCESS = 'REMOVE_USER_SUCCESS';
+export const REMOVE_USER_FAILURE = 'REMOVE_USER_FAILURE';
+
+export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case LOG_IN_REQUEST: {
+      return {
+        ...state,
+        isLoggingIn: true,
+      };
+    }
+    case LOG_IN_SUCCESS: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        isLoading : false,
+        me: action.data,
+      };
+    }
+    case LOG_IN_FAILURE: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        logInErrorReason : action.error,
+        me: null,
+      };
+    }
+
+    case LOG_OUT_REQUEST: {
+      return {
+        ...state,
+        isLoggingOut: true,
+      };
+    }
+    case LOG_OUT_SUCCESS: {
+      return {
+        ...state,
+        isLoggingOut: false,
+        me: null
+      };
+    }
+    case LOG_OUT_FAILURE: {
+      return {
+        ...state,
+        isLoggingOut: false,
+      };
+    }
+
+    case SIGN_UP_REQUEST: { 
+      return { 
+        ...state, 
+        isSigningUp: true,
+        isSignedUp: false,
+        signUpErrorReason: '',
+        isSignUpSuccesFailure: false,
+      }; 
+    }
+    case SIGN_UP_SUCCESS: { 
+      return { 
+        ...state, 
+        isSigningUp: false,
+        isSignedUp: true, 
+        isSignUpSuccesFailure: false,
+      }; 
+    }
+    case SIGN_UP_FAILURE: { 
+      return { 
+        ...state, 
+        isSigningUp : false,
+        signUpErrorReason : action.error, 
+        isSignUpSuccesFailure: true,
+      }; 
+    }
+    
+    case LOAD_USER_REQUEST: { 
+      return { 
+        ...state, 
+      }; 
+    }
+    case LOAD_USER_SUCCESS: { 
+      if (action.me) {
+        return { 
+          ...state, 
+          me : action.data, 
+        }; 
+      }
+      return {
+        ...state,
+        userInfo: action.data
+      }
+    }
+    case LOAD_USER_FAILURE: { 
+      return { 
+        ...state, 
+      }; 
+    } 
+     case FOLLOW_USER_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case FOLLOW_USER_SUCCESS: {
+      return {
+        ...state,
+        me: {
+          ...state.me,
+          Followings: [{ id: action.data }, ...state.me.Followings],
+        },
+      };
+    }
+    case FOLLOW_USER_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case UNFOLLOW_USER_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case UNFOLLOW_USER_SUCCESS: {
+      return {
+        ...state,
+        me: {
+          ...state.me,
+          Followings: state.me.Followings.filter(v => v.id !== action.data),
+        },
+        followingList: state.followingList.filter(v => v.id !== action.data),
+      };
+    }
+    case UNFOLLOW_USER_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case ADD_POST_TO_ME: {
+      return {
+        ...state,
+        me : {
+          ...state.me,
+          Posts: [{ id: action.data}, ...state.me.Posts],
+        },
+      };
+    }
+    case LOAD_FOLLOWERS_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWERS_SUCCESS: {
+      return {
+        ...state,
+        followerList: action.data,
+      };
+    }
+    case LOAD_FOLLOWERS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWINGS_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWINGS_SUCCESS: {
+      return {
+        ...state,
+        followingList: action.data,
+      };
+    }
+    case LOAD_FOLLOWINGS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case REMOVE_FOLLOWER_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case REMOVE_FOLLOWER_SUCCESS: {
+      return {
+        ...state,
+        me: {
+          ...state.me,
+          Followers: state.me.Followers.filter(v => v.id !== action.data),
+        },
+        followerList: state.followerList.filter(v => v.id !== action.data),
+      };
+    }
+    case REMOVE_FOLLOWER_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+#### \front\sagas\user.js
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, call, put, takeEvery } from 'redux-saga/effects';
+import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS, LOG_OUT_SUCCESS, LOG_OUT_FAILURE, LOG_OUT_REQUEST, LOAD_USER_SUCCESS, LOAD_USER_FAILURE, LOAD_USER_REQUEST, FOLLOW_USER_REQUEST, UNFOLLOW_USER_REQUEST, UNFOLLOW_USER_FAILURE, UNFOLLOW_USER_SUCCESS, FOLLOW_USER_FAILURE, FOLLOW_USER_SUCCESS, LOAD_FOLLOWERS_REQUEST, LOAD_FOLLOWERS_FAILURE, LOAD_FOLLOWINGS_FAILURE, LOAD_FOLLOWINGS_REQUEST, REMOVE_FOLLOWER_REQUEST, REMOVE_FOLLOWER_FAILURE, REMOVE_FOLLOWER_SUCCESS, LOAD_FOLLOWERS_SUCCESS, LOAD_FOLLOWINGS_SUCCESS } from '../reducers/user'
+
+function logInAPI(logInData) {
+  return axios.post('/user/login', logInData, {
+    withCredentials: true, 
+  });
+}
+
+function* logIn(action) {
+  try {
+    const result = yield call(logInAPI, action.data);
+    yield put({
+      type: LOG_IN_SUCCESS,
+      data: result.data
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogIn() {
+  yield takeLatest(LOG_IN_REQUEST, logIn);
+}
+
+function signUpAPI(signUpdata) {
+  return axios.post('/user/', signUpdata);
+}
+
+function* signUp(action) {
+  try {
+    yield call(signUpAPI, action.data); 
+    yield put({
+      type: SIGN_UP_SUCCESS
+    });
+  } catch (err) {
+    console.error(err)
+    yield put({ 
+      type : SIGN_UP_FAILURE,
+      error : err.response.data,
+    });
+  }
+}
+
+function* watchSignUp() {
+  yield takeLatest(SIGN_UP_REQUEST, signUp);
+}
+
+
+function logOutAPI() {
+  return axios.post('/user/logout', {}, { 
+    withCredentials: true, 
+  }); 
+  
+}
+
+function* logOut() {
+  try {
+    yield call(logOutAPI); 
+    yield put({
+      type: LOG_OUT_SUCCESS
+    });
+  } catch (err) {
+    console.error(err);
+    yield put({ 
+      type : LOG_OUT_FAILURE,
+      error : err,
+    });
+  }
+}
+
+function* watchLogOut() {
+  yield takeLatest(LOG_OUT_REQUEST, logOut);
+}
+
+
+
+function loadUserAPI(userId) {
+  return axios.get( userId ? `/user/${userId}` : `/user/`, {
+    withCredentials: true,
+  });
+}
+
+function* loadUser(action) {
+  try {
+    const result = yield call(loadUserAPI, action.data);
+    yield put({
+      type: LOAD_USER_SUCCESS,
+      data: result.data,
+      me: !action.data
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadUser() {
+  yield takeEvery(LOAD_USER_REQUEST, loadUser);
+}
+
+
+function followAPI(userId) {
+  return axios.post(`/user/${userId}/follow`, {}, {
+    withCredentials: true,
+  });
+}
+
+function* follow(action) {
+  try {
+    const result = yield call(followAPI, action.data);
+    yield put({
+      type: FOLLOW_USER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: FOLLOW_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchFollow() {
+  yield takeEvery(FOLLOW_USER_REQUEST, follow);
+}
+
+function unfollowAPI(userId) {
+  return axios.delete(`/user/${userId}/unfollow`, {
+    withCredentials: true,
+  })
+}
+
+function* unfollow(action) {
+  try {
+    const result = yield call(unfollowAPI, action.data);
+    yield put({
+      type: UNFOLLOW_USER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: UNFOLLOW_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchUnfollow() {
+  yield takeEvery(UNFOLLOW_USER_REQUEST, unfollow);
+}
+
+function loadFollowersAPI(userId) {
+  return axios.get(`/user/${userId}/followers`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowers(action) {
+  try {
+    const result = yield call(loadFollowersAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWERS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWERS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowers() {
+  yield takeEvery(LOAD_FOLLOWERS_REQUEST, loadFollowers);
+}
+
+function loadFollowingsAPI(userId) {
+  return axios.get(`/user/${userId}/followings`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowings(action) {
+  try {
+    const result = yield call(loadFollowingsAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWINGS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWINGS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowings() {
+  yield takeEvery(LOAD_FOLLOWINGS_REQUEST, loadFollowings);
+}
+
+function removeFollowerAPI(userId) {
+  return axios.delete(`/user/${userId}/follower`, {
+    withCredentials: true,
+  })
+}
+
+function* removeFollower(action) {
+  try {
+    const result = yield call(removeFollowerAPI, action.data);
+    yield put({
+      type: REMOVE_FOLLOWER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: REMOVE_FOLLOWER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchRemoveFollower() {
+  yield takeEvery(REMOVE_FOLLOWER_REQUEST, removeFollower);
+}
+
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogIn),
+    fork(watchLogOut), 
+    fork(watchLoadUser), 
+    fork(watchSignUp),
+    fork(watchFollow), 
+    fork(watchUnfollow),
+    fork(watchLoadFollowers),
+    fork(watchLoadFollowings),
+    fork(watchRemoveFollower),
+  ]);
+}
+```

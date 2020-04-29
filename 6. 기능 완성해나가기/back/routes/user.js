@@ -113,8 +113,47 @@ router.post('/login', (req, res, next) => {
   })(req, res, next);
 });
 
-router.get('/:id/follow', (req, res) => {
+router.get('/:id/followings', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await db.User.findOne({ 
+      where: { id: parseInt(req.params.id, 10) },
+    });
+    const followings = await user.getFollowings({ 
+      attributes: ['id', 'nickname'],
+    });
+    res.json(followings);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
 
+router.get('/:id/followers', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await db.User.findOne({
+      where: { id: parseInt(req.params.id, 10) },
+    });
+    const followers = await user.getFollowers({
+      attributes: ['id', 'nickname'],
+    });
+    res.json(followers);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+router.delete('/:id/follower', isLoggedIn, async (req, res, next) => {
+  try {
+    const me = await db.User.findOne({
+      where: { id: req.user.id },
+    });
+    await me.removeFollower(req.params.id);
+    res.send(req.params.id);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
 });
 
 router.post('/:id/follow', isLoggedIn, async (req, res, next) => {
@@ -141,10 +180,6 @@ router.delete('/:id/unfollow', isLoggedIn, async (req, res, next) => {
     console.error(e);
     next(e);
   }
-});
-
-router.delete('/:id/follower', (req, res) => {
-
 });
 
 router.get('/:id/posts', async (req, res, next) => {

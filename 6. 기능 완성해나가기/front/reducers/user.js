@@ -257,7 +257,7 @@ export default (state = initialState, action) => {
     case EDIT_NICKNAME_REQUEST: {
       return {
         ...state,
-        isEditingNickname: true, // 로딩 창
+        isEditingNickname: true,
         editNicknameErrorResason: '',
       };
     }

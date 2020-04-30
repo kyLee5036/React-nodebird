@@ -19,6 +19,7 @@
 + [팔로우 언팔로우](#팔로우-언팔로우)
 + [다른 리듀서 데이터 조작하기](#다른-리듀서-데이터-조작하기)
 + [프로필 및 데이터 로딩하기](#프로필-및-데이터-로딩하기)
++ [닉네임 수정하기](#닉네임-수정하기)
 
 
 
@@ -6244,3 +6245,578 @@ export default function* userSaga() {
   ]);
 }
 ```
+
+## 닉네임 수정하기
+[위로가기](#기능-완성해나가기)
+
+#### \front\components\NickNameEditForm.js
+```js
+import React, { useState, useCallback } from 'react';
+import { Form, Input, Button } from 'antd';
+import { useDispatch, useSelector } from 'react-redux';
+import { EDIT_NICKNAME_REQUEST } from '../reducers/user';
+
+const NickNameEditForm = () => {
+  const [editedName, setEditedName] = useState('');
+  const dispatch = useDispatch();
+  const { me, isEditingNickname } = useSelector(state => state.user);
+
+  const onChangeNickname = useCallback((e) => {
+    setEditedName(e.target.value);
+  }, []);
+
+  const onEditNickname = useCallback((e) => {
+    e.preventDefault();
+    dispatch({
+      type: EDIT_NICKNAME_REQUEST,
+      data: editedName,
+    })
+  }, [editedName]);
+
+  return (
+    <Form style={{ marginBottom: '20px', border: '1px solid #d9d9d9', padding: '20px' }} onSubmit={onEditNickname}>
+      <Input addonBefore="닉네임" value={editedName || (me && me.nickname) } onChange={onChangeNickname} />
+      <Button type="primary" htmlType="submit" loading={isEditingNickname} >수정</Button>
+    </Form>
+  )
+}
+
+export default NickNameEditForm;
+```
+
+#### \front\reducers\user.js
+```js
+
+export const initialState = {
+  isLoggingOut : false,
+  isLoggingIn : false,
+  logInErrorReason: '',
+  isSigningUp: false,
+  isSignedUp : false,
+  signUpErrorReason: '',
+  isSignUpSuccesFailure: false,
+  me: null,
+  followingList : [],
+  followerList: [],
+  userInfo: null,
+  isEditingNickname: false,
+  editNicknameErrorResason: '',
+};
+
+...생략
+
+export const EDIT_NICKNAME_REQUEST = 'EDIT_NICKNAME_REQUEST';
+export const EDIT_NICKNAME_SUCCESS = 'EDIT_NICKNAME_SUCCESS';
+export const EDIT_NICKNAME_FAILURE = 'EDIT_NICKNAME_FAILURE';
+
+export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case LOG_IN_REQUEST: {
+      return {
+        ...state,
+        isLoggingIn: true,
+      };
+    }
+    case LOG_IN_SUCCESS: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        isLoading : false,
+        me: action.data,
+      };
+    }
+    case LOG_IN_FAILURE: {
+      return {
+        ...state,
+        isLoggingIn: false,
+        logInErrorReason : action.error,
+        me: null,
+      };
+    }
+
+    case LOG_OUT_REQUEST: {
+      return {
+        ...state,
+        isLoggingOut: true,
+      };
+    }
+    case LOG_OUT_SUCCESS: {
+      return {
+        ...state,
+        isLoggingOut: false,
+        me: null
+      };
+    }
+    case LOG_OUT_FAILURE: {
+      return {
+        ...state,
+        isLoggingOut: false,
+      };
+    }
+
+    case SIGN_UP_REQUEST: { 
+      return { 
+        ...state, 
+        isSigningUp: true,
+        isSignedUp: false,
+        signUpErrorReason: '',
+        isSignUpSuccesFailure: false,
+      }; 
+    }
+    case SIGN_UP_SUCCESS: { 
+      return { 
+        ...state, 
+        isSigningUp: false,
+        isSignedUp: true, 
+        isSignUpSuccesFailure: false,
+      }; 
+    }
+    case SIGN_UP_FAILURE: { 
+      return { 
+        ...state, 
+        isSigningUp : false,
+        signUpErrorReason : action.error, 
+        isSignUpSuccesFailure: true,
+      }; 
+    }
+    
+    case LOAD_USER_REQUEST: { 
+      return { 
+        ...state, 
+      }; 
+    }
+    case LOAD_USER_SUCCESS: { 
+      if (action.me) {
+        return { 
+          ...state, 
+          me : action.data, 
+        }; 
+      }
+      return {
+        ...state,
+        userInfo: action.data
+      }
+    }
+    case LOAD_USER_FAILURE: { 
+      return { 
+        ...state, 
+      }; 
+    } 
+     case FOLLOW_USER_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case FOLLOW_USER_SUCCESS: {
+      return {
+        ...state,
+        me: {
+          ...state.me,
+          Followings: [{ id: action.data }, ...state.me.Followings],
+        },
+      };
+    }
+    case FOLLOW_USER_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case UNFOLLOW_USER_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case UNFOLLOW_USER_SUCCESS: {
+      return {
+        ...state,
+        me: {
+          ...state.me,
+          Followings: state.me.Followings.filter(v => v.id !== action.data),
+        },
+        followingList: state.followingList.filter(v => v.id !== action.data),
+      };
+    }
+    case UNFOLLOW_USER_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case ADD_POST_TO_ME: {
+      return {
+        ...state,
+        me : {
+          ...state.me,
+          Posts: [{ id: action.data}, ...state.me.Posts],
+        },
+      };
+    }
+    case LOAD_FOLLOWERS_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWERS_SUCCESS: {
+      return {
+        ...state,
+        followerList: action.data,
+      };
+    }
+    case LOAD_FOLLOWERS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWINGS_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWINGS_SUCCESS: {
+      return {
+        ...state,
+        followingList: action.data,
+      };
+    }
+    case LOAD_FOLLOWINGS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case REMOVE_FOLLOWER_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case REMOVE_FOLLOWER_SUCCESS: {
+      return {
+        ...state,
+        me: {
+          ...state.me,
+          Followers: state.me.Followers.filter(v => v.id !== action.data),
+        },
+        followerList: state.followerList.filter(v => v.id !== action.data),
+      };
+    }
+    case REMOVE_FOLLOWER_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case EDIT_NICKNAME_REQUEST: {
+      return {
+        ...state,
+        isEditingNickname: true, // 로딩 창
+        editNicknameErrorResason: '',
+      };
+    }
+    case EDIT_NICKNAME_SUCCESS: {
+      return {
+        ...state,
+        isEditingNickname: false,
+        me: {
+          ...state.me,
+          nickname: action.data,
+        },
+      };
+    }
+    case EDIT_NICKNAME_FAILURE: {
+      return {
+        ...state,
+        isEditingNickname: false,
+        editNicknameErrorResason: action.error,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+
+#### \front\sagas\user.js
+```js
+import axios from 'axios';
+import { all, fork, takeLatest, call, put, takeEvery } from 'redux-saga/effects';
+import { LOG_IN_REQUEST, LOG_IN_SUCCESS, LOG_IN_FAILURE, SIGN_UP_REQUEST, SIGN_UP_FAILURE, SIGN_UP_SUCCESS, LOG_OUT_SUCCESS, LOG_OUT_FAILURE, LOG_OUT_REQUEST, LOAD_USER_SUCCESS, LOAD_USER_FAILURE, LOAD_USER_REQUEST, FOLLOW_USER_REQUEST, UNFOLLOW_USER_REQUEST, UNFOLLOW_USER_FAILURE, UNFOLLOW_USER_SUCCESS, FOLLOW_USER_FAILURE, FOLLOW_USER_SUCCESS, LOAD_FOLLOWERS_REQUEST, LOAD_FOLLOWERS_FAILURE, LOAD_FOLLOWINGS_FAILURE, LOAD_FOLLOWINGS_REQUEST, REMOVE_FOLLOWER_REQUEST, REMOVE_FOLLOWER_FAILURE, REMOVE_FOLLOWER_SUCCESS, LOAD_FOLLOWERS_SUCCESS, LOAD_FOLLOWINGS_SUCCESS, EDIT_NICKNAME_SUCCESS, EDIT_NICKNAME_FAILURE, EDIT_NICKNAME_REQUEST } from '../reducers/user'
+
+function logInAPI(logInData) {
+  return axios.post('/user/login', logInData, {
+    withCredentials: true, 
+  });
+}
+
+function* logIn(action) {
+  try {
+    const result = yield call(logInAPI, action.data);
+    yield put({
+      type: LOG_IN_SUCCESS,
+      data: result.data
+    })
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOG_IN_FAILURE,
+    })
+  }
+}
+
+function* watchLogIn() {
+  yield takeLatest(LOG_IN_REQUEST, logIn);
+}
+
+function signUpAPI(signUpdata) {
+  return axios.post('/user/', signUpdata);
+}
+
+function* signUp(action) {
+  try {
+    yield call(signUpAPI, action.data); 
+    yield put({
+      type: SIGN_UP_SUCCESS
+    });
+  } catch (err) {
+    console.error(err)
+    yield put({ 
+      type : SIGN_UP_FAILURE,
+      error : err.response.data,
+    });
+  }
+}
+
+function* watchSignUp() {
+  yield takeLatest(SIGN_UP_REQUEST, signUp);
+}
+
+
+function logOutAPI() {
+  return axios.post('/user/logout', {}, { 
+    withCredentials: true, 
+  }); 
+  
+}
+
+function* logOut() {
+  try {
+    yield call(logOutAPI); 
+    yield put({
+      type: LOG_OUT_SUCCESS
+    });
+  } catch (err) {
+    console.error(err);
+    yield put({ 
+      type : LOG_OUT_FAILURE,
+      error : err,
+    });
+  }
+}
+
+function* watchLogOut() {
+  yield takeLatest(LOG_OUT_REQUEST, logOut);
+}
+
+
+
+function loadUserAPI(userId) {
+  return axios.get( userId ? `/user/${userId}` : `/user/`, {
+    withCredentials: true,
+  });
+}
+
+function* loadUser(action) {
+  try {
+    const result = yield call(loadUserAPI, action.data);
+    yield put({
+      type: LOAD_USER_SUCCESS,
+      data: result.data,
+      me: !action.data
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadUser() {
+  yield takeEvery(LOAD_USER_REQUEST, loadUser);
+}
+
+
+function followAPI(userId) {
+  return axios.post(`/user/${userId}/follow`, {}, {
+    withCredentials: true,
+  });
+}
+
+function* follow(action) {
+  try {
+    const result = yield call(followAPI, action.data);
+    yield put({
+      type: FOLLOW_USER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: FOLLOW_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchFollow() {
+  yield takeEvery(FOLLOW_USER_REQUEST, follow);
+}
+
+function unfollowAPI(userId) {
+  return axios.delete(`/user/${userId}/unfollow`, {
+    withCredentials: true,
+  })
+}
+
+function* unfollow(action) {
+  try {
+    const result = yield call(unfollowAPI, action.data);
+    yield put({
+      type: UNFOLLOW_USER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: UNFOLLOW_USER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchUnfollow() {
+  yield takeEvery(UNFOLLOW_USER_REQUEST, unfollow);
+}
+
+function loadFollowersAPI(userId) {
+  return axios.get(`/user/${userId}/followers`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowers(action) {
+  try {
+    const result = yield call(loadFollowersAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWERS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWERS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowers() {
+  yield takeEvery(LOAD_FOLLOWERS_REQUEST, loadFollowers);
+}
+
+function loadFollowingsAPI(userId) {
+  return axios.get(`/user/${userId}/followings`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowings(action) {
+  try {
+    const result = yield call(loadFollowingsAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWINGS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWINGS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowings() {
+  yield takeEvery(LOAD_FOLLOWINGS_REQUEST, loadFollowings);
+}
+
+function removeFollowerAPI(userId) {
+  return axios.delete(`/user/${userId}/follower`, {
+    withCredentials: true,
+  })
+}
+
+function* removeFollower(action) {
+  try {
+    const result = yield call(removeFollowerAPI, action.data);
+    yield put({
+      type: REMOVE_FOLLOWER_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: REMOVE_FOLLOWER_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchRemoveFollower() {
+  yield takeEvery(REMOVE_FOLLOWER_REQUEST, removeFollower);
+}
+
+function editNicknameAPI(nickname) {
+  return axios.patch(`/user/nickname`, {nickname}, {
+    withCredentials: true,
+  })
+}
+
+function* editNickname(action) {
+  try {
+    const result = yield call(editNicknameAPI, action.data);
+    yield put({
+      type: EDIT_NICKNAME_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: EDIT_NICKNAME_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchEditNickname() {
+  yield takeEvery(EDIT_NICKNAME_REQUEST, editNickname);
+}
+
+export default function* userSaga() {
+  yield all([
+    fork(watchLogIn),
+    fork(watchLogOut), 
+    fork(watchLoadUser), 
+    fork(watchSignUp),
+    fork(watchFollow), 
+    fork(watchUnfollow),
+    fork(watchLoadFollowers),
+    fork(watchLoadFollowings),
+    fork(watchRemoveFollower),
+    fork(watchEditNickname),
+  ]);
+}
+```
+

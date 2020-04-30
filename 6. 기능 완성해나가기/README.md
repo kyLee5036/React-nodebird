@@ -19,6 +19,7 @@
 + [팔로우 언팔로우](#팔로우-언팔로우)
 + [다른 리듀서 데이터 조작하기](#다른-리듀서-데이터-조작하기)
 + [프로필 및 데이터 로딩하기](#프로필-및-데이터-로딩하기)
++ [닉네임 수정하기](#닉네임-수정하기)
 
 
 
@@ -4362,3 +4363,188 @@ router.delete('/:id/follower', isLoggedIn, async (req, res, next) => {
 });
 ```
 
+## 닉네임 수정하기
+[위로가기](#기능-완성해나가기)
+
+#### \front\pages\profile.js
+```js
+....생략
+
+const Profile = () => {
+
+  ....생략
+
+  return (
+    <div>
+      <NickNameEditForm /> // 이 부분을 수정하겠다.
+      ....생략
+      <div>
+       ....생략
+      </div>
+    </div>
+  );
+};
+
+export default Profile;
+```
+
+#### \front\components\NickNameEditForm.js
+```js
+import React, { useState, useCallback } from 'react';
+import { Form, Input, Button } from 'antd';
+import { useDispatch, useSelector } from 'react-redux';
+import { EDIT_NICKNAME_REQUEST } from '../reducers/user';
+
+const NickNameEditForm = () => {
+  const [editedName, setEditedName] = useState('');
+  const dispatch = useDispatch();
+  const { me, isEditingNickname } = useSelector(state => state.user);
+
+  const onChangeNickname = useCallback((e) => {
+    setEditedName(e.target.value);
+  }, []);
+
+  const onEditNickname = useCallback((e) => {
+    e.preventDefault();
+    dispatch({
+      type: EDIT_NICKNAME_REQUEST,
+      data: editedName,
+    })
+  }, [editedName]);
+
+  return (
+    <Form style={{ marginBottom: '20px', border: '1px solid #d9d9d9', padding: '20px' }} onSubmit={onEditNickname}>
+      <Input addonBefore="닉네임" value={editedName || (me && me.nickname) } onChange={onChangeNickname} />
+      <Button type="primary" htmlType="submit" loading={isEditingNickname} >수정</Button>
+    </Form>
+  )
+}
+
+export default NickNameEditForm;
+```
+
+#### \front\sagas\user.js
+```js
+...생략
+import { 
+  ...생략
+  EDIT_NICKNAME_SUCCESS, EDIT_NICKNAME_FAILURE, EDIT_NICKNAME_REQUEST } from '../reducers/user'
+
+...생략
+
+function editNicknameAPI(nickname) {
+  return axios.patch(`/user/nickname`, {nickname}, {
+    withCredentials: true,
+  })
+}
+
+function* editNickname(action) {
+  try {
+    const result = yield call(editNicknameAPI, action.data);
+    yield put({
+      type: EDIT_NICKNAME_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: EDIT_NICKNAME_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchEditNickname() {
+  yield takeEvery(EDIT_NICKNAME_REQUEST, editNickname);
+}
+
+export default function* userSaga() {
+  yield all([
+    ...생략
+    fork(watchEditNickname),
+  ]);
+}
+```
+
+#### \back\routes\user.js
+```js
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+const passport = require('passport');
+const { isLoggedIn } = require('./middlewares'); 
+
+const router = express.Router();
+
+...생략
+
+router.patch('/nickname', isLoggedIn, async(req, res, next) => {
+  try {
+    await db.User.update({
+      nickname: req.body.nickname,
+    }, {
+      where: { id: req.user.id} ,
+    });
+    res.send(req.body.nickname);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router; 
+
+```
+
+#### \front\reducers\user.js
+```js
+
+export const initialState = {
+  ...생략
+  isEditingNickname: false, // 추가
+  editNicknameErrorResason: '', // 추가
+};
+
+...생략
+
+export const EDIT_NICKNAME_REQUEST = 'EDIT_NICKNAME_REQUEST'; // 추가
+export const EDIT_NICKNAME_SUCCESS = 'EDIT_NICKNAME_SUCCESS'; // 추가
+export const EDIT_NICKNAME_FAILURE = 'EDIT_NICKNAME_FAILURE'; // 추가
+
+export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case EDIT_NICKNAME_REQUEST: {
+      return {
+        ...state,
+        isEditingNickname: true, // 로딩 창
+        editNicknameErrorResason: '',
+      };
+    }
+    case EDIT_NICKNAME_SUCCESS: {
+      return {
+        ...state,
+        isEditingNickname: false,
+        me: {
+          ...state.me,
+          nickname: action.data,
+        },
+      };
+    }
+    case EDIT_NICKNAME_FAILURE: {
+      return {
+        ...state,
+        isEditingNickname: false,
+        editNicknameErrorResason: action.error,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```

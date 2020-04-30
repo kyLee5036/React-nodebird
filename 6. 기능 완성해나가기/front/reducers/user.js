@@ -11,6 +11,8 @@ export const initialState = {
   followingList : [],
   followerList: [],
   userInfo: null,
+  isEditingNickname: false,
+  editNicknameErrorResason: '',
 };
 
 export const SIGN_UP_REQUEST = 'SIGN_UP_REQUEST';
@@ -52,6 +54,10 @@ export const UNFOLLOW_USER_FAILURE = 'UNFOLLOW_USER_FAILURE';
 export const REMOVE_USER_REQUEST = 'REMOVE_USER_REQUEST';
 export const REMOVE_USER_SUCCESS = 'REMOVE_USER_SUCCESS';
 export const REMOVE_USER_FAILURE = 'REMOVE_USER_FAILURE';
+
+export const EDIT_NICKNAME_REQUEST = 'EDIT_NICKNAME_REQUEST';
+export const EDIT_NICKNAME_SUCCESS = 'EDIT_NICKNAME_SUCCESS';
+export const EDIT_NICKNAME_FAILURE = 'EDIT_NICKNAME_FAILURE';
 
 export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
 
@@ -246,6 +252,30 @@ export default (state = initialState, action) => {
     case REMOVE_FOLLOWER_FAILURE: {
       return {
         ...state,
+      };
+    }
+    case EDIT_NICKNAME_REQUEST: {
+      return {
+        ...state,
+        isEditingNickname: true, // 로딩 창
+        editNicknameErrorResason: '',
+      };
+    }
+    case EDIT_NICKNAME_SUCCESS: {
+      return {
+        ...state,
+        isEditingNickname: false,
+        me: {
+          ...state.me,
+          nickname: action.data,
+        },
+      };
+    }
+    case EDIT_NICKNAME_FAILURE: {
+      return {
+        ...state,
+        isEditingNickname: false,
+        editNicknameErrorResason: action.error,
       };
     }
     default: {

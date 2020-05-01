@@ -2,6 +2,7 @@ import React from 'react';
 import Head from 'next/head';
 import PropTypes from 'prop-types';
 import WithRedux from 'next-redux-wrapper';
+import WithReduxSaga from 'next-redux-saga';
 import { createStore, compose, applyMiddleware } from 'redux';
 import { Provider } from 'react-redux'; 
 import createSagaMiddleware from 'redux-saga';
@@ -53,8 +54,9 @@ const configureStore = (initalState, options) => {
   );
 
   const store = createStore(reducer, initalState, enhancer);
+  store.sagaTask = sagaMiddleware.run(rootSaga);
   sagaMiddleware.run(rootSaga); 
   return store;
 }
 
-export default WithRedux(configureStore)(NodeBird);
+export default WithRedux(configureStore)(WithReduxSaga(NodeBird));

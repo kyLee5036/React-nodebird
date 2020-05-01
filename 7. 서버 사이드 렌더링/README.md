@@ -1,6 +1,9 @@
 # 서버 사이드 렌더링
 
 + [서버 사이드 렌더링 SRR](#서버-사이드-렌더링-SRR)
++ [SSR을 위해 쿠키 넣어주기](#SSR을-위해-쿠키-넣어주기)
+
+
 
 
 
@@ -36,7 +39,7 @@ context의 내용물 : <br>
 store의 안에, redux의 store이다. <br>
 store.dispatch, store.getState로 redux작업을 할 수가 있다. <br>
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\7. 서버 사이드 렌더링\front\pages\index.js
+#### \front\pages\index.js
 ```js
 ...생략
 
@@ -52,7 +55,7 @@ Home.getInitialProps = async (context) => {
 next서버에서 redux-saga를 할 수 있기때문에 서버 사이드 렌더링이 된다. <br>
 그리고 _app.js에서 세팅을 해준다. <br>
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\7. 서버 사이드 렌더링\front\pages\_app.js
+#### \front\pages\_app.js
 ```js
 ...생략
 import WithRedux from 'next-redux-wrapper';
@@ -80,4 +83,192 @@ export default WithRedux(configureStore)(WithReduxSaga(NodeBird)); // WithReduxS
 ```
 
 새로고침을 하는 순간에 게시글이 먼저 불러와져있다. <br>
+
+## SSR을 위해 쿠키 넣어주기
+[위로가기](#서버-사이드-렌더링)
+
+```js
+...생략
+// import { LOAD_USER_REQUEST } from '../reducers/user'; // 삭제
+
+
+const AppLayout = ({ children }) => {
+  const { me } = useSelector(state => state.user);
+  const dispatch = useDispatch();
+
+  // 이부분을 _app.js로 옮길 거다.
+  // 삭제되었으므로 주석처리한다.
+  // useEffect( () => {
+  //   if (!me) {
+  //     dispatch({
+  //       type: LOAD_USER_REQUEST,
+  //     });
+  //   }
+  // }, []);
+
+  // 여기서 내 정보가 없을 때 ㅐ유저가 나오게해야한다.
+
+  return (
+    ....생략
+  );
+};
+
+AppLayout.propTypes = {
+  children: PropTypes.node.isRequired,
+}
+
+export default AppLayout;
+```
+
+#### \front\pages\_app.js
+```js
+...생략
+import WithRedux from 'next-redux-wrapper';
+import WithReduxSaga from 'next-redux-saga';
+import { createStore, compose, applyMiddleware } from 'redux';
+import { Provider } from 'react-redux'; 
+import { LOAD_USER_REQUEST } from '../reducers/user'; // 추가
+import createSagaMiddleware from 'redux-saga';
+
+...생략
+
+const NodeBird = ({ Component, store, pageProps }) => {
+  return (
+    ...생략
+  );
+};
+
+...생략
+
+NodeBird.getInitialProps = async (context) => {
+  const { ctx, Component } = context;
+  let pageProps = {};
+  ctx.store.dispatch({
+    type: LOAD_USER_REQUEST,
+  });
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx); 
+  }
+  return { pageProps };
+};
+
+...생략
+```
+
+하지만, 내 정보가 없을 유저 정보를 불러와줘야한다. <br>
+
+#### \front\pages\_app.js
+```js
+...생략
+import WithRedux from 'next-redux-wrapper';
+import WithReduxSaga from 'next-redux-saga';
+import { createStore, compose, applyMiddleware } from 'redux';
+import { Provider } from 'react-redux'; 
+import { LOAD_USER_REQUEST } from '../reducers/user'; // 추가
+import createSagaMiddleware from 'redux-saga';
+
+...생략
+
+const NodeBird = ({ Component, store, pageProps }) => {
+  return (
+    ...생략
+  );
+};
+
+...생략
+
+NodeBird.getInitialProps = async (context) => {
+  const { ctx, Component } = context;
+  let pageProps = {};
+  // 여기서 내 정보가 없을 때 ㅐ유저가 나오게해야한다.
+  // 순서도 중요하다.
+  const state = ctx.store.getState();
+  if(!state.user.me) {
+    ctx.store.dispatch({
+      type: LOAD_USER_REQUEST,
+    });
+  }
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx); // 게시글들을 가져온다.
+  }
+  return { pageProps };
+};
+
+// LOAD_USER_REQUEST를 실행하고, 게시글들을 가져온다.
+
+...생략
+```
+
+클라이언트에서 axiox의 요청을 보내면 브라우저가 쿠키를 같이 동봉해준다. <br>
+서버 사이드 렌더링할 때, 브라우저가 없다. <br>
+그러면 수동으로 우리가 직접 구현을 해줘야한다. <br>
+withCredentials로 인해 쿠키를 직접넣어줘야한다. <br>
+
+#### \front\pages\_app.js
+```js
+import { LOAD_USER_REQUEST } from '../reducers/user'; // 추가
+import axios from 'axios'; // 추가
+
+...생략
+
+NodeBird.getInitialProps = async (context) => {
+  const { ctx, Component } = context;
+  let pageProps = {};
+  const state = ctx.store.getState();
+  // 쿠키를 직접구현 해준다.
+  // 프론트 서버에서 우리가 직접  쿠키를 구현해서 넣어줘야한다.
+  const cookie = ctx.isServer ? ctx.req.headers.cookie : ''; // 서버일 때랑 서버아닐 때도 명확하게 구분해야한다.
+  // ctx안에는 req, res가 둘 다 있다.
+  
+  console.log('cookie', cookie);
+  // 하지만 클라이언트에서는 브라우저가 알아서 쿠키를 넣어주니까 
+  // 굳이 실행할 필요가 없어서
+  // 서버 환경일 떄만 쿠키를 직접 넣어주게한다.
+  if (ctx.isServer) {
+    axios.defaults.headers.Cookie = cookie;
+  }
+  if(!state.user.me) {
+    ctx.store.dispatch({
+      type: LOAD_USER_REQUEST,
+    });
+  }
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+  return { pageProps };
+};
+
+...생략
+```
+
+> 클라이언트 환경에서는 브라우저가 쿠키를 넣어주고, <br>
+> 서버일 때는 우리가 직접 넣어줘야한다. <br>
+
+마지막으로, 에러 수정 <br>
+최종적으로 밑에 있는 것처럼 해줘야한다. <br>
+
+#### \front\pages\_app.js
+```js
+...생략
+
+NodeBird.getInitialProps = async (context) => {
+  const { ctx, Component } = context;
+  let pageProps = {};
+  const state = ctx.store.getState();
+  const cookie = ctx.isServer ? ctx.req.headers.cookie : '';
+  axios.defaults.headers.Cookie = '';
+  if (ctx.isServer && cookie) {
+    axios.defaults.headers.Cookie = cookie;
+  }
+  if(!state.user.me) {
+    ctx.store.dispatch({
+      type: LOAD_USER_REQUEST,
+    });
+  }
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+  return { pageProps };
+};
+```
 

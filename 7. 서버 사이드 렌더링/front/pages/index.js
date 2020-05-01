@@ -1,14 +1,12 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import PostForm from '../components/PostForm';
 import PostCard from '../components/PostCard';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { LOAD_MAIN_POSTS_REQUEST } from '../reducers/post';
 
 const Home = () => {
   const { me } = useSelector(state => state.user);
   const { mainPosts } = useSelector(state => state.post);
-  const dispatch = useDispatch();
-  
 
   return (
     <div>
@@ -23,7 +21,6 @@ const Home = () => {
 };
 
 Home.getInitialProps = async (context) => {
-  console.log(Object.keys(context));
   context.store.dispatch({
     type: LOAD_MAIN_POSTS_REQUEST,
   });

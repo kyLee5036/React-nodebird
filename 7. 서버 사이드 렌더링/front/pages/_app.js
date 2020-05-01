@@ -5,7 +5,9 @@ import WithRedux from 'next-redux-wrapper';
 import WithReduxSaga from 'next-redux-saga';
 import { createStore, compose, applyMiddleware } from 'redux';
 import { Provider } from 'react-redux'; 
+import { LOAD_USER_REQUEST } from '../reducers/user';
 import createSagaMiddleware from 'redux-saga';
+import axios from 'axios';
 
 import AppLayout from '../components/AppLayout';
 import reducer from '../reducers';
@@ -36,6 +38,17 @@ NodeBird.propTypes = {
 NodeBird.getInitialProps = async (context) => {
   const { ctx, Component } = context;
   let pageProps = {};
+  const state = ctx.store.getState();
+  const cookie = ctx.isServer ? ctx.req.headers.cookie : '';
+  axios.defaults.headers.Cookie = '';
+  if (ctx.isServer && cookie) {
+    axios.defaults.headers.Cookie = cookie;
+  }
+  if(!state.user.me) {
+    ctx.store.dispatch({
+      type: LOAD_USER_REQUEST,
+    });
+  }
   if (Component.getInitialProps) {
     pageProps = await Component.getInitialProps(ctx);
   }

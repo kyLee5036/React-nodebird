@@ -5,20 +5,24 @@ import PropTypes from 'prop-types';
 import LoginForm from './LoginForm';
 import UserProfile from './UserProfile';
 import { useSelector, useDispatch } from 'react-redux';
-import { LOAD_USER_REQUEST } from '../reducers/user';
 
 
 const AppLayout = ({ children }) => {
   const { me } = useSelector(state => state.user);
   const dispatch = useDispatch();
 
-  useEffect( () => {
-    if (!me) {
-      dispatch({
-        type: LOAD_USER_REQUEST
-      });
-    }
-  }, []);
+  // 이부분을 _app.js로 옮길 거다.
+
+  // 삭제되었음..
+  // useEffect( () => {
+  //   if (!me) {
+  //     dispatch({
+  //       type: LOAD_USER_REQUEST,
+  //     });
+  //   }
+  // }, []);
+
+  // 여기서 내 정보가 없을 때 ㅐ유저가 나오게해야한다.
 
   return (
     <div>
@@ -47,8 +51,8 @@ const AppLayout = ({ children }) => {
   );
 };
 
-AppLayout.prototypes = {
-  children: PropTypes.node,
+AppLayout.propTypes = {
+  children: PropTypes.node.isRequired,
 }
 
 export default AppLayout;

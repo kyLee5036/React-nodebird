@@ -3,6 +3,7 @@
 + [서버 사이드 렌더링 SRR](#서버-사이드-렌더링-SRR)
 + [SSR을 위해 쿠키 넣어주기](#SSR을-위해-쿠키-넣어주기)
 + [리덕스 사가 액션 로딩하기](#리덕스-사가-액션-로딩하기)
++ [SSR에서 내 정보 처리하기](#SSR에서-내-정보-처리하기)
 
 
 
@@ -496,3 +497,346 @@ function* watchLoadHashtagPosts() {
 
 ...생략
 ```
+
+## SSR에서 내 정보 처리하기
+[위로가기](#서버-사이드-렌더링)
+
+로그인 후에, 프로필 화면에 SSR을 적용시키겠다. <br>
+
+#### \front\pages\profile.js
+```js
+import React, { useEffect, useCallback } from 'react';
+import {Form, Input, Button, List, Card, Icon} from 'antd';
+import { useDispatch, useSelector } from 'react-redux';
+import NickNameEditForm from '../components/NickNameEditForm';
+import { LOAD_FOLLOWERS_REQUEST, LOAD_FOLLOWINGS_REQUEST, UNFOLLOW_USER_REQUEST, REMOVE_FOLLOWER_REQUEST } from '../reducers/user';
+import { LOAD_USER_POSTS_REQUEST } from '../reducers/post';
+import PostCard from '../components/PostCard';
+
+const Profile = () => {
+  const dispatch = useDispatch();
+  const { me, followingList, followerList } = useSelector(state => state.user);
+  const { mainPosts } = useSelector(state => state.post);
+
+  // useEffect 삭제
+  // useEffect(() => {
+  //   if (me) {
+  //     dispatch({
+  //       type: LOAD_FOLLOWERS_REQUEST,
+  //       data: me.id,
+  //     });
+  //     dispatch({
+  //       type: LOAD_FOLLOWINGS_REQUEST,
+  //       data: me.id,
+  //     });
+  //     dispatch({
+  //       type: LOAD_USER_POSTS_REQUEST,
+  //       data: me.id,
+  //     });
+  //   }
+  // }, [me && me.id]);
+
+  const onUnfollow = useCallback(userId => () => {
+    dispatch({
+      type: UNFOLLOW_USER_REQUEST,
+      data: userId,
+    });
+  }, []);
+
+  const onRemoveFollower = useCallback(userId => () => {
+    dispatch({
+      type: REMOVE_FOLLOWER_REQUEST,
+      data: userId,
+    });
+  }, []);
+
+  return (
+    ...생략
+  );
+};
+
+// 프로필 SSR을 해주기 위해서 getInitialProps추가
+Profile.getInitialProps = async ( context ) => {
+  const state = context.store.getState(); // getState로 state를 불러온다.
+  context.store.dispatch({
+    type: LOAD_FOLLOWERS_REQUEST,
+    data: state.user.me && state.user.me.id, 
+    // 이전과 달리 여기에서는는
+    // state에서 user를 찾고, user의 me.id를 찾는 방식이다
+  });
+  context.store.dispatch({
+    type: LOAD_FOLLOWINGS_REQUEST,
+    data: state.user.me && state.user.me.id,
+    // 이전과 달리 여기에서는는
+    // state에서 user를 찾고, user의 me.id를 찾는 방식이다
+  });
+  context.store.dispatch({
+    type: LOAD_USER_POSTS_REQUEST,
+    data: state.user.me && state.user.me.id,
+    // 이전과 달리 여기에서는는
+    // state에서 user를 찾고, user의 me.id를 찾는 방식이다
+  });
+}
+
+export default Profile;
+```
+
+> 서버 사이드 렌더링을 하였는데, 프로필화면이 안 보인다. <br>
+
+이 직전에 _app.js를 보면 LOAD_USERS_REQUEST가 시작한다. <br>
+문제는 LOAD_USERS_REQUEST가 끝나야만, state.user.me가 생긴다. <br>
+
+```js
+Profile.getInitialProps = async ( context ) => {
+  const state = context.store.getState();
+  context.store.dispatch({
+    type: LOAD_FOLLOWERS_REQUEST,
+    // state.user.me가 생길려면 LOAD_USERS_REQUEST가 끝나야한다.
+    data: state.user.me && state.user.me.id, 
+  });
+  context.store.dispatch({
+    type: LOAD_FOLLOWINGS_REQUEST,
+    data: state.user.me && state.user.me.id,
+  });
+  context.store.dispatch({
+    type: LOAD_USER_POSTS_REQUEST,
+    data: state.user.me && state.user.me.id,
+  });
+
+  // 즉, 이쯤에서 !!LOAD_USERS_SUCCESS!! 되어서 state.user.me가 생긴다.
+ 
+ // 그러면 문제이다. state.user.me접근 못해서 
+  // 나의 팔로잉, 게시글, 팔로워의 데이터를 가져오지를 못한다.
+
+}
+```
+> 문제해결 하기 위해서 2가지 방법이 있다. <br>
+
+### 첫 번째 방법: <br>
+`LOAD_USERS_SUCCESS`가 끝난 후에, `LOAD_FOLLOWERS_REQUEST`, `LOAD_FOLLOWINGS_REQUEST`, `LOAD_USER_POSTS_REQUEST`을 해준다. <br>
+하지만, 이 방법은 구현도 어렵고, 시간이 오래 걸린다. <br>
+
+### 두 번째 방법: <br>
+4개를 동시에 보내면서 정상적으로 동작하는 것이다. <br>
+그래서 여기서 주목하는 특성이 `LOAD_USERS_SUCCESS`를 불러오기 전에 생각을 할 것이다. <br>
+`LOAD_USERS_SUCCESS`을 호출 전에는 `state.user.me, state.user.me.id`가 <strong>Null</strong>이 되어져있다. <br>
+즉, 데이터가 Null이면 내가 요청을 보냈다고 간주로 하면 된다. (Null 특성 활용하기) <br>
+
+
+#### \front\sagas\post.js
+```js
+...생략
+
+function loadUserPostsAPI(id = 0) { // null대신에 0을 넣어준다. 0은 기본값으로 간주한다.
+  // 서버 쪽에서 id가 0이면 내정보로 간주한다.
+  return axios.get(`/user/${id}/posts`);
+}
+
+function* loadUserPosts(action) {
+  try {
+    const result = yield call(loadUserPostsAPI, action.data);
+    yield put({
+      type: LOAD_USER_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_USER_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadUserPosts() {
+  yield takeLatest(LOAD_USER_POSTS_REQUEST, loadUserPosts);
+}
+
+...생략
+```
+
+#### \front\sagas\user.js
+```js
+...생략
+
+function loadFollowersAPI(userId = 0) { // null대신에 숫자 0을 넣어준다. 0은 기본값으로 간주한다.
+  return axios.get(`/user/${userId}/followers`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowers(action) {
+  try {
+    const result = yield call(loadFollowersAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWERS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWERS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowers() {
+  yield takeEvery(LOAD_FOLLOWERS_REQUEST, loadFollowers);
+}
+
+function loadFollowingsAPI(userId = 0) { // null대신에 숫자 0을 넣어준다.) 0은 기본값으로 간주한다.
+  return axios.get(`/user/${userId}/followings`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowings(action) {
+  try {
+    const result = yield call(loadFollowingsAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWINGS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWINGS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowings() {
+  yield takeEvery(LOAD_FOLLOWINGS_REQUEST, loadFollowings);
+}
+
+...생략
+```
+
+#### 
+```js
+const express = require('express');
+const bcrypt = require('bcrypt');
+const db = require('../models');
+const passport = require('passport');
+const { isLoggedIn } = require('./middlewares'); 
+
+const router = express.Router();
+
+...생략
+...생략
+
+router.get('/:id/followings', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await db.User.findOne({ 
+      // 0이면 내 게시글로 간주한다.
+      // 그리고, followings의 목록을 가져온다.
+      where: { id: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0 },  // 기본 값은 0
+    });
+    const followings = await user.getFollowings({ 
+      attributes: ['id', 'nickname'],
+    });
+    res.json(followings);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+router.get('/:id/followers', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await db.User.findOne({
+      // 0이면 내 게시글로 간주한다.
+      // 그리고, followers의 목록을 가져온다.
+      where: { id: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0 },  // 기본 값은 0
+    });
+    const followers = await user.getFollowers({
+      attributes: ['id', 'nickname'],
+    });
+    res.json(followers);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
+
+router.get('/:id/posts', async (req, res, next) => {
+  try {
+    const posts = await db.Post.findAll({
+      where: {
+        // 0이면 내 게시글로 간주한다.
+        UserId: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0, // 기본 값은 0
+        RetweetId: null,
+      },
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User,
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }]
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
+
+module.exports = router; 
+
+```
+`req.params.id`가 `0`이면 `req.user && req.user.id`로 검색하는건 알겠다. <br>
+하지만 왜 `(req.user && req.user.id)` 뒤에 `|| 0` 도 붙이는거지? <br>
+user가 0이면 본인이 검색되는것 같은데 왜 그렇게 되는걸까? <br>
+> `UserId: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0,`
+>> req.params.id가 없으면 req.user && req.user.id가 검색된다. <br>
+>> 만약에 req.user.id마저도 없으면 UserId: undefined가 된다. <br>
+>> 시퀄라이즈에서는 where 절에 undefined가 들어가면 에러가 발생하기 때문에 <br>
+>> 에러를 막기 위해 0을 넣었다. 0이 들어가는 경우는 아무것도 검색되지 않는다. <br><br><br>
+
+
+> 자바스크립트 특성상 <br>
+>> null일 경우는 기본 값이 적용이 안된다. <br>
+>> undefined일 경우에만 기본 값이 적용이 된다. <br><br>
+
+그러므로 코드 소스를 수정해야한다.
+
+```js
+function loadUserPostsAPI(id) { // 원래대로 되돌린다.
+  return axios.get(`/user/${id || 0}/posts`); // 자바스크립트 특성상 이렇게 수정해준다.
+}
+
+
+function loadFollowersAPI(userId0) {
+  return axios.get(`/user/${userId || 0}/followers`, { // 자바스크립트 특성상 이렇게 수정해준다.
+    withCredentials: true,
+  })
+}
+function loadFollowingsAPI(userId0) {
+  return axios.get(`/user/${userId || 0}/followings`, { // 자바스크립트 특성상 이렇게 수정해준다.
+    withCredentials: true,
+  })
+}
+```
+
+그러면 호출을 보면 <br>
+```
+GET /api/user/0/followings 200 298.716 ms - 297 
+GET /api/user/0/posts 200 292.508 ms - 600
+GET /api/user/0/posts 200 293.082 ms - 600
+```
+위와 같이 0으로 잘 나온다. <br>
+
+`LOAD_USERS_REQUEST`가 완료되어야만 me가 생긴다. <br>
+그러므로, 실제로 완료 되기 전에 다른 액션 3개를 호출시켜준다. <br>
+그러면 다른 액션이 null이 되어있기때문에, null인 경우를 내 정보를 취급해줘서 데이터를 불러오고 해결해주었다. <br>

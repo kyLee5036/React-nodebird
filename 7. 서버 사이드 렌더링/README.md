@@ -2,6 +2,7 @@
 
 + [서버 사이드 렌더링 SRR](#서버-사이드-렌더링-SRR)
 + [SSR을 위해 쿠키 넣어주기](#SSR을-위해-쿠키-넣어주기)
++ [리덕스 사가 액션 로딩하기](#리덕스-사가-액션-로딩하기)
 
 
 
@@ -272,3 +273,226 @@ NodeBird.getInitialProps = async (context) => {
 };
 ```
 
+## 리덕스 사가 액션 로딩하기
+[위로가기](#서버-사이드-렌더링)
+
+#### \front\pages\hashtag.js
+```js
+...생략
+
+const Hashtag = ({ tag }) => {
+  const { mainPosts } = useSelector(state => state.post);
+
+  // useEffect는 삭제
+  // useEffect(() => {
+  //   dispatch({
+  //     type: LOAD_HASHTAG_POSTS_REQUEST,
+  //     data: tag,
+  //   });
+  // }, []);
+
+  return (
+    <div>
+      {mainPosts.map(c => (
+        <PostCard key={+c.createdAt} post={c} />
+      ))}
+    </div>
+  );
+};
+
+Hashtag.propTypes = {
+  tag: PropTypes.string.isRequired,
+};
+
+Hashtag.getInitialProps = async (context) => {
+  // 서버 사이드 렌더링을 적용하기 위해서 이하와 같이 적어준다.
+  const tag = context.query.tag;
+  context.sotre.dispatch({
+    type: LOAD_HASHTAG_POSTS_REQUEST,
+    data: tag,
+  })
+  return { tag };
+};
+
+export default Hashtag;
+```
+
+User.js도 SSR을 적용시키겠다.
+#### \front\pages\user.js
+```js
+...생략
+
+const User = ({ id }) => {
+  // const dispatch = useDispatch(); // 삭제함
+  const { mainPosts } = useSelector(state => state.post);
+  const { userInfo } = useSelector(state => state.user);
+
+  // 삭제
+  // useEffect(() => {
+  //   dispatch({
+  //     type: LOAD_USER_REQUEST,
+  //     data: id,
+  //   });
+  //   dispatch({
+  //     type: LOAD_USER_POSTS_REQUEST,
+  //     data: id,
+  //   });
+  // }, []);
+
+  return (
+    <div>
+      {userInfo
+        ? (
+          <Card
+            actions={[
+              <div key="twit">
+                짹짹
+                <br />
+                {userInfo.Posts}
+              </div>,
+              <div key="following">
+                팔로잉
+                <br />
+                {userInfo.Followings}
+              </div>,
+              <div key="follower">
+                팔로워
+                <br />
+                {userInfo.Followers}
+              </div>,
+            ]}
+          >
+            <Card.Meta
+              avatar={<Avatar>{userInfo.nickname[0]}</Avatar>}
+              title={userInfo.nickname}
+            />
+          </Card>
+        )
+        : null}
+      <div>
+        {mainPosts.map(c => (
+          <PostCard key={+c.createdAt} post={c} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+User.propTypes = {
+  id: PropTypes.number.isRequired,
+};
+
+User.getInitialProps = async (context) => {
+  const id = parseInt(context.query.id, 10); // id를 불러온다.
+  context.store.dispatch({ // dispatch를 시켜준다.
+    type: LOAD_USER_REQUEST,
+    data: id,
+  });
+  context.store.dispatch({ // dispatch를 시켜준다.
+    type: LOAD_USER_POSTS_REQUEST,
+    data: id,
+  });
+  return { id };
+};
+
+export default User;
+```
+
+로깅해주는 커스텀 로그 확인방법
+#### \front\pages\_app.js
+```js
+...생략
+const configureStore = (initalState, options) => {
+  const sagaMiddleware = createSagaMiddleware();
+  // 밑에 부분처럼 추가해주면 된다.
+  // 로그 확인을 해준다.
+  const middlewares = [sagaMiddleware, (store) => (next) => (action) => {
+    console.log(action);
+    next(action);
+  }];
+
+
+  const enhancer = process.env.NODE_ENV === 'production' 
+  ? compose( 
+    applyMiddleware(...middlewares))
+  : compose(
+    applyMiddleware(...middlewares), 
+      !options.isServer && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  );
+
+  const store = createStore(reducer, initalState, enhancer);
+  store.sagaTask = sagaMiddleware.run(rootSaga);
+  sagaMiddleware.run(rootSaga); 
+  return store;
+}
+
+...생략
+```
+
+> 이렇게 리덕스 사가 에러 찾아내는 방식을 기억해두는게 좋다
+>> 커스텀 미들웨어
+
+#### \back\routes\hashtag.js
+```js
+...생략
+
+router.get('/:tag', async(req, res, next) => {
+  try {
+    const posts = await db.Post.findAll({
+      include: [{
+        model: db.Hashtag,
+        // 한글, 특수문자를 하기 위해서 decodeURIComponent추가
+        where: { name: decodeURIComponent(req.params.tag) },
+      }, {
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User,
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }],
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+```
+
+#### \front\sagas\post.js
+```js
+...생략
+
+function loadHashtagPostsAPI(tag) {
+  // 한글, 특수문자를 하기 위해서 decodeURIComponent추가
+  return axios.get(`/hashtag/${decodeURIComponent(tag)}`);
+}
+
+function* loadHashtagPosts(action) {
+  try {
+    const result = yield call(loadHashtagPostsAPI, action.data);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadHashtagPosts() {
+  yield takeLatest(LOAD_HASHTAG_POSTS_REQUEST, loadHashtagPosts);
+}
+
+...생략
+```

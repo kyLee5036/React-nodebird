@@ -117,7 +117,7 @@ function* watchLoadMainPosts() {
 
 
 function loadHashtagPostsAPI(tag) {
-  return axios.get(`/hashtag/${tag}`);
+  return axios.get(`/hashtag/${decodeURIComponent(tag)}`);
 }
 
 function* loadHashtagPosts(action) {

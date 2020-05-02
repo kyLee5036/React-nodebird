@@ -4,6 +4,7 @@
 + [SSR을 위해 쿠키 넣어주기](#SSR을-위해-쿠키-넣어주기)
 + [리덕스 사가 액션 로딩하기](#리덕스-사가-액션-로딩하기)
 + [SSR에서 내 정보 처리하기](#SSR에서-내-정보-처리하기)
++ [회원가입 리다이렉션과 포스트 제거](#회원가입-리다이렉션과-포스트-제거)
 
 
 
@@ -840,3 +841,294 @@ GET /api/user/0/posts 200 293.082 ms - 600
 `LOAD_USERS_REQUEST`가 완료되어야만 me가 생긴다. <br>
 그러므로, 실제로 완료 되기 전에 다른 액션 3개를 호출시켜준다. <br>
 그러면 다른 액션이 null이 되어있기때문에, null인 경우를 내 정보를 취급해줘서 데이터를 불러오고 해결해주었다. <br>
+
+## 회원가입 리다이렉션과 포스트 제거
+[위로가기](#서버-사이드-렌더링)
+
+getInitialProps의 특성을 살려서, <br>
+로그인을 했는데 URL에다가 /signup(회원가입) 접근하지 못하도록 처리해줄 것이다. <br>
+
+#### \front\pages\signup.js
+```js
+import React, { useState, useCallback, useEffect } from 'react';
+import { Form, Input, Checkbox, Button } from 'antd';
+import { useDispatch, useSelector} from 'react-redux';
+import PropTypes from 'prop-types';
+import router from 'next/router';
+import { SIGN_UP_REQUEST } from '../reducers/user';
+
+export const useInput = (initValue = null) => {
+  const [value, setter] = useState(initValue);
+  const handler = useCallback((e) => {
+    setter(e.target.value);
+  }, []);
+  return [value, handler];
+};
+
+const Signup = () => {
+
+  ...생략
+  ...생략
+
+  useEffect(() => {
+    if(me) {
+      alert('로그인했으니 메인페이지로 이동합니다.');
+      router.push('/')
+    }
+  }, [me && me.id]); 
+
+  // SSR을 해주면 항상 사용자 정보를 미리 데이터를 알아서 확실하게 처리할 수 있다.
+  if (me) { // SSR로 인해 me라는게 확실이 있거나 없거나 알 수 있다.
+    return null;
+  }
+  
+  return (
+    <>
+      ...생략
+    </>
+  );
+};
+
+export default Signup;
+```
+
+서버 사이드 렌더링을 사용하면 개발할 때도 편하다. 상태를 미리 알 수 있기때문이다. <br><br>
+
+
+프론트에서 게시글을 누르는 것은 서버 쪽으로 가지 않는다. <br>
+대신 새로고침 눌렀 때 서버 사이드 렌더링이 동작을 한다. <br><br>
+
+여기서부터는 게시글삭제를 해보겠다. <br>
+
+#### \front\components\PostCard.js
+```js
+...생략
+
+const PostCard = ({post}) => {
+  ...생략
+
+  const onRemovePost = useCallback(userId => () => {
+    dispatch({
+      type: REMOVE_POST_REQUEST,
+      data: userId
+    });
+  }, []);
+
+  return (
+    <div>
+      <Card
+        // ...생략
+        actions={[
+          // ...생략
+          <Icon type="message" key="message" onClick={onToggleComment} />,
+          <Popover // 추가해준다
+            key="ellipsis" // 추가해준다
+            content={( // 추가해준다
+              <Button.Group> // 추가해준다
+                {me && post.UserId === me.id // 내 게시글인지 확인 해주기 위해서이다.
+                  ? (
+                    <>
+                      <Button>수정</Button>
+                      <Button type="danger" onClick={onRemovePost(post.id)}>삭제</Button>
+                    </>
+                  )
+                  : <Button>신고</Button>}
+              </Button.Group>
+            )}
+          >
+            <Icon type="ellipsis" />,
+          </Popover>
+        ]}
+        // ...생략
+      >
+        // ...생략
+      </Card>
+      ...생략
+    </div>
+  )
+};
+
+...생략
+
+export default PostCard;
+
+
+```
+
+#### \front\sagas\post.js
+```js
+...생략
+import { ADD_POST_TO_ME, REMOVE_POST_OF_ME } from '../reducers/user' // REMOVE_POST_OF_ME 추가
+
+...생략
+
+
+function removePostAPI(postId) {
+  return axios.delete(`/post/${postId}` , {
+    withCredentials: true,
+  });
+}
+
+function* removePost(action) {
+  try {
+    const result = yield call(removePostAPI, action.data);
+    yield put({
+      type: REMOVE_POST_SUCCESS,
+      data: result.data,
+    });
+    // 게시글 삭제하면 게시글 수 줄어들기 위해서 REMOVE_POST_OF_ME를 사용하였다.
+    yield put({ 
+      // user(reducer)에 있다.
+      type: REMOVE_POST_OF_ME,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: REMOVE_POST_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchRemovePost() {
+  yield takeLatest(REMOVE_POST_REQUEST, removePost);
+}
+
+export default function* postSaga() {
+  yield all([
+    ...생략
+    fork(watchRemovePost), // 추가
+  ]);
+}
+```
+
+#### \back\routes\post.js
+```js
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const db = require('../models');
+const { isLoggedIn } = require('./middlewares');
+
+const router = express.Router();
+
+...생략
+
+router.delete('/:id', isLoggedIn, async (req, res, next) => {
+  try {
+    const post = await db.Post.findOne({ where: { id: req.params.id } });
+    if (!post) {
+      return res.status(404).send('포스트가 존재하지 않습니다.');
+    }
+    await db.Post.destory({ where: {id: req.params.id }}); // delete는 destory로 사용해서 삭제를 한다.
+    res.send(req.params.id);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
+
+module.exports = router;
+```
+
+여기서 reducers의 신경 써 줘야할 부분이 있다. <br>
+
+#### \front\reducers\post.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case REMOVE_POST_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case REMOVE_POST_SUCCESS: {
+      return {
+        ...state,
+        // filter로 데이터를 걸러준다.
+        mainPosts: state.mainPosts.filter(v => v.id !== action.data), 
+      };
+    }
+    case REMOVE_POST_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    default: {
+      return {
+        ...state,
+      };
+    }
+  }
+};
+
+```
+
+#### \front\reducers\user.js
+```js
+...생략
+
+export const ADD_POST_TO_ME = 'ADD_POST_TO_ME';
+export const REMOVE_POST_OF_ME = 'REMOVE_POST_OF_ME'; // 추가해주기
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case ADD_POST_TO_ME: {
+      return {
+        ...state,
+        me : {
+          ...state.me,
+          Posts: [{ id: action.data}, ...state.me.Posts],
+        },
+      };
+    }
+    case REMOVE_POST_OF_ME: { // 위에 보면 추가할 때랑 지울 때랑 패턴이 있다.
+      return {
+        ...state,
+        me: {
+          ...state.me,
+          Posts: state.me.Posts.filter(v => v.id !== action.dat),
+        },
+      };
+    }
+    ...생략
+    default: {
+      return {
+        ...state,
+      }
+    }
+  }
+};
+```
+에러.. <br>
+게시글 등록, 삭제하면 `ADD_POST_SUCCESS 와 ADD_POST_TO_ME` 2번씩 실행된다. <br>
+#### \front\pages\_app.js
+```js
+...생략
+
+const configureStore = (initalState, options) => {
+  const sagaMiddleware = createSagaMiddleware();
+  const middlewares = [sagaMiddleware];
+  const enhancer = process.env.NODE_ENV === 'production' 
+  ? compose( 
+    applyMiddleware(...middlewares))
+  : compose(
+    applyMiddleware(...middlewares), 
+      !options.isServer && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  );
+
+  const store = createStore(reducer, initalState, enhancer);
+  store.sagaTask = sagaMiddleware.run(rootSaga);
+  // sagaMiddleware.run(rootSaga); // 위에 거랑 중복되어서 삭제를 해준다.
+  return store;
+}
+
+...생략
+```

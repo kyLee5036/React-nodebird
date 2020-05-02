@@ -9,20 +9,6 @@ import { useSelector, useDispatch } from 'react-redux';
 
 const AppLayout = ({ children }) => {
   const { me } = useSelector(state => state.user);
-  const dispatch = useDispatch();
-
-  // 이부분을 _app.js로 옮길 거다.
-
-  // 삭제되었음..
-  // useEffect( () => {
-  //   if (!me) {
-  //     dispatch({
-  //       type: LOAD_USER_REQUEST,
-  //     });
-  //   }
-  // }, []);
-
-  // 여기서 내 정보가 없을 때 ㅐ유저가 나오게해야한다.
 
   return (
     <div>

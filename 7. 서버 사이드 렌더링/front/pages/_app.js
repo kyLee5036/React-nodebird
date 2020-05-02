@@ -68,7 +68,6 @@ const configureStore = (initalState, options) => {
 
   const store = createStore(reducer, initalState, enhancer);
   store.sagaTask = sagaMiddleware.run(rootSaga);
-  sagaMiddleware.run(rootSaga); 
   return store;
 }
 

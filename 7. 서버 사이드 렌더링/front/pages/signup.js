@@ -59,6 +59,10 @@ const Signup = () => {
       router.push('/')
     }
   }, [me && me.id]); 
+
+  if (me) { 
+    return null;
+  }
   
   return (
     <>

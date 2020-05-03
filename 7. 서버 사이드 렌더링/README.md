@@ -5,6 +5,7 @@
 + [리덕스 사가 액션 로딩하기](#리덕스-사가-액션-로딩하기)
 + [SSR에서 내 정보 처리하기](#SSR에서-내-정보-처리하기)
 + [회원가입 리다이렉션과 포스트 제거](#회원가입-리다이렉션과-포스트-제거)
++ [페이지네이션](#페이지네이션)
 
 
 
@@ -1132,3 +1133,344 @@ const configureStore = (initalState, options) => {
 
 ...생략
 ```
+
+
+## 페이지네이션
+[위로가기](#서버-사이드-렌더링)
+
+데이터를 조금 씩 조금 씩 불러오는 <strong>페이지네이션</strong>을 해보겠다. <br>
+더보기 버튼을 불러오면 3개씩 불러오도록 해보겠다. <br>
+
+#### 
+```js
+...생략;
+
+const Profile = () => {
+  ...생략
+  
+  const loadMoreFollowings = useCallback(() => {
+    dispatch({
+      type: LOAD_FOLLOWINGS_REQUEST,
+    });
+  }, [])
+  
+  const loadMoreFollowers = useCallback(() => {
+    dispatch({
+      type: LOAD_FOLLOWERS_REQUEST,
+    });
+  }, [])
+
+
+  return (
+    <div>
+      <NickNameEditForm />
+      <List
+        style={{ marginBottom: '20px' }}
+        ...생략
+        loadMore={<Button style={{ width: '100%' }} onClick={loadMoreFollowings} >더 보기</Button>} // 추가
+        ...생략
+      />
+      <List
+        style={{ marginBottom: '20px' }}
+        ...생략
+        loadMore={<Button style={{ width: '100%' }} onClick={loadMoreFollowers} >더 보기</Button>} // 추가
+       ...생략
+      />
+      ...생략
+    </div>
+  );
+};
+
+...생략
+
+export default Profile;
+```
+
+페이지네이션을 구현해하는데, 데이터를 불러올 때부터 갯수를 지정해서 불러와야한다. <br>
+
+조건 2가지가 있다 <br>
+> 1. 게시글이 리스트가 10개 있다고 가정하자. <br>
+> 2. 3개씩 게시글을 불러올것이다. <br>
+일단, 여기서 나오는 단어가 limit, offest이 있다. <br>
+
+### limit 설명
+limit은 한 번에 불러오는 단위로서 limit은 3이 된다. ( 게시글 데이터를 3개 불러오기위해서 3이다. ) <br>
+다음 것의 게시글 데이터도 불러오는 것도 limit은 3이 된다. <br><br>
+
+### offset 설명
+다음의 데이터를 불러오면 기존의 있던 3개를 건너뛰고 다음 것을 게시글 데이터을 불러오는게 offset이다. <br>
+
+1번째 게시글 불러올 때 : limit 3 offest 0 <br>
+2번째 게시글 불러올 때 : limit 3 offest 3 <br>
+3번째 게시글 불러올 때 : limit 3 offest 6 <br>
+마지막 게시글 불러올 때 : limit 3 offest 9 <br><br>
+
+간단하게 용어를 설명하자면, <br>
+offset은 건너 뛰기 ( 스킵이라고도 불린다.) <br>
+limit은 한 번에 가져오는 갯수 <br><br>
+
+saga에서 조금 수정을 해줘야한다. <br>
+
+### 쿼리스트링
+설명 : 주소 체계를 안 바꾸고, 서버로부터 offset, limit을 바꾸고싶으면 을 사용한다. <br>
+쿼리스트링은 다른곳에서도 많이 사용한다. <br>
+
+#### \front\sagas\user.js
+```js
+...생략
+
+function loadFollowersAPI(userId, offset = 0, limit = 3) { // 기본 값 0으로 한다.
+  // 주소 체계를 안 바꾸고, 서버로부터 offset, limit을 바꾸고싶으면 쿼리스트링을 사용한다.
+  // 보충설명 : 기존 주소를 바꾸지 않고, 서버 쪽에 부과적인 데이터를 보낸다.
+  // key, value로 구성. `offset=${offset}` 를 보면 전자가 key, 후자가 value이다.
+  return axios.get(`/user/${userId || 0}/followers?offset=${offset}&limit=${limit}`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowers(action) {
+  try {
+    const result = yield call(loadFollowersAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWERS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWERS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowers() {
+  yield takeEvery(LOAD_FOLLOWERS_REQUEST, loadFollowers);
+}
+
+function loadFollowingsAPI(userId, offset = 0, limit = 3) { // 기본 값 0으로 한다.
+  // 주소 체계를 안 바꾸고, 서버로부터 offset, limit을 바꾸고싶으면 쿼리스트링을 사용한다.
+  // 보충설명 : 기존 주소를 바꾸지 않고, 서버 쪽에 부과적인 데이터를 보낸다.
+  // key, value로 구성. `offset=${offset}` 를 보면 전자가 key, 후자가 value이다.
+  return axios.get(`/user/${userId || 0}/followings?offset=${offset}&limit=${limit}`, { 
+    withCredentials: true,
+  })
+}
+
+function* loadFollowings(action) {
+  try {
+    const result = yield call(loadFollowingsAPI, action.data);
+    yield put({
+      type: LOAD_FOLLOWINGS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWINGS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowings() {
+  yield takeEvery(LOAD_FOLLOWINGS_REQUEST, loadFollowings);
+}
+
+...생략
+
+```
+
+그 다음은 서버쪽에서 소스수정을 해야한다. <br>
+
+#### \back\routes\user.js
+```js
+...생략
+
+router.get('/:id/followings', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await db.User.findOne({ 
+      where: { id: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0 }, 
+    });
+    const followings = await user.getFollowings({ 
+      attributes: ['id', 'nickname'],
+      limit: parseInt(req.query.limit, 10), // 추가
+      offset: parseInt(req.query.offset, 10), // 추가
+    });
+    res.json(followings);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+router.get('/:id/followers', isLoggedIn, async (req, res, next) => {
+  try {
+    const user = await db.User.findOne({
+      where: { id: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0 }, 
+    });
+    const followers = await user.getFollowers({
+      attributes: ['id', 'nickname'],
+      limit: parseInt(req.query.limit, 10), // 추가
+      offset: parseInt(req.query.offset, 10), // 추가
+    });
+    res.json(followers);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
+```
+
+로그를 확인을 한다면 이하와 같이 출력이 된다. <br>
+```
+GET /api/user/0/followers?offset=0&limit=3 200 493.653 ms - 445
+GET /api/user/0/followings?offset=0&limit=3 200 494.701 ms - 445
+```
+그리고, 화면을 보면 각각의 팔로잉, 팔로워 목록을 보면 데이터가 3개 나오는 것을 확인할 수가 있다. <br><br>
+
+더보기를 눌렀을 때에도 화면 처리를해주기 위해서 profile.js를 수정한다. <br>
+#### \front\pages\profile.js
+```js
+...생략 
+
+const Profile = () => {
+  ...생략 
+  
+  const loadMoreFollowings = useCallback(() => {
+    dispatch({
+      type: LOAD_FOLLOWINGS_REQUEST,
+      // 기존의 데이터를 3개를 가져왔으니까, 다음 데이터 3개를 가져와야한다.
+      // ofsset은 방금에서 말했듯이, ofsset이 스킵이라서 전에 있던 데이터를 생략하고 
+      // 다음데이터 사용하기 위해 offse을 사용하였다.
+      offset: followingList.length // 추가
+    });
+  }, [followingList.length]); // 추가
+  
+  const loadMoreFollowers = useCallback(() => {
+    dispatch({
+      type: LOAD_FOLLOWERS_REQUEST,
+      // 기존의 데이터를 3개를 가져왔으니까, 다음 데이터 3개를 가져와야한다.
+      // ofsset은 방금에서 말했듯이, ofsset이 스킵이라서 전에 있던 데이터를 생략하고 
+      // 다음데이터 사용하기 위해 offse을 사용하였다.
+      offset: followerList.length // 추가
+    });
+  }, [followerList.length]); // 추가
+
+...생략 
+```
+
+화면에서 offset을 추가했으므로, saga에서도 offset에 대한 설정을 추가를 하겠다.
+#### \front\sagas\user.js
+```js
+...생략
+
+function loadFollowersAPI(userId, offset = 0, limit = 3) {
+  return axios.get(`/user/${userId || 0}/followers?offset=${offset}&limit=${limit}`, {
+    withCredentials: true,
+  })
+}
+
+function* loadFollowers(action) {
+  try {
+    const result = yield call(loadFollowersAPI, action.data, action.offset);  // action.offset을 추가시켜준다.
+    yield put({
+      type: LOAD_FOLLOWERS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWERS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowers() {
+  yield takeEvery(LOAD_FOLLOWERS_REQUEST, loadFollowers);
+}
+
+function loadFollowingsAPI(userId, offset = 0, limit = 3) {
+  return axios.get(`/user/${userId || 0}/followings?offset=${offset}&limit=${limit}`, { 
+    withCredentials: true,
+  })
+}
+
+function* loadFollowings(action) {
+  try {
+    const result = yield call(loadFollowingsAPI, action.data, action.offset); // action.offset을 추가시켜준다.
+    yield put({
+      type: LOAD_FOLLOWINGS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_FOLLOWINGS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadFollowings() {
+  yield takeEvery(LOAD_FOLLOWINGS_REQUEST, loadFollowings);
+}
+
+...생략
+```
+
+아직 완성되지 않았기 때문에, 다음에 계속이어서 할 것이다. <br>
+다음 데이터를 제대로 가져오지만, 기존의 데이터를 대체하는 현상이 나온다. <br>
+그러므로 reducer에서도 수정을 해줘야한다.<br>
+
+#### \front\reducers\user.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case LOAD_FOLLOWERS_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWERS_SUCCESS: {
+      return {
+        ...state,
+        // followerList: action.data, 
+        // 기존의 데이터를 대체하므로 concat으로 합쳐준다.
+        followerList: state.followerList.concat(action.data),
+      };
+    }
+    case LOAD_FOLLOWERS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWINGS_REQUEST: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWINGS_SUCCESS: {
+      return {
+        ...state,
+        // followingList: action.data, 
+        // 기존의 데이터를 대체하므로 concat으로 합쳐준다.
+        followingList: state.followingList.concat(action.data),
+      };
+    }
+    case LOAD_FOLLOWINGS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    ...생략
+  }
+};
+```
+

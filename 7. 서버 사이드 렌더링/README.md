@@ -8,6 +8,7 @@
 + [페이지네이션](#페이지네이션)
 + [더보기 버튼](#더보기-버튼)
 + [인피니트 스크롤링](#인피니트-스크롤링)
++ [쓰로틀링(throttling)](#쓰로틀링(throttling))
 
 
 
@@ -475,8 +476,8 @@ module.exports = router;
 ...생략
 
 function loadHashtagPostsAPI(tag) {
-  // 한글, 특수문자를 하기 위해서 decodeURIComponent추가
-  return axios.get(`/hashtag/${decodeURIComponent(tag)}`);
+  // 한글, 특수문자를 하기 위해서 encodeURIComponent추가
+  return axios.get(`/hashtag/${encodeURIComponent(tag)}`);
 }
 
 function* loadHashtagPosts(action) {
@@ -1828,7 +1829,7 @@ function* watchLoadMainPosts() {
 
 
 function loadHashtagPostsAPI(tag, lastId = 0) {
-  return axios.get(`/hashtag/${decodeURIComponent(tag)}?lastId=${lastId}`);
+  return axios.get(`/hashtag/${encodeURIComponent(tag)}?lastId=${lastId}`);
 }
 
 function* loadHashtagPosts(action) {
@@ -1960,7 +1961,7 @@ router.get('/:tag', async(req, res, next) => {
       where,
       include: [{
         model: db.Hashtag,
-        where: { name: decodeURIComponent(req.params.tag) },
+        where: { name: encodeURIComponent(req.params.tag) },
       }, {
         model: db.User,
         attributes: ['id', 'nickname'],
@@ -2046,5 +2047,391 @@ router.get('/:id/posts', async (req, res, next) => {
 });
 
 ...생략
+```
+
+여기까지 하고 스크롤링해서 맨 마지막가면 에러가 나온다. <br>
+다음시간에 에러해결 하겠다. <br>
+
+## 쓰로틀링(throttling)
+[위로가기](#서버-사이드-렌더링)
+
+#### \front\reducers\post.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case LOAD_MAIN_POSTS_REQUEST:
+    case LOAD_HASHTAG_POSTS_REQUEST:
+    case LOAD_USER_POSTS_REQUEST: {
+      return {
+        ...state,
+        // 없애는 경우도 필요하다. 왜냐하면 다른페이지 갔다가 다시 오기 위해서는 없애줘야한다.
+        // 그래서 새로운 페이지에서 다시오면 기존 게시글들을 초기화해주고, 
+        // action.lastId !== 0라면 state.mainPosts : 기존 글 유지한다.
+        mainPosts: action.lastId === 0 ? [] : state.mainPosts,
+      };
+    }
+    case LOAD_MAIN_POSTS_SUCCESS:
+    case LOAD_HASHTAG_POSTS_SUCCESS:
+    case LOAD_USER_POSTS_SUCCESS: {
+      return {
+        ...state,
+        // 이전 게시글들과 같이 합쳐준다.
+        mainPosts: state.mainPosts.concat(action.data),
+      };
+    }
+    case LOAD_MAIN_POSTS_FAILURE:
+    case LOAD_HASHTAG_POSTS_FAILURE:
+    case LOAD_USER_POSTS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    ...생략
+  }
+};
+
+```
+
+에러...<br>
+하지만, 또 에러가 있어서 에러해결을 해주겠다. <br>
+
+#### \front\pages\index.js
+```js
+...생략
+
+const Home = () => {
+  ...생략
+
+  const onScroll = () => {
+    // = => > 로 변경
+    if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) { 
+      dispatch({
+        type: LOAD_MAIN_POSTS_REQUEST,
+        lastId: mainPosts[mainPosts.length - 1].id, // 철자 수정하였음
+      });
+    }
+  };
+
+  useEffect( () => {
+    window.addEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    }
+  }, [mainPosts.length]);
+
+  ...생략
+};
+
+...생략
+```
+
+해결이 되었고,
+리덕스 사가를 보면 스코롤이 움직일 때마다 LOAD_MAIN_REQUEST, LOAD_MAIN_SUCCESS가 호출이 자꾸된다. 
+이제부터는 데이터를 다 불러오면 호출안되록 하겠다.
+
+#### \front\reducers\post.js
+```js
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case LOAD_MAIN_POSTS_REQUEST:
+    case LOAD_HASHTAG_POSTS_REQUEST:
+    case LOAD_USER_POSTS_REQUEST: {
+      return {
+        ...state,
+        mainPosts: action.lastId === 0 ? [] : state.mainPosts,
+
+        // 처음 불러오는 것은 더보기 기능 활성화, 더 불러오고 있으면 스크롤 유지
+        hasMorePost: action.lastId ? state.hasMorePost : true, // 더보기 할때랑 비슷하다.
+      };
+    }
+    case LOAD_MAIN_POSTS_SUCCESS:
+    case LOAD_HASHTAG_POSTS_SUCCESS:
+    case LOAD_USER_POSTS_SUCCESS: {
+      return {
+        ...state,
+        mainPosts: state.mainPosts.concat(action.data),
+
+        // 스크롤을 활성할지 안 할지 결정하는 부분이다.
+        hasMorePost: action.data.length === 10, // // 더보기 할때랑 비슷하다.
+      };
+    }
+    case LOAD_MAIN_POSTS_FAILURE:
+    case LOAD_HASHTAG_POSTS_FAILURE:
+    case LOAD_USER_POSTS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    ...생략
+  }
+};
+
+```
+
+#### \front\pages\index.js
+```js
+...생략
+
+const Home = () => {
+  const { me } = useSelector(state => state.user);
+  const { mainPosts, hasMorePost } = useSelector(state => state.post); // hasMorePost를 추가해준다.
+  const dispatch = useDispatch();
+
+  const onScroll = () => {
+    if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
+      if ( hasMorePost ) { // 수정
+        dispatch({
+          type: LOAD_MAIN_POSTS_REQUEST,
+          lastId: mainPosts[mainPosts.length - 1].id,
+        });
+      }
+    }
+  };
+
+  useEffect( () => {
+    window.addEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    }
+  }, [mainPosts.length]);
+
+  ...생략
+};
+
+...생략
+```
+
+이렇게 해주면, 데이터를 다 불러오면 요청을 다시 안한게 된다. <br>
+하지만, 혹시나 예상치 않은 호출할 수도 있기때문에, <br>
+사가에서 예상치 않은 호출들을 잡아주겠다. <br>
+`takeLatest`이외에 `throttle`가 있다. <br><br>
+
+### throttle
+<strong>throttle</strong>의 역할은 <br>
+> `yield throttle(1000, LOAD_MAIN_POSTS_REQUEST, loadMainPosts);`를 보면 <br>
+> 첫번째 인수의 의해 1초 동안은 `LOAD_MAIN_POSTS_REQUEST` 같은 호출을 안해주도록 막아주는 것이다. <br>
+>> 즉 `LOAD_MAIN_POSTS_REQUEST`가 연달아서(계속) 호출하는 것을 안해주도록 하는 것이다. <br>
+
+#### \front\sagas\post.js
+```js
+function* watchLoadMainPosts() {
+  yield takeLatest(LOAD_MAIN_POSTS_REQUEST, loadMainPosts); // throttle과 비교해보기
+  // 연달아서 호출되는 것을 막아주는 것이다.
+  yield throttle(1000, LOAD_MAIN_POSTS_REQUEST, loadMainPosts); // takeLatest과 비교해보기
+}
+
+```
+혹시나 몰라서도 화면쪽 index.js에서도 useCallback을 사용해서 캐싱을 해주겠다. <br>
+#### \front\pages\index.js
+```js
+...생략
+
+const Home = () => {
+  const { me } = useSelector(state => state.user);
+  const { mainPosts, hasMorePost } = useSelector(state => state.post);
+  const dispatch = useDispatch();
+
+  const onScroll = useCallback(() => { // useCallback 적용시키기
+    if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
+      if ( hasMorePost ) {
+        dispatch({
+          type: LOAD_MAIN_POSTS_REQUEST,
+          lastId: mainPosts[mainPosts.length - 1].id,
+        });
+      }
+    }
+  }, [hasMorePost, mainPosts.length]); // 배열안에다가 state을 넣어줘서 추가해주기
+
+  useEffect( () => {
+    window.addEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    }
+  }, [mainPosts.length]);
+
+  ...생략
+};
+
+...생략
+```
+
+그래도, 가끔보면 `LOAD_MAIN_POSTS_REQUEST`가 2번씩 호출이 된다. <br>
+위 문제는 나중에 최적화 시간에서 해결을 하겠다. <br><br><br>
+
+
+Hashtag에도 인피니트 스크롤을 적용하겠다. <br>
+#### \front\pages\hashtag.js
+```js
+...생략
+
+const Hashtag = ({ tag }) => { // 2) 순서: 전달받은 tag를 여기에 다가 넣어두고
+  const dispatch = useDispatch();
+  const { mainPosts, hasMorePost} = useSelector(state => state.post);
+
+  const onScroll = useCallback(() => {
+    if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
+      if ( hasMorePost ) {
+        dispatch({
+          type: LOAD_HASHTAG_POSTS_REQUEST,
+          lastId: mainPosts[mainPosts.length - 1].id,
+          data: tag, // 3) 순서:여기 데이터안에 해시태그를 넣어준다. 
+          // 전체적으로 잘 보면 data: tag만 추가해주었다.
+        });
+      }
+    }
+  }, [hasMorePost, mainPosts.length]);
+
+  useEffect( () => {
+    window.addEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    }
+  }, [mainPosts.length]);
+
+  return (
+    ...생략
+  );
+};
+
+...생략
+
+Hashtag.getInitialProps = async (context) => {
+  const tag = context.query.tag;
+  context.store.dispatch({
+    type: LOAD_HASHTAG_POSTS_REQUEST,
+    data: tag,
+  })
+  return { tag }; // 1) 순서: 여기 tag의 정보를 전달해준다.
+};
+
+export default Hashtag;
+```
+
+해시태그랑 유저리스트목록보는거랑 방식이 비슷하기 때문에 나중에 알아서 하기! <br>
+데이터 추가해주는 부분도 비슷하기 떄문이다. <br>
+
+#### \front\sagas\post.js
+```js
+...생략
+
+function loadHashtagPostsAPI(tag, lastId) {
+  return axios.get(`/hashtag/${encodeURIComponent(tag)}?lastId=${lastId}&limit=10`);
+}
+
+function* loadHashtagPosts(action) {
+  try {
+    const result = yield call(loadHashtagPostsAPI, action.data, action.lastId);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadHashtagPosts() {
+  yield takeLatest(LOAD_HASHTAG_POSTS_REQUEST, loadHashtagPosts);
+}
+
+...생략
+
+```
+
+#### \front\reducers\post.js
+```js
+...생략
+    case LOAD_MAIN_POSTS_REQUEST:
+    case LOAD_HASHTAG_POSTS_REQUEST:
+    case LOAD_USER_POSTS_REQUEST: {
+      return {
+        ...state,
+        mainPosts: action.lastId === 0 ? [] : state.mainPosts,
+        hasMorePost: action.lastId ? state.hasMorePost : true,
+      };
+    }
+    case LOAD_MAIN_POSTS_SUCCESS:
+    case LOAD_HASHTAG_POSTS_SUCCESS:
+    case LOAD_USER_POSTS_SUCCESS: {
+      return {
+        ...state,
+        mainPosts: state.mainPosts.concat(action.data),
+        hasMorePost: action.data.length === 10,
+      };
+    }
+    case LOAD_MAIN_POSTS_FAILURE:
+    case LOAD_HASHTAG_POSTS_FAILURE:
+    case LOAD_USER_POSTS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+...생략
+```
+
+
+#### \back\routes\hashtag.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/:tag', async(req, res, next) => {
+  try {
+    let where = {};
+    if (parseInt(req.query.lastId, 10)) {
+      where = {
+        id: {
+          [db.Sequelize.Op.lt]: parseInt(req.query.lastId, 10),
+        },
+      };
+    }
+    const posts = await db.Post.findAll({
+      where,
+      include: [{
+        model: db.Hashtag,
+        where: { name: decodeURIComponent(req.params.tag) },
+      }, {
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User,
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }, {
+        model: db.Post,
+        as: 'Retweet',
+        include: [{
+          model: db.User,
+          attributes: ['id', 'nickname'],
+        }, {
+          model: db.Image,
+        }],
+      }],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(req.query.limit, 10),
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
 ```
 

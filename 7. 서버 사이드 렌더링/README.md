@@ -7,6 +7,7 @@
 + [회원가입 리다이렉션과 포스트 제거](#회원가입-리다이렉션과-포스트-제거)
 + [페이지네이션](#페이지네이션)
 + [더보기 버튼](#더보기-버튼)
++ [인피니트 스크롤링](#인피니트-스크롤링)
 
 
 
@@ -1658,4 +1659,392 @@ case LOAD_FOLLOWINGS_REQUEST: {
 >> 그래서 `hasMoreFollowing = true;`나 다름이 없다. <br>
 
 -> 페이지네이션, 더보기 버튼 같이 구현을 해야한다. <br>
+
+## 인피니트 스크롤링
+[위로가기](#서버-사이드-렌더링)
+
+인피니트 스크롤링는 더 보기 보다 더 복잡한 편이다. <br>
+중요한 건, 스크롤을 감지해야한다. <br>
+
+#### \front\pages\index.js
+```js
+...생략
+
+const Home = () => {
+  ...생략
+
+  const onScroll = () => {
+    console.log(window.scrollY, document.documentElement.clientHeight, document.documentElement.scrollHeight);
+    // 위에 3개의 이벤트가 필수적이다.
+  };
+
+  useEffect( () => {
+    // 컴포넌트가 첫 렌더링이 될 때 addlistener을 해줘야 한다.
+    window.addEventListener('scroll', onScroll);
+    // 컴포너튼도 사라질 때 removeListener 해줘야한다.
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    }
+  }, {});
+
+  ...생략
+};
+
+...생략
+```
+
+```
+window.scrollY, document.documentElement.clientHeight, document.documentElement.scrollHeight
+0 599 5916
+7 599 5916
+71 599 5916
+123 599 5916
+...
+...
+5317 599 5916 
+```
+<strong>window.scrollY</strong> : 스크롤 내린 거리 <br>
+<strong>document.documentElement.clientHeight</strong> : 화면 높이 <br>
+<strong>document.documentElement.scrollHeight</strong> : 전체 화면 길이 <br>
+맨 마지막을 보면 스크롤은 5317 599를 같이 더한게 5916이 된다. <br>
+위와 같이 스크롤을 감지한다. <br><br>
+
+우리는 끝에서 높이가 300이 남았을 때 데이터를 가져오도록 한다. <br>
+
+#### \front\pages\index.js
+```js
+import React, { useEffect } from 'react';
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+import { useSelector, useDispatch } from 'react-redux';
+import { LOAD_MAIN_POSTS_REQUEST } from '../reducers/post';
+
+const Home = () => {
+  const { me } = useSelector(state => state.user);
+  const { mainPosts } = useSelector(state => state.post);
+  const dispatch = useDispatch();
+
+  const onScroll = () => {
+    console.log(window.scrollY, document.documentElement.clientHeight, document.documentElement.scrollHeight);
+    // 끝까지 간거에서 -300을 해주었다.
+    if (window.scrollY + document.documentElement.clientHeight === document.documentElement.scrollHeight - 300 ) { 
+      dispatch({
+        type: LOAD_MAIN_POSTS_REQUEST,
+        lastId: mainPosts[mainPost.length - 1].id,
+      });
+    }
+  };
+
+  useEffect( () => {
+    window.addEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    }
+  }, {});
+
+  ...생략
+};
+
+...생략
+```
+
+지난 시간에는 offset, limit을 사용하였는데, 여기에는 offset대신에 다른 것을 사용한다. <br>
+팔로잉, 팔로워은 보고있는 동안 안 바뀐다. <br>
+하지만, 게시글은 보고있는 동안 다른사람이 게시글에 글을 올리면, 데이터가 게속 바뀌게 되어진다. <br>
+그렇게 된다면, offset이 무너진다. <br>
+그리고 요즘보면 offset보다 lastId 형식과 비슷하게 많이 사용한다. 왜냐하면 성능이 떨어지기 때문이다. <br><br>
+
+읽는도중에 새로운 글이 추가되어지는 경우에는 <br>
+마지막 게시글의 id를 가져와서 그 id보다 작은 것들을 limit을 한다. <br>
+(그리고, limit는 바뀌는 경우가 없다. ) <br>
+보충설명 : 게시글의 id는 바뀔경우가 절대로 없다는 것을 이용해서 한다. 또한, timestamp로 사용해도 된다. <br>
+
+#### \front\pages\index.js
+```js
+import React, { useEffect } from 'react';
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+import { useSelector, useDispatch } from 'react-redux';
+import { LOAD_MAIN_POSTS_REQUEST } from '../reducers/post';
+
+const Home = () => {
+  const { me } = useSelector(state => state.user);
+  const { mainPosts } = useSelector(state => state.post);
+  const dispatch = useDispatch();
+
+  const onScroll = () => {
+    console.log(window.scrollY, document.documentElement.clientHeight, document.documentElement.scrollHeight);
+    // onScroll에서 
+    if (window.scrollY + document.documentElement.clientHeight === document.documentElement.scrollHeight - 300 ) { 
+      dispatch({
+        type: LOAD_MAIN_POSTS_REQUEST,
+        lastId: mainPosts[mainPost.length - 1].id,
+      });
+    }
+  };
+
+  useEffect( () => {
+    // 여기에 onScroll이 있다. useEffect를 사용하고 있다는 것이다.
+    window.addEventListener('scroll', onScroll);
+    return () => {
+      // 여기에 onScroll이 있다. useEffect를 사용하고 있다는 것이다.
+      window.removeEventListener('scroll', onScroll);
+    }
+  }, [mainPosts.length]); // 그래서 state를 사용하고 있다
+
+  ...생략
+};
+
+...생략
+```
+
+#### \front\sagas\post.js
+```js
+...생략
+
+function loadMainPostsAPI(lastId = 0, limit = 10) {
+  return axios.get(`/posts?lastId=${lastId}&limit=${limit}`);
+}
+
+function* loadMainPosts(action) { // lastId를 가져와야한다.
+  try {
+    const result = yield call(loadMainPostsAPI, action.lastId);
+    yield put({
+      type: LOAD_MAIN_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_MAIN_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadMainPosts() {
+  yield takeLatest(LOAD_MAIN_POSTS_REQUEST, loadMainPosts);
+}
+
+
+function loadHashtagPostsAPI(tag, lastId = 0) {
+  return axios.get(`/hashtag/${decodeURIComponent(tag)}?lastId=${lastId}`);
+}
+
+function* loadHashtagPosts(action) {
+  try {
+    const result = yield call(loadHashtagPostsAPI, action.data, action.lastId);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_HASHTAG_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadHashtagPosts() {
+  yield takeLatest(LOAD_HASHTAG_POSTS_REQUEST, loadHashtagPosts);
+}
+
+
+function loadUserPostsAPI(id, lastId = 0) {
+  return axios.get(`/user/${id || 0}/posts?lastId=${lastId}`);
+}
+
+function* loadUserPosts(action) {
+  try {
+    const result = yield call(loadUserPostsAPI, action.data, action.lastId);
+    yield put({
+      type: LOAD_USER_POSTS_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_USER_POSTS_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadUserPosts() {
+  yield takeLatest(LOAD_USER_POSTS_REQUEST, loadUserPosts);
+}
+
+...생략
+
+```
+
+#### \back\routes\posts.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/', async (req, res, next) => { 
+  try {
+    let where = {}; // lastId가 0일 때, 0이 아닐 때를 나누어야 한다. (조건이 2개)
+    if (parseInt(req.query.lastId, 10)) {
+      where = {
+        id: { // id가 ~~보다 작다를 표현해줘야 한다.
+          // db.Sequelize.Op.lt는 시퀄라이즈에서 사용하기때문에 sequelize operator를 찾아보면된다.
+          // op안에 operator이다. 그리고 lt는 작다라는 의미이다.
+          // lte: 작거나 같다, gt: 크다, gte: 크거나 같다
+          [db.Sequelize.Op.lt]: parseInt(req.query.lastId, 10),
+        },
+      };
+    } 
+    // 처음부터 가져오는 경우(lastId가 0일 때) 조건이 없기 때문에 else를 안해주었다.
+    const posts = await db.Post.findAll({
+      where,
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User,
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }, {
+        model: db.Post, // 이 부분 추가 안해줘서 추가 해준다.
+        as: 'Retweet', // 이 부분 추가 안해줘서 추가 해준다.
+        include: [{ // 이 부분 추가 안해줘서 추가 해준다.
+          model: db.User, // 이 부분 추가 안해줘서 추가 해준다.
+          attributes: ['id', 'nickname'], // 이 부분 추가 안해줘서 추가 해준다.
+        }, { // 이 부분 추가 안해줘서 추가 해준다.
+          model: db.Image, // 이 부분 추가 안해줘서 추가 해준다.
+        }], // 이 부분 추가 안해줘서 추가 해준다.
+      }],
+      order: [['createdAt', 'DESC']], 
+      limit: parseInt(req.query.limit, 10), // limit을 추가해준다.
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+```
+db.Sequelize.Op.lt는 시퀄라이즈에서 사용하기때문에 sequelize operator를 찾아보면된다. <br>
+op안에 operator가 있다. <br>
+lt: 작다, lte: 작거나 같다, gt: 크다, gte: 크거나 같다 <br>
+
+#### \back\routes\hashtag.js
+```js
+const express = require('express');
+const db = require('../models');
+
+const router = express.Router();
+
+router.get('/:tag', async(req, res, next) => {
+  try {
+    let where = {};
+    if (parseInt(req.query.lastId, 10)) {
+      where = {
+        id: {
+          [db.Sequelize.Op.lt]: parseInt(req.query.lastId, 10),
+        },
+      };
+    }
+    const posts = await db.Post.findAll({
+      where,
+      include: [{
+        model: db.Hashtag,
+        where: { name: decodeURIComponent(req.params.tag) },
+      }, {
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User,
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }, {
+        model: db.Post,
+        as: 'Retweet',
+        include: [{
+          model: db.User,
+          attributes: ['id', 'nickname'],
+        }, {
+          model: db.Image,
+        }],
+      }],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(req.query.limit, 10), // limit 추가
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+module.exports = router;
+```
+
+#### \back\routes\user.js
+
+```js
+...생략
+
+router.get('/:id/posts', async (req, res, next) => {
+  try {
+    const whereLastId = {}; // where이 겹치니까 whereLastId로 해주었다.
+    if (parseInt(req.query.lastId, 10)) {
+      whereLastId = { // where이 겹치니까 whereLastId로 해주었다.
+        id: {
+          [db.Sequelize.Op.lt]: parseInt(req.query.lastId, 10),
+        },
+      };
+    }
+    const posts = await db.Post.findAll({
+      whereLastId, // where이 겹치니까 whereLastId로 해주었다.
+      where: {
+        UserId: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0,
+        RetweetId: null,
+      },
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User,
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }, {
+        model: db.Post,
+        as: 'Retweet',
+        include: [{
+          model: db.User,
+          attributes: ['id', 'nickname'],
+        }, {
+          model: db.Image,
+        }],
+      }],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(req.query.limit, 10), // limit 추가
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
+```
 

@@ -91,13 +91,13 @@ function* watchAddPost() {
 }
 
 
-function loadMainPostsAPI() {
-  return axios.get('/posts');
+function loadMainPostsAPI(lastId = 0, limit = 10) {
+  return axios.get(`/posts?lastId=${lastId}&limit=${limit}`);
 }
 
-function* loadMainPosts() {
+function* loadMainPosts(action) { // lastId를 가져와야한다.
   try {
-    const result = yield call(loadMainPostsAPI);
+    const result = yield call(loadMainPostsAPI, action.lastId);
     yield put({
       type: LOAD_MAIN_POSTS_SUCCESS,
       data: result.data,
@@ -116,13 +116,13 @@ function* watchLoadMainPosts() {
 }
 
 
-function loadHashtagPostsAPI(tag) {
-  return axios.get(`/hashtag/${decodeURIComponent(tag)}`);
+function loadHashtagPostsAPI(tag, lastId = 0) {
+  return axios.get(`/hashtag/${decodeURIComponent(tag)}?lastId=${lastId}`);
 }
 
 function* loadHashtagPosts(action) {
   try {
-    const result = yield call(loadHashtagPostsAPI, action.data);
+    const result = yield call(loadHashtagPostsAPI, action.data, action.lastId);
     yield put({
       type: LOAD_HASHTAG_POSTS_SUCCESS,
       data: result.data,
@@ -141,13 +141,13 @@ function* watchLoadHashtagPosts() {
 }
 
 
-function loadUserPostsAPI(id) {
-  return axios.get(`/user/${id || 0}/posts`);
+function loadUserPostsAPI(id, lastId = 0) {
+  return axios.get(`/user/${id || 0}/posts?lastId=${lastId}`);
 }
 
 function* loadUserPosts(action) {
   try {
-    const result = yield call(loadUserPostsAPI, action.data);
+    const result = yield call(loadUserPostsAPI, action.data, action.lastId);
     yield put({
       type: LOAD_USER_POSTS_SUCCESS,
       data: result.data,

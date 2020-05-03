@@ -5,7 +5,16 @@ const router = express.Router();
 
 router.get('/', async (req, res, next) => { 
   try {
+    let where = {};
+    if (parseInt(req.query.lastId, 10)) {
+      where = {
+        id: {
+          [db.Sequelize.Op.lt]: parseInt(req.query.lastId, 10),
+        },
+      };
+    } 
     const posts = await db.Post.findAll({
+      where,
       include: [{
         model: db.User,
         attributes: ['id', 'nickname'],
@@ -16,17 +25,18 @@ router.get('/', async (req, res, next) => {
         through: 'Like',
         as: 'Likers',
         attributes: ['id'],
+      }, {
+        model: db.Post,
+        as: 'Retweet',
+        include: [{
+          model: db.User,
+          attributes: ['id', 'nickname'],
+        }, {
+          model: db.Image,
+        }],
       }],
       order: [['createdAt', 'DESC']], 
-    }, {
-      model: db.Post,
-      as: 'Retweet',
-      include: [{
-        model: db.User,
-        attributes: ['id', 'nickname'],
-      }, {
-        model: db.Image,
-      }]
+      limit: parseInt(req.query.limit, 10),
     });
     res.json(posts);
   } catch (e) {

@@ -6,6 +6,7 @@
 + [SSR에서 내 정보 처리하기](#SSR에서-내-정보-처리하기)
 + [회원가입 리다이렉션과 포스트 제거](#회원가입-리다이렉션과-포스트-제거)
 + [페이지네이션](#페이지네이션)
++ [더보기 버튼](#더보기-버튼)
 
 
 
@@ -1473,4 +1474,188 @@ export default (state = initialState, action) => {
   }
 };
 ```
+
+## 더보기 버튼
+[위로가기](#서버-사이드-렌더링)
+
+여기서 데이터가 다 보여주면, `더 보기` 버튼을 없애주고 싶다.
+만약 3개씩 불러올 때, 데이터가 1개, 2개가 들어오면 
+다음에 불러오는 데이터가 더 이상 없다는 의미이다.
+
+#### \front\reducers\user.js
+```js
+
+export const initialState = {
+  ...생략,
+  editNicknameErrorResason: '',
+  hasMoreFollower: false, // 추가를 해준다.
+  hasMoreFollowing: false, // 추가를 해준다.
+};
+
+...생략
+
+export default (state = initialState, action) => {
+  switch (action.type) {
+    ...생략
+    case LOAD_FOLLOWERS_REQUEST: {
+      return {
+        ...state,
+        hasMoreFollower: action.offset ? state.hasMoreFollower : true, // 처음 데이터를 가져올 때는 더보기 버튼을 true(보여주기)로 한다.
+        // action.offset은 언제 넣어줬지 ? 
+        // 데이터를 더 불러올 때 넣어줬다. 처음에는 action.offset이 없었는데, 데이터를 더 불러올 때 action.offset이 생긴다.
+        // 그런 경우에는 hasMoreFollower를 유지한다.
+        // 만약에, action.offset이 없을 경우에는 action.offset을 보여주도록 한다.
+
+        // action.offset이 0이거나 없으면, ture가 된다. 즉, 처음데이터를 가져올 떄에는 더보기 버튼을 true를 한다.
+
+        // hasMoreFollower에  state.hasMoreFollower를 넣으면 아무런 영향이 없다.
+
+        // 처음에는 데이터를 불러오니까 데이터가 없다. 그리고 더보기 버튼이 있어야한다.
+        // 그리고 더보기 버튼을 눌렀을 때 더보기 버튼이 있는지 없는지 판단하는것은 LOAD_FOLLOWERS_SUCCESS가 판단한다.
+      };
+    }
+    case LOAD_FOLLOWERS_SUCCESS: {
+      return {
+        ...state,
+        followerList: state.followerList.concat(action.data),
+        hasMoreFollower: action.data.length === 3, 
+        // 데이터를 가져왔느데, 데이터가 갯수가 1,2개 이면 더보기 버튼을 없애준다.
+        // 하지만 데이터가 3개면 더보기 버튼을 보여준다.
+      };
+    }
+    case LOAD_FOLLOWERS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    case LOAD_FOLLOWINGS_REQUEST: {
+      return {
+        ...state,
+        hasMoreFollowing: action.offset ? state.hasMoreFollowing : true, // 처음 데이터를 가져올 때는 더보기 버튼을 true(보여주기)로 한다.
+        // action.offset은 언제 넣어줬지 ? 
+        // 데이터를 더 불러올 때 넣어줬다. 처음에는 action.offset이 없었는데, 데이터를 더 불러올 때 action.offset이 생긴다.
+        // 그런 경우에는 hasMoreFollower를 유지한다.
+        // 만약에, action.offset이 없을 경우에는 action.offset을 보여주도록 한다.
+
+        // action.offset이 0이거나 없으면, ture가 된다. 즉, 처음데이터를 가져올 떄에는 더보기 버튼을 true를 한다.
+
+        // hasMoreFollower에  state.hasMoreFollower를 넣으면 아무런 영향이 없다.
+
+         // 처음에는 데이터를 불러오니까 데이터가 없다. 그리고 더보기 버튼이 있어야한다.
+        // 그리고 더보기 버튼을 눌렀을 때 더보기 버튼이 있는지 없는지 판단하는것은 LOAD_FOLLOWERS_SUCCESS가 판단한다.
+      };
+    }
+    case LOAD_FOLLOWINGS_SUCCESS: {
+      return {
+        ...state,
+        followingList: state.followingList.concat(action.data),
+        hasMoreFollowing: action.data.length === 3,
+        // 데이터를 가져왔느데, 데이터가 갯수가 1,2개 이면 더보기 버튼을 없애준다.
+        // 하지만 데이터가 3개면 더보기 버튼을 보여준다.
+      };
+    }
+    case LOAD_FOLLOWINGS_FAILURE: {
+      return {
+        ...state,
+      };
+    }
+    ...생략
+  }
+};
+```
+
+
+#### \front\pages\profile.js
+```js
+...생략
+
+const Profile = () => {
+  const dispatch = useDispatch();
+  // hasMoreFollower, hasMoreFollowing추가
+  const { followingList, followerList, hasMoreFollower, hasMoreFollowing } = useSelector(state => state.user); 
+  const { mainPosts } = useSelector(state => state.post);
+
+  ...생략
+  
+  const loadMoreFollowings = useCallback(() => {
+    dispatch({
+      type: LOAD_FOLLOWINGS_REQUEST,
+      offset: followingList.length
+    });
+  }, [followingList.length]);
+  
+  const loadMoreFollowers = useCallback(() => {
+    dispatch({
+      type: LOAD_FOLLOWERS_REQUEST,
+      offset: followerList.length
+    });
+  }, [followerList.length]);
+
+
+  return (
+    <div>
+      <NickNameEditForm />
+      <List
+        ...생략
+        header={<div>팔로잉 목록</div>}
+        // hasMoreFollowing 추가
+        loadMore={hasMoreFollowing && <Button style={{ width: '100%' }} onClick={loadMoreFollowings} >더 보기</Button>} // hasMoreFollowing 추가
+        bordered
+        dataSource={followingList}
+        ...생략
+      />
+      <List
+        ...생략
+        header={<div>팔로워 목록</div>}
+        // hasMoreFollower 추가
+        loadMore={hasMoreFollower && <Button style={{ width: '100%' }} onClick={loadMoreFollowers} >더 보기</Button>} // hasMoreFollower 추가
+        bordered
+        dataSource={followerList}
+        ...생략
+      />
+      ...생략
+    </div>
+  );
+};
+
+...생략
+
+```
+
+처음에 더보기 버튼을 true로 하고, <br>
+데이터가 3개를 불러올 경우에는 true, <br>
+그 이외에 1, 2개이면 false로 한다. <br><br>
+
+
+처음부터 팔로워 목록이 3개 일 경우에다가 그 다음 데이터가 없다면, <br>
+일단 지금의 소스코드 상에는 더보기 버튼이 있다. 그리고 더보기 버튼을 누르면 사라지게 한다. <br>
+
+만약, 처음부터 데이터 3개라서 더보기 버튼을 없애려고 하려면 <br>
+따로 소스 코드를에 데이터가 3개 일 경우 버튼을 없애는 것을 구현하면 된다. <br> 
+
+### 보충설명
+```js
+case LOAD_FOLLOWINGS_REQUEST: {
+  console.log(action.offset); // undefined
+  return {
+    ...state,
+    hasMoreFollowing: action.offset ? state.hasMoreFollowing: true,
+  }
+}
+
+```
+
+> 위 코드에서 action.offset 이 0이거나 undefined 일텐데 어떻게 true가 될수있는지 이해가 안 된다. <br>
+> 버튼눌렀을때말고 최초 페이지(새로고침)에 들어가서 <br>
+> `Profile.getInitialProps` 를 통해 `LOAD_FOLLOWINGS_REQUEST`가 dispatch되면 <br> 
+> loadFollowingsAPI에 <strong>offset=0 이라고 기본값을 지정</strong>해줬으니까 <br>
+> <strong>맨처음 페이지로드 시 offset의 값은 0이 되지않나??</strong> <br>
+> 그럼 hasMoreFollowing: action.offset ? state.hasMoreFollowing: true, <br>
+> 이 코드가 실행될때 action.offset은 0이 될텐데 그럼 state.hasMoreFollowing: true 의 값이 못 들어가지않은가??? <br>
+
+>> `조건부연산자(삼항연산자)는 조건 ? 참 : 거짓`이기 때문에 <br>
+>> action.offset이 0이나 undefined면 -> <strong>거짓</strong> 부분으로 간다. <br>
+>> 그래서 `hasMoreFollowing = true;`나 다름이 없다. <br>
+
+-> 페이지네이션, 더보기 버튼 같이 구현을 해야한다. <br>
 

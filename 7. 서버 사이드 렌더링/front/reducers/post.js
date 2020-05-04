@@ -88,10 +88,9 @@ export default (state = initialState, action) => {
       }
       case ADD_POST_REQUEST: {
         draft.isAddingPost = true;
-        draft.addPostErrorReason = '';
+        draft.addingPostErrorReason = '';
         draft.postAdded = false;
         break;
-        
       }
       case ADD_POST_SUCCESS: {
         draft.isAddingPost = false;
@@ -109,7 +108,7 @@ export default (state = initialState, action) => {
         draft.isAddingComment = true;
         draft.addCommentErrorReason = '';
         draft.commentAdded = false;
-        break;                  
+        break;
       }
       case ADD_COMMENT_SUCCESS: {
         const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
@@ -120,25 +119,27 @@ export default (state = initialState, action) => {
       }
       case ADD_COMMENT_FAILURE: {
         draft.isAddingComment = false;
-        draft.addCommentErrorReason = action.error;
+        draft.addingPostErrorReason = action.error;
         break;
       }
       case LOAD_COMMENTS_SUCCESS: {
-        const postIndex = draft.mainPosts.findIndex( v => v.id === action.data.postId);
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
         draft.mainPosts[postIndex].Comments = action.data.comments;
         break;
       }
       case LOAD_MAIN_POSTS_REQUEST:
       case LOAD_HASHTAG_POSTS_REQUEST:
       case LOAD_USER_POSTS_REQUEST: {
-        draft.mainPosts = action.lastId === 0 ? [] : draft.mainPosts;
+        draft.mainPosts = !action.lastId ? [] : draft.mainPosts;
         draft.hasMorePost = action.lastId ? draft.hasMorePost : true;
         break;
       }
       case LOAD_MAIN_POSTS_SUCCESS:
       case LOAD_HASHTAG_POSTS_SUCCESS:
       case LOAD_USER_POSTS_SUCCESS: {
-        draft.mainPosts = draft.mainPosts.concat(action.data);
+        action.data.forEach((d) => {
+          draft.mainPosts.push(d);
+        });
         draft.hasMorePost = action.data.length === 10;
         break;
       }
@@ -151,7 +152,7 @@ export default (state = initialState, action) => {
         break;
       }
       case LIKE_POST_SUCCESS: {
-        const postIndex = draft.mainPosts.findIndex( v => v.id === action.data.postId);
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
         draft.mainPosts[postIndex].Likers.unshift({ id: action.data.userId });
         break;
       }
@@ -162,7 +163,7 @@ export default (state = initialState, action) => {
         break;
       }
       case UNLIKE_POST_SUCCESS: {
-        const postIndex = draft.mainPosts.findIndex( v => v.id === action.data.postId);
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
         const likeIndex = draft.mainPosts[postIndex].Likers.findIndex(v => v.id === action.data.userId);
         draft.mainPosts[postIndex].Likers.splice(likeIndex, 1);
         break;
@@ -184,7 +185,8 @@ export default (state = initialState, action) => {
         break;
       }
       case REMOVE_POST_SUCCESS: {
-        draft.mainPosts = draft.mainPosts.filter(v => v.id !== action.data);
+        const index = draft.mainPosts.findIndex(v => v.id === action.data);
+        draft.mainPosts.splice(index, 1);
         break;
       }
       case REMOVE_POST_FAILURE: {

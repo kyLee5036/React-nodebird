@@ -10,6 +10,7 @@
 + [인피니트 스크롤링](#인피니트-스크롤링)
 + [쓰로틀링(throttling)](#쓰로틀링(throttling))
 + [immer로 불변성 쉽게 쓰기](#immer로-불변성-쉽게-쓰기)
++ [프론트 단에서 리덕스 액션 호출 막기](#프론트-단에서-리덕스-액션-호출-막기)
 
 
 
@@ -4655,6 +4656,7 @@ export const LOAD_MAIN_POSTS_SUCCESS = 'LOAD_MAIN_POSTS_SUCCESS';
 export const LOAD_MAIN_POSTS_FAILURE = 'LOAD_MAIN_POSTS_FAILURE';
 
 
+
 export default (state = initialState, action) => {
   return produce(state, (draft) => {
     switch (action.type) {
@@ -4677,10 +4679,9 @@ export default (state = initialState, action) => {
       }
       case ADD_POST_REQUEST: {
         draft.isAddingPost = true;
-        draft.addPostErrorReason = '';
+        draft.addingPostErrorReason = '';
         draft.postAdded = false;
         break;
-        
       }
       case ADD_POST_SUCCESS: {
         draft.isAddingPost = false;
@@ -4698,7 +4699,7 @@ export default (state = initialState, action) => {
         draft.isAddingComment = true;
         draft.addCommentErrorReason = '';
         draft.commentAdded = false;
-        break;                  
+        break;
       }
       case ADD_COMMENT_SUCCESS: {
         const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
@@ -4709,25 +4710,27 @@ export default (state = initialState, action) => {
       }
       case ADD_COMMENT_FAILURE: {
         draft.isAddingComment = false;
-        draft.addCommentErrorReason = action.error;
+        draft.addingPostErrorReason = action.error;
         break;
       }
       case LOAD_COMMENTS_SUCCESS: {
-        const postIndex = draft.mainPosts.findIndex( v => v.id === action.data.postId);
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
         draft.mainPosts[postIndex].Comments = action.data.comments;
         break;
       }
       case LOAD_MAIN_POSTS_REQUEST:
       case LOAD_HASHTAG_POSTS_REQUEST:
       case LOAD_USER_POSTS_REQUEST: {
-        draft.mainPosts = action.lastId === 0 ? [] : draft.mainPosts;
+        draft.mainPosts = !action.lastId ? [] : draft.mainPosts;
         draft.hasMorePost = action.lastId ? draft.hasMorePost : true;
         break;
       }
       case LOAD_MAIN_POSTS_SUCCESS:
       case LOAD_HASHTAG_POSTS_SUCCESS:
       case LOAD_USER_POSTS_SUCCESS: {
-        draft.mainPosts = draft.mainPosts.concat(action.data);
+        action.data.forEach((d) => {
+          draft.mainPosts.push(d);
+        });
         draft.hasMorePost = action.data.length === 10;
         break;
       }
@@ -4740,7 +4743,7 @@ export default (state = initialState, action) => {
         break;
       }
       case LIKE_POST_SUCCESS: {
-        const postIndex = draft.mainPosts.findIndex( v => v.id === action.data.postId);
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
         draft.mainPosts[postIndex].Likers.unshift({ id: action.data.userId });
         break;
       }
@@ -4751,7 +4754,7 @@ export default (state = initialState, action) => {
         break;
       }
       case UNLIKE_POST_SUCCESS: {
-        const postIndex = draft.mainPosts.findIndex( v => v.id === action.data.postId);
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
         const likeIndex = draft.mainPosts[postIndex].Likers.findIndex(v => v.id === action.data.userId);
         draft.mainPosts[postIndex].Likers.splice(likeIndex, 1);
         break;
@@ -4773,7 +4776,8 @@ export default (state = initialState, action) => {
         break;
       }
       case REMOVE_POST_SUCCESS: {
-        draft.mainPosts = draft.mainPosts.filter(v => v.id !== action.data);
+        const index = draft.mainPosts.findIndex(v => v.id === action.data);
+        draft.mainPosts.splice(index, 1);
         break;
       }
       case REMOVE_POST_FAILURE: {
@@ -5017,3 +5021,62 @@ export default (state = initialState, action) => {
 };
 ```
 
+## 프론트 단에서 리덕스 액션 호출 막기
+[위로가기](#서버-사이드-렌더링)
+
+#### \front\pages\index.js
+```js
+import React, { useEffect, useCallback, useRef } from 'react';
+import PostForm from '../components/PostForm';
+import PostCard from '../components/PostCard';
+import { useSelector, useDispatch } from 'react-redux';
+import { LOAD_MAIN_POSTS_REQUEST } from '../reducers/post';
+
+const Home = () => {
+  const { me } = useSelector(state => state.user);
+  const { mainPosts, hasMorePost } = useSelector(state => state.post);
+  const dispatch = useDispatch();
+  const countRef = useRef([]);
+
+  const onScroll = useCallback(() => {
+    if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
+      if ( hasMorePost ) {
+        const lastId = mainPosts[mainPosts.length - 1].id;
+        if ( !countRef.current.includes(lastId)) {
+          dispatch({
+            type: LOAD_MAIN_POSTS_REQUEST,
+            lastId,
+          });
+          countRef.current.push(lastId);
+        }
+      }
+    }
+  }, [hasMorePost, mainPosts.length]);
+
+  useEffect( () => {
+    window.addEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+    }
+  }, [mainPosts.length]);
+
+  return (
+    <div>
+      {me && <PostForm />}
+      {mainPosts.map((c, i) => {
+        return (
+          <PostCard key={i} post={c} />
+        );
+      })}
+    </div>
+  );
+};
+
+Home.getInitialProps = async (context) => {
+  context.store.dispatch({
+    type: LOAD_MAIN_POSTS_REQUEST,
+  });
+};
+
+export default Home;
+```

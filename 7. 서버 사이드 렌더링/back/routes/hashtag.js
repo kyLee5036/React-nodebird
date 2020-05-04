@@ -3,7 +3,7 @@ const db = require('../models');
 
 const router = express.Router();
 
-router.get('/:tag', async(req, res, next) => {
+router.get('/:tag', async (req, res, next) => {
   try {
     let where = {};
     if (parseInt(req.query.lastId, 10)) {

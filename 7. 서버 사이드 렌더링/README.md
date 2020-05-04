@@ -10,6 +10,7 @@
 + [인피니트 스크롤링](#인피니트-스크롤링)
 + [쓰로틀링(throttling)](#쓰로틀링(throttling))
 + [immer로 불변성 쉽게 쓰기](#immer로-불변성-쉽게-쓰기)
++ [프론트 단에서 리덕스 액션 호출 막기](#프론트-단에서-리덕스-액션-호출-막기)
 
 
 
@@ -2574,7 +2575,7 @@ export default (state = initialState, action) => {
 > concat은 foreach로 사용하면 된다. <br>
 
 
-#### \front\reducers\post.js (immer 적용 후)
+#### \front\reducers\post.js (immer 적용 후) - 에러가 있어서 밑에 소스코드 참조할 것
 ```js
 import produce from 'immer'; 
 
@@ -3297,4 +3298,217 @@ export default (state = initialState, action) => {
 ...생략
 ```
 
+에러가 있어서 수정이 있겠다. <br>
 
+#### \front\reducers\post.js
+```js
+...수정
+
+export default (state = initialState, action) => {
+  return produce(state, (draft) => {
+    switch (action.type) {
+      case UPLOAD_IMAGES_REQUEST: {
+        break;
+      }
+      case UPLOAD_IMAGES_SUCCESS: {
+        action.data.forEach((p) => {
+          draft.imagePaths.push(p);
+        });
+        break;
+      }
+      case UPLOAD_IMAGES_FAILURE: {
+        break;
+      }
+      case REMOVE_IMAGE: {
+        const index = draft.imagePaths.findIndex((v, i) => i === action.index);
+        draft.imagePaths.splice(index, 1);
+        break;
+      }
+      case ADD_POST_REQUEST: {
+        draft.isAddingPost = true;
+        draft.addingPostErrorReason = '';
+        draft.postAdded = false;
+        break;
+      }
+      case ADD_POST_SUCCESS: {
+        draft.isAddingPost = false;
+        draft.mainPosts.unshift(action.data);
+        draft.postAdded = true;
+        draft.imagePaths = [];
+        break;
+      }
+      case ADD_POST_FAILURE: {
+        draft.isAddingPost = false;
+        draft.addPostErrorReason = action.error;
+        break;
+      }
+      case ADD_COMMENT_REQUEST: {
+        draft.isAddingComment = true;
+        draft.addCommentErrorReason = '';
+        draft.commentAdded = false;
+        break;
+      }
+      case ADD_COMMENT_SUCCESS: {
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
+        draft.mainPosts[postIndex].Comments.push(action.data.comment);
+        draft.isAddingComment = false;
+        draft.commentAdded = true;
+        break;
+      }
+      case ADD_COMMENT_FAILURE: {
+        draft.isAddingComment = false;
+        draft.addingPostErrorReason = action.error;
+        break;
+      }
+      case LOAD_COMMENTS_SUCCESS: {
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
+        draft.mainPosts[postIndex].Comments = action.data.comments;
+        break;
+      }
+      case LOAD_MAIN_POSTS_REQUEST:
+      case LOAD_HASHTAG_POSTS_REQUEST:
+      case LOAD_USER_POSTS_REQUEST: {
+        draft.mainPosts = !action.lastId ? [] : draft.mainPosts;
+        draft.hasMorePost = action.lastId ? draft.hasMorePost : true;
+        break;
+      }
+      case LOAD_MAIN_POSTS_SUCCESS:
+      case LOAD_HASHTAG_POSTS_SUCCESS:
+      case LOAD_USER_POSTS_SUCCESS: {
+        action.data.forEach((d) => {
+          draft.mainPosts.push(d);
+        });
+        draft.hasMorePost = action.data.length === 10;
+        break;
+      }
+      case LOAD_MAIN_POSTS_FAILURE:
+      case LOAD_HASHTAG_POSTS_FAILURE:
+      case LOAD_USER_POSTS_FAILURE: {
+        break;
+      }
+      case LIKE_POST_REQUEST: {
+        break;
+      }
+      case LIKE_POST_SUCCESS: {
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
+        draft.mainPosts[postIndex].Likers.unshift({ id: action.data.userId });
+        break;
+      }
+      case LIKE_POST_FAILURE: {
+        break;
+      }
+      case UNLIKE_POST_REQUEST: {
+        break;
+      }
+      case UNLIKE_POST_SUCCESS: {
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
+        const likeIndex = draft.mainPosts[postIndex].Likers.findIndex(v => v.id === action.data.userId);
+        draft.mainPosts[postIndex].Likers.splice(likeIndex, 1);
+        break;
+      }
+      case UNLIKE_POST_FAILURE: {
+        break;
+      }
+      case RETWEET_REQUEST: {
+        break;
+      }
+      case RETWEET_SUCCESS: {
+        draft.mainPosts.unshift(action.data);
+        break;
+      }
+      case RETWEET_FAILURE: {
+        break;
+      }
+      case REMOVE_POST_REQUEST: {
+        break;
+      }
+      case REMOVE_POST_SUCCESS: {
+        const index = draft.mainPosts.findIndex(v => v.id === action.data);
+        draft.mainPosts.splice(index, 1);
+        break;
+      }
+      case REMOVE_POST_FAILURE: {
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  });
+};
+
+```
+
+## 프론트 단에서 리덕스 액션 호출 막기
+[위로가기](#서버-사이드-렌더링)
+
+한참 지난 시간에서, <strong>쓰로틀링(throttling)</strong>을 적용 하였는데, `REQUEST 요청`가 왜 많이 생기는냐? <br>
+리액트에서 REQUEST 실행되는 것은 막을 수가 없다. <br>
+
+#### #### \front\pages\index.js
+```js
+const onScroll = useCallback(() => {
+  if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
+    if ( hasMorePost ) {
+      dispatch({
+        // 리덕스 상에서는 REQUEST를 호출되는 거 막아줄 수 있는 코드가 없다.
+        type: LOAD_MAIN_POSTS_REQUEST, 
+        // 지금까지 리덕스 사가에서 REQUEST가 여러 번 호출되는 것을 막았다. (쓰로틀링(throttling) 사용)
+        lastId: mainPosts[mainPosts.length - 1].id,
+      });
+    }
+  }
+}, [hasMorePost, mainPosts.length]);
+```
+
+> 즉, 사가랑 리듀서 액션은 별개로 동작하기 때문에 별도 처리가 필요하다. <br><br>
+
+ 
+결국에 우리의 문제는 2초에 요청을 1번씩 가도록 하였는데, 실제로 요청이 2번 가는 문제가 있다. <br>
+그래서 프론트 단에서 수정을 해야한다. <br>
+즉, 사가뿐만 아니라 프론트에서도 <strong>쓰로틀링(throttling)</strong>을 적용할 것이다. <br>
+
+#### \front\pages\index.js
+```js
+import React, { useEffect, useCallback, useRef } from 'react'; // useRef 생성
+...생략
+
+const Home = () => {
+  ...생략
+  // 지난 시간 쓰로틀링(throttling)에서 lastId로 마지막 게시글을 서버로 보냈다.
+  // lastId를 서버에서 뿐만 아니라 프론트에서도 기록해두면 같은 lastId로 요청을 보내는 것을 막을 수가 있다.
+  // 지금부터 lastId로 요청을 막는 코드 소스를 구현할 것이다.
+
+  const countRef = useRef([]); // 빈 배열 생성해준다.
+
+  const onScroll = useCallback(() => {
+    if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
+      if ( hasMorePost ) {
+        const lastId = mainPosts[mainPosts.length - 1].id; // lastId를 변수로 만들어준다.
+        if ( !countRef.current.includes(lastId)) { // 한 번 보낸 lastId는 다시 보내지 않게 한다. (안전 장치 마련)
+          dispatch({
+            type: LOAD_MAIN_POSTS_REQUEST,
+            lastId,
+          });
+          countRef.current.push(lastId); // countRef.current에다가 기록을 해둔다.
+        }
+       
+      }
+    }
+  }, [hasMorePost, mainPosts.length]);
+
+...생략
+```
+
+> 위와 같은 방식으로 한다면, <br>
+>> 한 번 요청을 보낸 lastId들이 countRef에 담겨있기 때문에 <br>
+>> 다음에 다시 요청을 보낼 때 서버에 안가도록 한다. <br>
+
+```js
+function* watchLoadMainPosts() {
+  yield throttle(1000, LOAD_MAIN_POSTS_REQUEST, loadMainPosts);
+}
+```
+> 사가에서 throttle을 하는 것은 <strong>사가에 대한 액션</strong>만 `throttle`한다. <br>
+> 리덕스 자체 액션이 실행 되는것은 막을 수 없다. <br>
+>> 리덕스 자체 액션이 실행 되지 않을려면 <strong>리덕스 액션을 실행하는 프론트에서 못하도록 걸러줘서 만들어줘야한다</strong>. <br>

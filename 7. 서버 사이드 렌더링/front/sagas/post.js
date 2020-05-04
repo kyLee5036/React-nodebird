@@ -139,12 +139,9 @@ function* loadHashtagPosts(action) {
 function* watchLoadHashtagPosts() {
   yield takeLatest(LOAD_HASHTAG_POSTS_REQUEST, loadHashtagPosts);
 }
-d takeLatest(LOAD_HASHTAG_POSTS_REQUEST, loadHashtagPosts);
-}
 
-
-function loadUserPostsAPI(id, lastId = 0) {
-  return axios.get(`/user/${id || 0}/posts?lastId=${lastId}`);
+function loadUserPostsAPI(id, lastId) {
+  return axios.get(`/user/${id || 0}/posts?lastId=${lastId}&limit=10`);
 }
 
 function* loadUserPosts(action) {

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useDispatch, useSelector } from 'react-redux';
 import { Avatar, Card } from 'antd';
@@ -13,15 +13,15 @@ const User = ({ id }) => {
 
   const onScroll = useCallback(() => {
     if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
-      if ( hasMorePost ) {
+      if (hasMorePost) {
         dispatch({
           type: LOAD_USER_POSTS_REQUEST,
-          lastId: mainPosts[mainPosts.length - 1].id,
+          lastId: mainPosts[mainPosts.length - 1] && mainPosts[mainPosts.length - 1].id,
           data: id,
         });
       }
     }
-  }, [hasMorePost, mainPosts.length]);
+  }, [hasMorePost, mainPosts.length, id]);
 
   useEffect( () => {
     window.addEventListener('scroll', onScroll);

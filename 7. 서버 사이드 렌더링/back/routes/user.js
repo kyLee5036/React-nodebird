@@ -188,20 +188,22 @@ router.delete('/:id/unfollow', isLoggedIn, async (req, res, next) => {
 
 router.get('/:id/posts', async (req, res, next) => {
   try {
-    const whereLastId = {};
+    let where = {};
     if (parseInt(req.query.lastId, 10)) {
-      whereLastId = {
+      where = {
+        UserId: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0,
         id: {
           [db.Sequelize.Op.lt]: parseInt(req.query.lastId, 10),
         },
       };
-    }
-    const posts = await db.Post.findAll({
-      whereLastId, 
-      where: {
+    } else {
+      where = {
         UserId: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0,
         RetweetId: null,
-      },
+      }
+    }
+    const posts = await db.Post.findAll({
+      where,
       include: [{
         model: db.User,
         attributes: ['id', 'nickname'],

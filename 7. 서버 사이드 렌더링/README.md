@@ -9,6 +9,7 @@
 + [더보기 버튼](#더보기-버튼)
 + [인피니트 스크롤링](#인피니트-스크롤링)
 + [쓰로틀링(throttling)](#쓰로틀링(throttling))
++ [immer로 불변성 쉽게 쓰기](#immer로-불변성-쉽게-쓰기)
 
 
 
@@ -2433,5 +2434,104 @@ router.get('/:tag', async(req, res, next) => {
 });
 
 module.exports = router;
+```
+
+해시태그쪽에 오류가 인피니트 스크롤하면 똑같은 데이터를 계속 불러와서 <br>
+수정을 하겠다. <br>
+
+#### \front\pages\hashtag.js
+```js
+...생략
+
+  const onScroll = useCallback(() => {
+    if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
+      if (hasMorePost) {
+        dispatch({
+          type: LOAD_HASHTAG_POSTS_REQUEST,
+          lastId: mainPosts[mainPosts.length - 1] && mainPosts[mainPosts.length - 1].id,
+          data: tag,
+        });
+      }
+    }
+  }, [hasMorePost, mainPosts.length, tag]);
+
+...생략
+```
+
+유저 아바타를 클릭하고 데이터를 받아온 다음 인피니티 스크롤도 지정해주었다. <br>
+하지만, 해시태그와 같이 다른방식이다. <br>
+
+#### \front\pages\user.js
+```js
+...생략
+
+  const onScroll = useCallback(() => {
+    if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
+      if (hasMorePost) {
+        dispatch({
+          type: LOAD_USER_POSTS_REQUEST,
+          lastId: mainPosts[mainPosts.length - 1] && mainPosts[mainPosts.length - 1].id,
+          data: id,
+        });
+      }
+    }
+  }, [hasMorePost, mainPosts.length, id]);
+
+...생략
+```
+
+#### \back\routes\user.js
+```js
+...생략
+
+router.get('/:id/posts', async (req, res, next) => {
+  try {
+    let where = {}; // 여기에 where를 넣고
+    if (parseInt(req.query.lastId, 10)) { // 인피니티 스크롤 할 경우
+      where = {
+        UserId: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0,
+        id: {
+          [db.Sequelize.Op.lt]: parseInt(req.query.lastId, 10),
+        },
+      };
+    } else { // 인피니티 스크롤 아닌 경우
+      where = {
+        UserId: parseInt(req.params.id, 10) || (req.user && req.user.id) || 0,
+        RetweetId: null,
+      }
+    }
+    const posts = await db.Post.findAll({
+      where, // 2가지 경우를 작성해서 여기 where에 넣어둔다.
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User,
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }, {
+        model: db.Post,
+        as: 'Retweet',
+        include: [{
+          model: db.User,
+          attributes: ['id', 'nickname'],
+        }, {
+          model: db.Image,
+        }],
+      }],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(req.query.limit, 10),
+    });
+    res.json(posts);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
 ```
 

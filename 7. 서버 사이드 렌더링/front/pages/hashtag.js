@@ -10,15 +10,15 @@ const Hashtag = ({ tag }) => {
 
   const onScroll = useCallback(() => {
     if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
-      if ( hasMorePost ) {
+      if (hasMorePost) {
         dispatch({
           type: LOAD_HASHTAG_POSTS_REQUEST,
-          lastId: mainPosts[mainPosts.length - 1].id,
+          lastId: mainPosts[mainPosts.length - 1] && mainPosts[mainPosts.length - 1].id,
           data: tag,
         });
       }
     }
-  }, [hasMorePost, mainPosts.length]);
+  }, [hasMorePost, mainPosts.length, tag]);
 
   useEffect( () => {
     window.addEventListener('scroll', onScroll);

@@ -2535,3 +2535,766 @@ router.get('/:id/posts', async (req, res, next) => {
 ...생략
 ```
 
+## immer로 불변성 쉽게 쓰기
+[위로가기](#서버-사이드-렌더링)
+
+불변성을 지키기위해서는 가독성이 너무 떨어진다.
+불변성을 유지하면서, 가독성을 개선해주는 라이브러리가 있다.
+그것이 <strong>immer</strong>이다.
+<pre><code>npm i immer</code></pre>
+
+#### immer 초기 설정
+```js
+import produce from 'immer'; // immer를 추가해준다.
+
+...생략
+
+export default (state = initialState, action) => {
+  return produce(state, (draft) => { // produce를 추가해준다.
+      // 여기에서 state를 안 건드리고, draft를 건드리고 있다. 
+    // immer에서 draft를 보고 어디에 바뀐지 체크하고, 바뀐 state를 불변성을 적용한다.
+    switch (action.type) {
+      // 여기에다가 코드를 작성하면 된다.
+
+    }
+  });
+};
+
+```
+
+<br>
+데이터 쪽에서 추가하는 부분이랑 제거하는 부분이 있는데 <br>
+
+> 추가 : push, unshift를 사용 <br>
+> 제거 : findIndex랑 splice 같이 사용 <br><br>
+
+
+그 이외에는 <br>
+
+> concat은 foreach로 사용하면 된다. <br>
+
+
+#### \front\reducers\post.js (immer 적용 후)
+```js
+import produce from 'immer'; 
+
+...생략
+
+export default (state = initialState, action) => {
+  return produce(state, (draft) => {
+    switch (action.type) {
+      case UPLOAD_IMAGES_REQUEST: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case UPLOAD_IMAGES_SUCCESS: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   imagePaths: [...state.imagePaths, ...action.data],
+        // };
+
+        /* immer 적용 후 */
+        action.data.forEach((p) => {
+          draft.imagePaths.push(p);
+        });
+        break;
+      }
+      case UPLOAD_IMAGES_FAILURE: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case REMOVE_IMAGE: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   imagePaths: state.imagePaths.filter((v, i) => i !== action.index),
+        // }
+
+        /* immer 적용 후 */
+        const index = draft.imagePaths.findIndex((v, i) => i === action.index);
+        draft.imagePaths.splice(index, 1);
+        break;
+      }
+      case ADD_POST_REQUEST: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   isAddingPost: true,
+        //   addPostErrorReason: '',
+        //   postAdded: false,
+        // };
+
+        /* immer 적용 후 */
+        draft.isAddingPost = true;
+        draft.addPostErrorReason = '';
+        draft.postAdded = false;
+        break;
+        
+      }
+      case ADD_POST_SUCCESS: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   isAddingPost: false,
+        //   mainPosts: [action.data, ...state.mainPosts],
+        //   postAdded: true,
+        //   imagePaths: [],
+        // };
+
+        /* immer 적용 후 */
+        draft.isAddingPost = false;
+        draft.mainPosts.unshift(action.data);
+        draft.postAdded = true;
+        draft.imagePaths = [];
+        break;
+      }
+      case ADD_POST_FAILURE: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   isAddingPost: false,
+        //   addPostErrorReason: action.error,
+        // };
+
+        /* immer 적용 후 */
+        draft.isAddingPost = false;
+        draft.addPostErrorReason = action.error;
+        break;
+      }
+      case ADD_COMMENT_REQUEST: {
+        /* immer 적용 전 */                  
+        // return {
+        //   ...state,
+        //   isAddingComment: true,
+        //   addCommentErrorReason: '',
+        //   commentAdded: false,
+        // };
+
+        /* immer 적용 후 */  
+        draft.isAddingComment = true;
+        draft.addCommentErrorReason = '';
+        draft.commentAdded = false;
+        break;                  
+      }
+      case ADD_COMMENT_SUCCESS: {
+        /* immer 적용 전 */  
+        // const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postId);
+        // const post = state.mainPosts[postIndex];
+        // const Comments = [...post.Comments, action.data.comment];
+        // const mainPosts = [...state.mainPosts];
+        // mainPosts[postIndex] = { ...post, Comments };
+        // return {
+        //   ...state,
+        //   isAddingComment: false,
+        //   mainPosts,
+        //   commentAdded: true,
+        // };
+
+        /* immer 적용 후 */ 
+        const postIndex = draft.mainPosts.findIndex(v => v.id === action.data.postId);
+        draft.mainPosts[postIndex].Comments.push(action.data.comment);
+        draft.isAddingComment = false;
+        draft.commentAdded = true;
+        break;
+      }
+      case ADD_COMMENT_FAILURE: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   isAddingComment: false,
+        //   addCommentErrorReason: action.error,
+        // };
+
+        /* immer 적용 후 */
+        draft.isAddingComment = false;
+        draft.addCommentErrorReason = action.error;
+        break;
+      }
+      case LOAD_COMMENTS_SUCCESS: {
+        /* immer 적용 전 */        
+        // const postIndex = state.mainPosts.findIndex(
+        //   v => v.id === action.data.postId
+        // );
+        // const post = state.mainPosts[postIndex];
+        // const Comments = action.data.comments;
+        // const mainPosts = [...state.mainPosts];
+        // mainPosts[postIndex] = { ...post, Comments };
+        // return {
+        //   ...state,
+        //   mainPosts
+        // };
+
+        /* immer 적용 후 */
+        const postIndex = draft.mainPosts.findIndex( v => v.id === action.data.postId);
+        draft.mainPosts[postIndex].Comments = action.data.comments;
+        break;
+      }
+      case LOAD_MAIN_POSTS_REQUEST:
+      case LOAD_HASHTAG_POSTS_REQUEST:
+      case LOAD_USER_POSTS_REQUEST: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   mainPosts: action.lastId === 0 ? [] : state.mainPosts,
+        //   hasMorePost: action.lastId ? state.hasMorePost : true,
+        // };
+
+        /* immer 적용 후 */
+        draft.mainPosts = action.lastId === 0 ? [] : draft.mainPosts;
+        draft.hasMorePost = action.lastId ? draft.hasMorePost : true;
+        break;
+      }
+      case LOAD_MAIN_POSTS_SUCCESS:
+      case LOAD_HASHTAG_POSTS_SUCCESS:
+      case LOAD_USER_POSTS_SUCCESS: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   mainPosts: state.mainPosts.concat(action.data),
+        //   hasMorePost: action.data.length === 10,
+        // };
+
+        /* immer 적용 후 */
+        draft.mainPosts = draft.mainPosts.concat(action.data);
+        draft.hasMorePost = action.data.length === 10;
+        break;
+      }
+      case LOAD_MAIN_POSTS_FAILURE:
+      case LOAD_HASHTAG_POSTS_FAILURE:
+      case LOAD_USER_POSTS_FAILURE: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case LIKE_POST_REQUEST: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case LIKE_POST_SUCCESS: {
+        /* immer 적용 전 */
+        // const postIndex = state.mainPosts.findIndex(
+        //   v => v.id === action.data.postId
+        // );
+        // const post = state.mainPosts[postIndex];
+        // const Likers = [{ id: action.data.userId}, ...post.Likers]; 
+        // const mainPosts = [...state.mainPosts];
+        // mainPosts[postIndex] = { ...post, Likers };
+        // return {
+        //   ...state,
+        //   mainPosts,
+        // };
+
+        /* immer 적용 후 */
+        const postIndex = draft.mainPosts.findIndex( v => v.id === action.data.postId);
+        draft.mainPosts[postIndex].Likers.unshift({ id: action.data.userId });
+        break;
+      }
+      case LIKE_POST_FAILURE: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case UNLIKE_POST_REQUEST: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case UNLIKE_POST_SUCCESS: {
+        /* immer 적용 전 */
+        // const postIndex = state.mainPosts.findIndex(v => v.id === action.data.postId);
+        // const post = state.mainPosts[postIndex];
+        // const Likers = post.Likers.filter(v => v.id !== action.data.userId);
+        // const mainPosts = [...state.mainPosts];
+        // mainPosts[postIndex] = { ...post, Likers };
+        // return {
+        //   ...state,
+        //   mainPosts,
+        // };
+
+        /* immer 적용 후 */
+        const postIndex = draft.mainPosts.findIndex( v => v.id === action.data.postId);
+        const likeIndex = draft.mainPosts[postIndex].Likers.findIndex(v => v.id === action.data.userId);
+        draft.mainPosts[postIndex].Likers.splice(likeIndex, 1);
+        break;
+      }
+      case UNLIKE_POST_FAILURE: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case RETWEET_REQUEST: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case RETWEET_SUCCESS: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   mainPosts: [action.data, ...state.mainPosts],
+        // };
+
+        /* immer 적용 후 */
+        draft.mainPosts.unshift(action.data);
+        break;
+      }
+      case RETWEET_FAILURE: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case REMOVE_POST_REQUEST: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      case REMOVE_POST_SUCCESS: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   mainPosts: state.mainPosts.filter(v => v.id !== action.data),
+        // };
+
+        /* immer 적용 후 */
+        draft.mainPosts = draft.mainPosts.filter(v => v.id !== action.data);
+        break;
+      }
+      case REMOVE_POST_FAILURE: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+      default: {
+         /* immer 적용 전 */
+        // return {
+        //   ...state,
+        // };
+
+        /* immer 적용 후 */
+        break;
+      }
+    }
+  });
+};
+
+```
+
+#### \front\reducers\post.js (적용 후)
+```js
+...생략
+
+export default (state = initialState, action) => {
+  return produce(state, (draft) => {
+    switch (action.type) {
+      case LOG_IN_REQUEST: {
+        // return {
+        //   ...state,
+        //   isLoggingIn: true,
+        // };
+
+        draft.isLoggingIn = true;
+        draft.logInErrorReason = '';
+        break;
+      }
+      case LOG_IN_SUCCESS: {
+        // return {
+        //   ...state,
+        //   isLoggingIn: false,
+        //   isLoading : false,
+        //   me: action.data,
+        // };
+
+        draft.isLoggingIn = false;
+        draft.logInErrorReason = '';
+        draft.me = action.data;
+        break;
+      }
+      case LOG_IN_FAILURE: {
+        // return {
+        //   ...state,
+        //   isLoggingIn: false,
+        //   logInErrorReason : action.error,
+        //   me: null,
+        // };
+
+        draft.isLoggingIn = false;
+        draft.logInErrorReason = action.reason;
+        draft.me = null;
+        break;
+      }
+  
+      case LOG_OUT_REQUEST: {
+        // return {
+        //   ...state,
+        //   isLoggingOut: true,
+        // };
+
+        draft.isLoggingOut = true;
+        break;
+      }
+      case LOG_OUT_SUCCESS: {
+        // return {
+        //   ...state,
+        //   isLoggingOut: false,
+        //   me: null
+        // };
+
+        draft.isLoggingOut = false;
+        draft.me = null;
+        break;
+      }
+      case LOG_OUT_FAILURE: {
+        // return {
+        //   ...state,
+        //   isLoggingOut: false,
+        // };
+
+        draft.isLoggingOut = false;
+        draft.me = null;
+        break;
+      }
+  
+      case SIGN_UP_REQUEST: { 
+        // return { 
+        //   ...state, 
+        //   isSigningUp: true,
+        //   isSignedUp: false,
+        //   signUpErrorReason: '',
+        //   isSignUpSuccesFailure: false,
+        // }; 
+
+        draft.isSignedUp = false;
+        draft.isSigningUp = true;
+        draft.signUpErrorReason = '';
+        draft.isSignUpSuccesFailure = false;
+        break;
+      }
+      case SIGN_UP_SUCCESS: { 
+        // return { 
+        //   ...state, 
+        //   isSigningUp: false,
+        //   isSignedUp: true, 
+        //   isSignUpSuccesFailure: false,
+        // }; 
+
+        draft.isSigningUp = false;
+        draft.isSignedUp = true;
+        draft.isSignUpSuccesFailure = false;
+        break;
+      }
+      case SIGN_UP_FAILURE: { 
+        // return { 
+        //   ...state, 
+        //   isSigningUp : false,
+        //   signUpErrorReason : action.error, 
+        //   isSignUpSuccesFailure: true,
+        // }; 
+
+        draft.isSigningUp = false;
+        draft.signUpErrorReason = action.error;
+        draft.isSignUpSuccesFailure = true;
+        break;
+
+      }
+      
+      case LOAD_USER_REQUEST: { 
+        // return { 
+        //   ...state, 
+        // };
+        
+        break;
+      }
+      case LOAD_USER_SUCCESS: { 
+        // if (action.me) {
+        //   return { 
+        //     ...state, 
+        //     me : action.data, 
+        //   }; 
+        // }
+        // return {
+        //   ...state,
+        //   userInfo: action.data
+        // }
+
+        if (action.me) {
+          draft.me = action.data;
+          break;
+        }
+        draft.useInfo = action.data;
+        break;
+      }
+      case LOAD_USER_FAILURE: { 
+        // return { 
+        //   ...state, 
+        // };
+        
+        break;
+      } 
+       case FOLLOW_USER_REQUEST: {
+        // return {
+        //   ...state,
+        // };
+
+        break;
+      }
+      case FOLLOW_USER_SUCCESS: {
+        /* immer 적용 전 */
+        // return {
+        //   ...state,
+        //   me: {
+        //     ...state.me,
+        //     Followings: [{ id: action.data }, ...state.me.Followings],
+        //   },
+        // };
+
+        /* immer 적용 후 */
+        draft.me.Followings.unshift({ id: action.data });
+        break;
+      }
+      case FOLLOW_USER_FAILURE: {
+        // return {
+        //   ...state,
+        // };
+
+        break;
+      }
+      case UNFOLLOW_USER_REQUEST: {
+        // return {
+        //   ...state,
+        // };
+
+        break;
+      }
+      case UNFOLLOW_USER_SUCCESS: {
+        // return {
+        //   ...state,
+        //   me: {
+        //     ...state.me,
+        //     Followings: state.me.Followings.filter(v => v.id !== action.data),
+        //   },
+        //   followingList: state.followingList.filter(v => v.id !== action.data),
+        // };
+
+        const index = draft.me.Followings.findIndex(v => v.id === action.data);
+        draft.me.Followings.splice(index, 1);
+        const index2 = draft.followingList.findIndex(v => v.id === action.data);
+        draft.followingList.splice(index2, 1);
+        break;
+      }
+      case UNFOLLOW_USER_FAILURE: {
+        // return {
+        //   ...state,
+        // };
+
+        break;
+      }
+      case ADD_POST_TO_ME: {
+        // return {
+        //   ...state,
+        //   me : {
+        //     ...state.me,
+        //     Posts: [{ id: action.data}, ...state.me.Posts],
+        //   },
+        // };
+
+        draft.me.Posts.unshift({ id: action.data });
+        break;
+      }
+      case REMOVE_POST_OF_ME: {
+        // return {
+        //   ...state,
+        //   me: {
+        //     ...state.me,
+        //     Posts: state.me.Posts.filter(v => v.id !== action.data),
+        //   },
+        // };
+
+        const index = draft.me.Posts.findIndex(v => v.id === action.data);
+        draft.me.Posts.splice(index, 1);
+        break;
+      }
+      case LOAD_FOLLOWERS_REQUEST: {
+        // return {
+        //   ...state,
+        //   hasMoreFollower: action.offset ? state.hasMoreFollower : true,
+        // };
+
+        draft.followerList = !action.offset ? [] : draft.followerList;
+        draft.hasMoreFollower = action.offset ? draft.hasMoreFollower : true;
+        break;
+      }
+      case LOAD_FOLLOWERS_SUCCESS: {
+        // return {
+        //   ...state,
+        //   followerList: state.followerList.concat(action.data),
+        //   hasMoreFollower: action.data.length === 3, 
+        // };
+
+        action.data.forEach((d) => {
+          draft.followerList.push(d);
+        });
+        draft.hasMoreFollower = action.data.length === 3;
+        break;
+      }
+      case LOAD_FOLLOWERS_FAILURE: {
+        // return {
+        //   ...state,
+        // };
+
+        break;
+      }
+      case LOAD_FOLLOWINGS_REQUEST: {
+        // return {
+        //   ...state,
+        //   hasMoreFollowing: action.offset ? state.hasMoreFollowing : true,
+        // };
+
+        draft.followingList = !action.offset ? [] : draft.followingList;
+        draft.hasMoreFollowing = action.offset ? draft.hasMoreFollowing : true;
+        break;
+      }
+      case LOAD_FOLLOWINGS_SUCCESS: {
+        // return {
+        //   ...state,
+        //   followingList: state.followingList.concat(action.data),
+        //   hasMoreFollowing: action.data.length === 3,
+        // };
+
+        action.data.forEach((d) => {
+          draft.followingList.push(d);
+        });
+        draft.hasMoreFollowing = action.data.length === 3;
+        break;
+      }
+      case LOAD_FOLLOWINGS_FAILURE: {
+        // return {
+        //   ...state,
+        // };
+
+        break;
+      }
+      case REMOVE_FOLLOWER_REQUEST: {
+        // return {
+        //   ...state,
+        // };
+
+        break;
+      }
+      case REMOVE_FOLLOWER_SUCCESS: {
+        // return {
+        //   ...state,
+        //   me: {
+        //     ...state.me,
+        //     Followers: state.me.Followers.filter(v => v.id !== action.data),
+        //   },
+        //   followerList: state.followerList.filter(v => v.id !== action.data),
+        // };
+
+        const index = draft.me.Followers.findIndex(v => v.id === action.data);
+        draft.me.Followers.splice(index, 1);
+        const index2 = draft.followerList.findIndex(v => v.id === action.data);
+        draft.followerList.splice(index2, 1);
+        break;
+      }
+      case REMOVE_FOLLOWER_FAILURE: {
+        // return {
+        //   ...state,
+        // };
+
+        break;
+      }
+      case EDIT_NICKNAME_REQUEST: {
+        // return {
+        //   ...state,
+        //   isEditingNickname: true,
+        //   editNicknameErrorResason: '',
+        // };
+
+        draft.isEditingNickname = true;
+        draft.editNicknameErrorReason = '';
+        break;
+      }
+      case EDIT_NICKNAME_SUCCESS: {
+        // return {
+        //   ...state,
+        //   isEditingNickname: false,
+        //   me: {
+        //     ...state.me,
+        //     nickname: action.data,
+        //   },
+        // };
+
+        draft.isEditingNickname = false;
+        draft.me.nickname = action.data;
+        break;
+      }
+      case EDIT_NICKNAME_FAILURE: {
+        // return {
+        //   ...state,
+        //   isEditingNickname: false,
+        //   editNicknameErrorResason: action.error,
+        // };
+
+        draft.isEditingNickname = false;
+        draft.editNicknameErrorReason = action.error;
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  })
+};
+
+...생략
+```
+
+

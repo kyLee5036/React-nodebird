@@ -12,6 +12,7 @@
 + [immer로 불변성 쉽게 쓰기](#immer로-불변성-쉽게-쓰기)
 + [프론트 단에서 리덕스 액션 호출 막기](#프론트-단에서-리덕스-액션-호출-막기)
 + [개별 포스트 불러오기](#개별-포스트-불러오기)
++ [reactHelmet으로 head 태그 조작하기](#reactHelmet으로-head-태그-조작하기)
 
 
 
@@ -3730,4 +3731,145 @@ app.prepare().then(() => {
 
 Meta-tag를 시행은 다음 시간에 하겠다. <br>
 
+
+## reactHelmet으로 head 태그 조작하기
+[위로가기](#서버-사이드-렌더링)
+
+### react-helmet
+react-helmet이라는 것을 사용하는데 <br>
+react-helmet이 head태그에 들어가는 meta, type, script 등을 관리를 해준다. <br>
+head태그에 들어가는 가는 것이기때문에, helmet이라고 이름을 지은 거 같다. <br>
+
+<pre><code>npm i react-helmet</code></pre>
+
+```js
+...생략
+import Helmet from 'react-helmet'; // 추가
+import { LOAD_POST_REQUEST } from '../reducers/post';
+
+const Post = ({ id }) => {
+  const { singlePost } = useSelector(state => state.post);
+
+  return (
+    <>
+      <Helmet
+        title={`${singlePost.User.nickname}님의 글`} // 제목
+        description={singlePost.content} // 설명
+        meta={[{
+          name: 'description', content: singlePost.content,
+        }, {
+          property: 'og:title', content: `${singlePost.User.nickname}님의 게시글`,
+        }, {
+          property: 'og:description', content: singlePost.content,
+        }, {
+          property: 'og:image', content: singlePost.Images[0] && `http://localhost:3065/${singlePost.Images[0].src}`,
+        }, {
+          property: 'og:url', content: `http://localhost:3060/post/${id}`,
+        }]}
+      />
+
+
+      <div itemScope="content">{singlePost.content}</div> 
+      <div itemScope="author">{singlePost.User.nickname}</div>
+      <div>
+        {singlePost.Images[0] && <img src={`http://localhost:3065/${singlePost.Images[0].src}`} />}
+      </div>
+    </>
+  )
+};
+
+...생략
+
+```
+<strong>og의 의미는 Open Graph</strong>의 줄임말이다. <br>
+검색엔진이 head태그에 위와 같은 데이터를 입력하면 검색봇이 찾을 수가 있다. <br>
+
+> <Helmet><title>처럼 태그를 내부에 넣는 방식도 있는데, 현재 문제가 있다. <br>
+> 그리고 <strong>Helment</strong>도 SSR을 적용해야한다. <br><br>
+
+
+먼저 `_document.js`파일을 생성해준다. <br>
+> `_document.js`는 HTML의 역할을 한다. <br>
+> 생성한 이유는 Helmet을 SSR을 하기위해서이다. <br>
+
+하지만. `_document.js`는 Hooks문법을 지원을 안해서 Class 문법으로 하겠다.
+#### \front\pages\_document.js 
+```js
+import React from 'react';
+import Document, { Main, NextScript } from 'next/document';
+import Helmet from 'react-helmet';
+
+class MyDocument extends Document { // Class문법으로 한다.
+  // next에서는 Doucment을 상속해야한다.
+
+  // Hooks를 사용하지 않으면 getInitialProps은 static으로 해야한다.
+  static getInitialProps(context) { 
+    return { helmet: Helmet.renderStatic() } // 이렇게 해줘야 서버 사이드 렌더링이 된다.
+  }
+
+  // 기본적인 이런 모양이 된다.
+  render() {
+
+    // 위에 return 해준 거는 밑에 props.helmet으로 들어간다. 
+    const { htmlAttributes, bodyAttributes, ...helment } = this.props.helment;
+
+    return (
+      // 밑에 쪽이 WebSite의 틀이다.
+      <html>
+        <head>
+
+        </head>
+        <bode>
+          {/* Main이 _app.js가 된다. */}
+          <Main />
+          <NextScript />
+        </bode>
+      </html>
+    )
+  }
+}
+
+```
+
+#### \front\pages\_document.js
+```js
+import React from 'react';
+import Document, { Main, NextScript } from 'next/document';
+import Helmet from 'react-helmet';
+
+class MyDocument extends Document {
+  static getInitialProps(context) { 
+    return { helmet: Helmet.renderStatic() }
+  }
+
+  render() {
+
+    const { htmlAttributes, bodyAttributes, ...helmet } = this.props.helmet;
+    // this.props.helment에서 htmlAttributes, bodyAttributes, ...helment을 사용할 수가 있다.
+    // htmlAttributes는 Html의 속성들을 Helmet에서 제공한다.
+    // bodyAttributes는 body의 속성들을 Helmet에서 제공한다.
+    // ...helment는 나머지(meta-tag, script, style, link태그)이다.
+
+    const htmlAttrs = htmlAttributes.toComponent(); // htmlAttributes을 이와같이 바꿔줘야한다.
+    const bodyAttrs = bodyAttributes.toComponent(); // bodyAttributes을 이와같이 바꿔줘야한다.
+
+    return (
+      <html {...htmlAttrs}> {/* html속성들을 이와 같이 넣어줘야한다. */}
+        <head>
+          {/* 나머지는 위와 같이 helment들을 넣어주시면 된다. */}
+          {Object.values(helmet).map(el => el.toComponent())}
+          {/* meta-tag, script, style, link태그들을 반복문 해서 각각 react-componet로 만들어서 head안에 붙이는 거다  */}
+        </head>
+        <bode {...bodyAttrs}> {/* body 속성들을 이와 같이 넣어줘야한다. */}
+          <Main />
+          <NextScript />
+        </bode>
+      </html>
+    )
+  }
+}
+
+```
+
+아지 미완성이다. 다음시간에도 계속 이어질 것이다. <br>
 

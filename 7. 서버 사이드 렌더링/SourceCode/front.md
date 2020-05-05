@@ -12,6 +12,7 @@
 + [immer로 불변성 쉽게 쓰기](#immer로-불변성-쉽게-쓰기)
 + [프론트 단에서 리덕스 액션 호출 막기](#프론트-단에서-리덕스-액션-호출-막기)
 + [개별 포스트 불러오기](#개별-포스트-불러오기)
++ [reactHelmet으로 head 태그 조작하기](#reactHelmet으로-head-태그-조작하기)
 
 
 
@@ -5741,3 +5742,89 @@ app.prepare().then(() => {
 });
 ```
 
+## reactHelmet으로 head 태그 조작하기
+[위로가기](#서버-사이드-렌더링)
+
+
+#### \front\pages\_document.js
+```js
+import React from 'react';
+import Document, { Main, NextScript } from 'next/document';
+import Helmet from 'react-helmet';
+
+class MyDocument extends Document {
+  static getInitialProps(context) {
+    return { helmet: Helmet.renderStatic() }
+  }
+
+  render() {
+    const { htmlAttributes, bodyAttributes, ...helmet } = this.props.helmet;
+    const htmlAttrs = htmlAttributes.toComponent();
+    const bodyAttrs = bodyAttributes.toComponent();
+
+    return (
+      <html {...htmlAttrs}>
+        <head>
+          {Object.values(helmet).map(el => el.toComponent())}
+        </head>
+        <body {...bodyAttrs}>
+          <Main />
+          <NextScript />
+        </body>
+      </html>
+    )
+  }
+}
+
+```
+
+#### \front\pages\post.js
+```js
+import React from 'react';
+import { useSelector } from 'react-redux';
+import PropTypes from 'prop-types';
+import Helmet from 'react-helmet';
+import { LOAD_POST_REQUEST } from '../reducers/post';
+
+const Post = ({ id }) => {
+  const { singlePost } = useSelector(state => state.post);
+  return (
+    <>
+      <Helmet
+        title={`${singlePost.User.nickname}님의 글`}
+        description={singlePost.content}
+        meta={[{
+          name: 'description', content: singlePost.content,
+        }, {
+          property: 'og:title', content: `${singlePost.User.nickname}님의 게시글`,
+        }, {
+          property: 'og:description', content: singlePost.content,
+        }, {
+          property: 'og:image', content: singlePost.Images[0] && `http://localhost:3065/${singlePost.Images[0].src}`,
+        }, {
+          property: 'og:url', content: `http://localhost:3060/post/${id}`,
+        }]}
+      />
+      <div itemScope="content">{singlePost.content}</div>
+      <div itemScope="author">{singlePost.User.nickname}</div>
+      <div>
+        {singlePost.Images[0] && <img src={`http://localhost:3065/${singlePost.Images[0].src}`} />}
+      </div>
+    </>
+  );
+};
+
+Post.getInitialProps = async (context) => {
+  context.store.dispatch({
+    type: LOAD_POST_REQUEST,
+    data: context.query.id,
+  });
+  return { id: parseInt(context.query.id, 10) };
+};
+
+Post.propTypes = {
+  id: PropTypes.number.isRequired,
+};
+
+export default Post;
+```

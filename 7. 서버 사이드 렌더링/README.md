@@ -11,6 +11,7 @@
 + [쓰로틀링(throttling)](#쓰로틀링(throttling))
 + [immer로 불변성 쉽게 쓰기](#immer로-불변성-쉽게-쓰기)
 + [프론트 단에서 리덕스 액션 호출 막기](#프론트-단에서-리덕스-액션-호출-막기)
++ [개별 포스트 불러오기](#개별-포스트-불러오기)
 
 
 
@@ -3512,3 +3513,221 @@ function* watchLoadMainPosts() {
 > 사가에서 throttle을 하는 것은 <strong>사가에 대한 액션</strong>만 `throttle`한다. <br>
 > 리덕스 자체 액션이 실행 되는것은 막을 수 없다. <br>
 >> 리덕스 자체 액션이 실행 되지 않을려면 <strong>리덕스 액션을 실행하는 프론트에서 못하도록 걸러줘서 만들어줘야한다</strong>. <br>
+
+
+## 개별 포스트 불러오기
+[위로가기](#서버-사이드-렌더링)
+
+개별 포스트를 불러오는 것을 만들어보겠다. ( 게시글을 하나만 불러오는 것이다. ) <br>
+
+#### \front\pages\post.js
+```js
+import React from 'react';
+import PropTypes from 'prop-types';
+import { useSelector } from 'react-redux';
+import { LOAD_POST_REQUEST } from '../reducers/post';
+
+const Post = ({  }) => {
+  const { post } = useSelector(state => state.post);
+
+  return (
+    <>
+      <div>Post</div>
+    </>
+  )
+};
+
+Post.getInitialProps = async ( context ) => {
+  context.store.dispatch({
+    type: LOAD_POST_REQUEST,
+    data: context.query.id,
+  })
+}
+
+Post.propTypes = {
+  id: PropTypes.number.isRequired,
+}
+
+```
+
+#### \front\sagas\post.js
+```js
+...생략
+...생략
+
+function loadPostAPI(postId) {
+  return axios.get(`/post/${postId}`, {
+    withCredentials: true,
+  });
+}
+
+function* loadPost(action) {
+  try {
+    const result = yield call(loadPostAPI, action.data);
+    yield put({
+      type: LOAD_POST_SUCCESS,
+      data: result.data,
+    });
+  } catch (e) {
+    console.error(e);
+    yield put({
+      type: LOAD_POST_FAILURE,
+      error: e,
+    });
+  }
+}
+
+function* watchLoadPost() {
+  yield takeLatest(LOAD_POST_REQUEST, loadPost);
+}
+
+export default function* postSaga() {
+  yield all([
+    ...생략
+    fork(watchLoadPost),
+  ]);
+}
+```
+
+#### \back\routes\post.js
+```js
+...생략
+
+router.get('/:id', async (req, res, next) => {
+  try {
+    const post = await db.Post.findOne({
+      where: { id: req.params.id },
+      include: [{
+        model: db.User,
+        attributes: ['id', 'nickname'],
+      }, {
+        model: db.Image,
+      }, {
+        model: db.User,
+        through: 'Like',
+        as: 'Likers',
+        attributes: ['id'],
+      }, {
+        model: db.Post,
+        as: 'Retweet',
+        include: [{
+          model: db.User,
+          attributes: ['id', 'nickname'],
+        }, {
+          model: db.Image,
+        }],
+        order: [['createdAt', 'DESC']],
+      }]
+    });
+    res.json(post);
+  } catch (e) {
+    console.error(e);
+    next(e);
+  }
+});
+
+...생략
+```
+
+#### \front\reducers\post.js
+```js
+import produce from 'immer';
+
+export const initialState = {
+  ...생략
+  commentAdded: false,
+  singlePost: null, // 개별 포스트 state를 추가해준다.
+};
+
+...생략
+
+export default (state = initialState, action) => {
+  return produce(state, (draft) => {
+    switch (action.type) {
+      ...생략
+
+      case LOAD_POST_SUCCESS: {
+        draft.singlePost = action.data;
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  });
+};
+
+```
+
+#### \front\pages\post.js
+```js
+import React from 'react';
+import PropTypes from 'prop-types';
+import { useSelector } from 'react-redux';
+import { LOAD_POST_REQUEST } from '../reducers/post';
+
+const Post = ({ id }) => {
+  const { singlePost } = useSelector(state => state.post);
+
+  return (
+    <>
+      <div itemScope="content">{singlePost.content}</div>
+      <div itemScope="author">{singlePost.User.nickname}</div>
+      <div>
+        {singlePost.Images[0] && <img src={`http://localhost:3065/${singlePost.Images[0].src}`} />}
+      </div>
+    </>
+  )
+};
+
+Post.getInitialProps = async ( context ) => {
+  context.store.dispatch({
+    type: LOAD_POST_REQUEST,
+    data: context.query.id,
+  })
+}
+
+Post.propTypes = {
+  id: PropTypes.number.isRequired,
+}
+
+export default Post;
+
+```
+
+
+#### \front\server.js
+```js
+....생략
+
+const app = next({ dev });
+const handle = app.getRequestHandler();
+dotenv.config();
+
+app.prepare().then(() => {
+  const server = express();
+
+  ....생략
+
+  server.get('/post/:id', (req, rex) => { // 동적 페이지를 추가해준다.
+    return app.render(req, res, '/post', { id: req.params.id });
+  })
+
+}
+
+  ...생략
+});
+```
+
+이거를 한 이유는, 주소에 대해서 검색엔진이 게시글을 가져갔을 때 제대로 가져갔는지 확인하기 위해서이다. <br><br>
+
+실제로 검색엔진이 어떤게 내용물, 이미지를 알 수가없다. 검색엔진이 노출이 잘 되기위해서 <br>
+2가지 방법이 있다. <br>
+
+> 1. Meta-tag <br>
+> 2. schema.org : Html 속성을 넣어주는 것이다.-> 따로 공부해야 한다.<br>
+>> 여기서는 간단하게 Meta-tag를 시행하겠다. <br>
+
+Meta-tag를 시행은 다음 시간에 하겠다. <br>
+
+

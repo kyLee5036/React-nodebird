@@ -13,6 +13,7 @@
 + [프론트 단에서 리덕스 액션 호출 막기](#프론트-단에서-리덕스-액션-호출-막기)
 + [개별 포스트 불러오기](#개별-포스트-불러오기)
 + [reactHelmet으로 head 태그 조작하기](#reactHelmet으로-head-태그-조작하기)
++ [reactHelmet SSR](#reactHelmet-SSR)
 
 
 
@@ -3873,3 +3874,170 @@ class MyDocument extends Document {
 
 아지 미완성이다. 다음시간에도 계속 이어질 것이다. <br>
 
+
+## reactHelmet SSR
+[위로가기](#서버-사이드-렌더링)
+
+_app.js의 Head를 helmet으로 바꿔줘야한다. <br>
+head랑 helmet이 서로 있으면 충돌하기 때문이다. <br>
+
+#### \front\pages\_app.js
+```js
+import React from 'react';
+// import Head from 'next/head'; // 필요없다
+...생략
+import Helmet from 'react-helmet'; // 추가해준다
+
+import AppLayout from '../components/AppLayout';
+import reducer from '../reducers';
+import rootSaga from '../sagas';
+
+const NodeBird = ({ Component, store, pageProps }) => {
+  return (
+    <Provider store={store} >
+      <Helmet
+        title="NodeBird"
+        htmlAttributes={{ lang: ['ko', 'jp', 'en']}}
+        meta={[{
+          charset: 'UTF-8'
+        }, {
+          name: 'viewport',
+          content: 'width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=yes,viewport-fit=cover',
+        }, {
+          'http-equiv': 'X-UA-Compatible', content: 'IE=edge',
+        }, {
+          name: 'description', content: 'NodeBird SNS'
+        }, {
+          property: 'og:type', content: 'website',
+        }]}
+        link={[{
+          rel: 'styleSheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css'
+        }, {
+          rel: 'styleSheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick.min.css'
+        }, {
+          rel: 'styleSheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick-theme.min.css'
+        }]}
+      />
+      {/* 밑에 있는 Head부분을 다 지울수가 있다. */}
+      {/* 밑에 있는 것을 위에 있는 것처럼 변경해주었다. */}
+      
+      {/* 
+      // <Head>
+      //   <title>NodeBird</title>
+      //   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css" />
+      //   <link rel="stylesheet" type="text/css" charSet="UTF-8" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick.min.css" /> 
+      //   <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick-theme.min.css" />
+      // </Head>
+      */}
+      <AppLayout >
+        <Component {...pageProps} />
+      </AppLayout>
+    </Provider>
+  );
+};
+
+...생략
+
+export default WithRedux(configureStore)(WithReduxSaga(NodeBird));
+```
+
+> 만약에, helmet에서 _app.js의 title이랑 post.js의 title이 둘다있으면 어떻게 될까? <br>
+>> helmt이 겹쳐지는 부분을 합쳐준다. 물론, 하위 컴포넌트가 우선순위라서 post.js의 title이 나오게 되어있다. (덮어씌우게 된다.) <br>
+>> _app.js의 helmet은 공통된 부분을 넣어주면 될 것이다. <br>
+
+#### \front\pages\_app.js
+
+```js
+..생략
+import Helmet from 'react-helmet';
+import { Container } from 'next/app'; // 추가해주기
+
+...생략
+
+const NodeBird = ({ Component, store, pageProps }) => {
+  return (
+    // 일단 Container로 감싸준다. 그런다음에 _document.js에 가서
+    <Container> // Container로 감싸주기
+      <Provider store={store} >
+        <Helmet
+          title="NodeBird"
+          htmlAttributes={{ lang: ['ko', 'jp', 'en']}}
+          meta={[{
+            charset: 'UTF-8',
+          }, {
+            name: 'viewport',
+            content: 'width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=yes,viewport-fit=cover',
+          }, {
+            'http-equiv': 'X-UA-Compatible', content: 'IE=edge',
+          }, {
+            name: 'description', content: 'NodeBird SNS'
+          }, {
+            name: 'og:title', content: 'NodeBird',
+          },{
+            name: 'og:description', content: 'LEEKY NodeBird SNS',
+          }, {
+            property: 'og:type', content: 'website',
+          }]}
+          link={[{
+            rel: 'shortcut icon', href: '/favicon.ico', // favicon 마크 달아주기
+          }, {
+            rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css',
+          }, {
+            rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick.min.css',
+          }, {
+            rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick-theme.min.css',
+          }]}
+        />
+        <AppLayout >
+          <Component {...pageProps} />
+        </AppLayout>
+      </Provider>
+    </Container> // Container로 감싸주기
+  );
+};
+
+...생략
+
+```
+
+`_document.js`로 넘어와서 수정해줘야 할 것이 있다. <br>
+
+#### \front\pages\_document.js
+```js
+import React from 'react';
+import PropTypes from 'prop-types';
+import Document, { Main, NextScript } from 'next/document';
+import Helmet from 'react-helmet';
+
+class MyDocument extends Document {
+  static getInitialProps(context) {
+
+    // context에 renderPage를 생성해준다.
+    // context에서 renderPage를 해줘야만 _app.js가 실행이 된다.
+    const page = context.renderPage((App) => (props) => <App {...props} />)
+    // page를 리턴하기
+    return { ...page, helmet: Helmet.renderStatic() }
+  }
+
+  render() {
+    const { htmlAttributes, bodyAttributes, ...helmet } = this.props.helmet;
+    const htmlAttrs = htmlAttributes.toComponent();
+    const bodyAttrs = bodyAttributes.toComponent();
+
+    return (
+      ....생략하기
+    )
+  }
+}
+
+MyDocument.propTypes = {
+  helmet: PropTypes.object.isRequired,
+};
+
+export default MyDocument;
+```
+
+> `_document.js`가 `context.renderPage`를 실행해줘서 `_app.js`가 작동이 된다. <br>
+> 그러고나서 ` _app.js`에서는 `Component.getInitialProps(ctx);`를 실행해서 <br>
+> 하위 컴포넌트가 `getInitialProps`를 사용할 수 있게 된다. <br>
+> 마지막으로는 `post.js`의 `Post.getInitialProps`가 작동이 되는 것이다. <br>

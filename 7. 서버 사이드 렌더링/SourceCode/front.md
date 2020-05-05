@@ -13,6 +13,7 @@
 + [프론트 단에서 리덕스 액션 호출 막기](#프론트-단에서-리덕스-액션-호출-막기)
 + [개별 포스트 불러오기](#개별-포스트-불러오기)
 + [reactHelmet으로 head 태그 조작하기](#reactHelmet으로-head-태그-조작하기)
++ [reactHelmet SSR](#reactHelmet-SSR)
 
 
 
@@ -5827,4 +5828,151 @@ Post.propTypes = {
 };
 
 export default Post;
+```
+
+
+## reactHelmet SSR
+[위로가기](#서버-사이드-렌더링)
+
+#### \front\pages\_app.js
+```js
+import React from 'react';
+import PropTypes from 'prop-types';
+import WithRedux from 'next-redux-wrapper';
+import WithReduxSaga from 'next-redux-saga';
+import { createStore, compose, applyMiddleware } from 'redux';
+import { Provider } from 'react-redux'; 
+import { LOAD_USER_REQUEST } from '../reducers/user';
+import createSagaMiddleware from 'redux-saga';
+import axios from 'axios';
+import Helmet from 'react-helmet';
+import { Container } from 'next/app';
+
+import AppLayout from '../components/AppLayout';
+import reducer from '../reducers';
+import rootSaga from '../sagas';
+
+const NodeBird = ({ Component, store, pageProps }) => {
+  return (
+    <Container>
+      <Provider store={store} >
+      <Helmet
+          title="NodeBird"
+          htmlAttributes={{ lang: ['ko', 'jp', 'en']}}
+          meta={[{
+            charset: 'UTF-8',
+          }, {
+            name: 'viewport',
+            content: 'width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=yes,viewport-fit=cover',
+          }, {
+            'http-equiv': 'X-UA-Compatible', content: 'IE=edge',
+          }, {
+            name: 'description', content: 'NodeBird SNS'
+          }, {
+            name: 'og:title', content: 'NodeBird',
+          },{
+            name: 'og:description', content: 'LEEKY NodeBird SNS',
+          }, {
+            property: 'og:type', content: 'website',
+          }]}
+          link={[{
+            rel: 'shortcut icon', href: '/favicon.ico',
+          }, {
+            rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/antd/3.16.2/antd.css',
+          }, {
+            rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick.min.css',
+          }, {
+            rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.6.0/slick-theme.min.css',
+          }]}
+        />
+        <AppLayout >
+          <Component {...pageProps} />
+        </AppLayout>
+      </Provider>
+    </Container>
+  );
+};
+
+NodeBird.propTypes = {
+  Component: PropTypes.elementType.isRequired,
+  store: PropTypes.object.isRequired,
+  pageProps: PropTypes.object.isRequired,
+};
+
+NodeBird.getInitialProps = async (context) => {
+  const { ctx, Component } = context;
+  let pageProps = {};
+  const state = ctx.store.getState();
+  const cookie = ctx.isServer ? ctx.req.headers.cookie : '';
+  axios.defaults.headers.Cookie = '';
+  if (ctx.isServer && cookie) {
+    axios.defaults.headers.Cookie = cookie;
+  }
+  if(!state.user.me) {
+    ctx.store.dispatch({
+      type: LOAD_USER_REQUEST,
+    });
+  }
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx);
+  }
+  return { pageProps };
+};
+
+const configureStore = (initalState, options) => {
+  const sagaMiddleware = createSagaMiddleware();
+  const middlewares = [sagaMiddleware];
+  const enhancer = process.env.NODE_ENV === 'production' 
+  ? compose( 
+    applyMiddleware(...middlewares))
+  : compose(
+    applyMiddleware(...middlewares), 
+      !options.isServer && window.__REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? window.__REDUX_DEVTOOLS_EXTENSION__() : (f) => f,
+  );
+
+  const store = createStore(reducer, initalState, enhancer);
+  store.sagaTask = sagaMiddleware.run(rootSaga);
+  return store;
+}
+
+export default WithRedux(configureStore)(WithReduxSaga(NodeBird));
+```
+
+#### \front\pages\_document.js
+```js
+import React from 'react';
+import PropTypes from 'prop-types';
+import Document, { Main, NextScript } from 'next/document';
+import Helmet from 'react-helmet';
+
+class MyDocument extends Document {
+  static getInitialProps(context) {
+    const page = context.renderPage((App) => (props) => <App {...props} />)
+    return { ...page, helmet: Helmet.renderStatic() }
+  }
+
+  render() {
+    const { htmlAttributes, bodyAttributes, ...helmet } = this.props.helmet;
+    const htmlAttrs = htmlAttributes.toComponent();
+    const bodyAttrs = bodyAttributes.toComponent();
+
+    return (
+      <html {...htmlAttrs}>
+        <head>
+          {Object.values(helmet).map(el => el.toComponent())}
+        </head>
+        <body {...bodyAttrs}>
+          <Main />
+          <NextScript />
+        </body>
+      </html>
+    );
+  }
+}
+
+MyDocument.propTypes = {
+  helmet: PropTypes.object.isRequired,
+};
+
+export default MyDocument;
 ```

@@ -4041,3 +4041,6 @@ export default MyDocument;
 > 그러고나서 ` _app.js`에서는 `Component.getInitialProps(ctx);`를 실행해서 <br>
 > 하위 컴포넌트가 `getInitialProps`를 사용할 수 있게 된다. <br>
 > 마지막으로는 `post.js`의 `Post.getInitialProps`가 작동이 되는 것이다. <br>
+
+
+

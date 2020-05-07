@@ -14,6 +14,7 @@
 + [개별 포스트 불러오기](#개별-포스트-불러오기)
 + [reactHelmet으로 head 태그 조작하기](#reactHelmet으로-head-태그-조작하기)
 + [reactHelmet SSR](#reactHelmet-SSR)
++ [styled Components](#styled-Components)
 
 
 
@@ -4042,5 +4043,175 @@ export default MyDocument;
 > 하위 컴포넌트가 `getInitialProps`를 사용할 수 있게 된다. <br>
 > 마지막으로는 `post.js`의 `Post.getInitialProps`가 작동이 되는 것이다. <br>
 
+## styled Components
+[위로가기](#서버-사이드-렌더링)
+
+<pre><code>npm i styled-components</code></pre>
+일단 styled-components을 4버전으로 하기 때문에 `npm i styled-components@4`로 해주었다.
+
+#### \front\components\ImagesZoom.js
+
+```js
+import React, { useState } from 'react';
+import PropTypes from 'prop-types';
+import { Icon } from 'antd';
+import Slick from 'react-slick';
+import styled from 'styled-components'; // 선언을 해주어야한다.
+
+// div태그로 감싸준다.
+export const Overlay = styled.div` 
+  position: fixed;
+  z-index: 5000;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+`;
+
+// header로 감싸준다.
+// 여기서 h1은 header의 자식 h1 이다. 자식태그 표시할 때 `&`를 사용한다.
+export const Header = styled.header`
+  height: 44px;
+  background: white;
+  position: relative;
+  padding: 0;
+  text-align: center;
+
+
+  & h1 {
+    margin: 0;
+    font-size: 17px;
+    color: #333;
+    line-height: 44px;
+  }
+
+`;
+
+
+const ImagesZoom = ({ images, onClose }) => {
+  
+  const [currentSlide, setCurrentSlide] = useState(0); 
+
+  return (
+
+    <Overlay>  // styled-components 적용부분
+      <Header> // styled-components 적용부분
+        <h1>상세 이미지</h1>
+        <Icon type="close" onClick={onClose} style={{ position: 'absolute', right: 0, top: 0, padding: 15, lineHeight: '14px', cursor: 'pointer' }} />
+      </Header> // styled-components 적용부분
+      ...생략
+    </Overlay> // styled-components 적용부분
+  )
+};
+
+...생략
+```
+
+div태그가 많이 있으면 무슨역할인지 모르니까 이름을 지어줘서 만들어서 보기가 편하다. <br><br>
+
+### style 덮어씌우는 방법
+
+여기서 <strong>antd-style을 덮어 씌울 수 있는 방법</strong>이 있다. <br>
+
+#### \front\components\ImagesZoom.js
+```js
+...생략
+
+export const SlickWrapper = styled.div`
+  height: calc(100% - 44px);
+  background: #090909;
+`;
+
+
+// Icon을 덮어 씌워준다. 
+// 스타일이 마음에 안들면 이런식으로 해주면 된다.
+export const CloseBtn = styled(Icon)`
+  position: absolute;
+  right: 0;
+  top: 0;
+  padding: 15px;
+  line-height: 14px;
+  cursor: pointer;
+`;
+
+
+const ImagesZoom = ({ images, onClose }) => {
+  
+  const [currentSlide, setCurrentSlide] = useState(0); 
+
+  return (
+    <Overlay>
+      <Header>
+        <h1>상세 이미지</h1>
+
+        // 변경 전 : 이 부분 잘 보기
+        {/* <Icon type="close" onClick={onClose} style={{ position: 'absolute', right: 0, top: 0, padding: 15, lineHeight: '14px', cursor: 'pointer' }} /> */}
+        
+        // 변경 후 : 이 부분 잘 보기
+        <CloseBtn type="close" onClick={onClose} />
+
+
+      </Header>
+      ...생략
+    </Overlay>
+  )
+};
+
+...생략
+```
+
+### CSS 선택자 하는 방법
+
+style-compoents를 모듈로 변경해서 다른파일에 사용할 수도 있다. <br>
+호불호가 갈린다. 왜냐하면, 변수명을 자꾸 계속 지어줘야해서 호불호갈리지만, Tip이 있다. <br>
+CSS 선택자로 하는 방식으로 Header안에 h1을 생성해준다. <br>
+
+```js
+// 예시 1
+export const Header = styled.header`
+  height: 44px;
+  background: white;
+  position: relative;
+  padding: 0;
+  text-align: center;
+
+
+  & h1 {
+    margin: 0;
+    font-size: 17px;
+    color: #333;
+    line-height: 44px;
+  }
+
+`;
+
+// 예시 2
+export const Indicator = styled.div`
+  text-align: center;
+  
+  & > div {
+    width: 75px;
+    height: 30px;
+    line-height: 30px;
+    border-radius: 15px;
+    background: #313131;
+    display: inline-block;
+    text-align: center;
+    color: white;
+    font-size: 15px;
+  }
+`;
+
+// 예시 3
+export const ImgWrapper = styled.div`
+  padding: 32px;
+  text-align: center;
+  
+  & img {
+    margin: 0 auto;
+    max-height: 750px;
+  }
+`;
+```
 
 

@@ -15,6 +15,7 @@
 + [reactHelmet으로 head 태그 조작하기](#reactHelmet으로-head-태그-조작하기)
 + [reactHelmet SSR](#reactHelmet-SSR)
 + [styled Components](#styled-Components)
++ [styled Components SSR](#styled-Components-SSR)
 
 
 
@@ -4213,5 +4214,114 @@ export const ImgWrapper = styled.div`
   }
 `;
 ```
+
+
+## styled Components SSR
+[위로가기](#서버-사이드-렌더링)
+
+> styled Components도 참고로 검색엔진이 봣을 때 styling이 적용안되어 있기떄문에, 
+>> styled Components도 SSR 적용해줘야한다.
+
+#### \front\pages\_document.js
+```js
+...생략
+import { ServerStyleSheet } from 'styled-components'; // ServerStyleSheet를 생성해준다.
+
+class MyDocument extends Document {
+  static getInitialProps(context) {
+    const sheet = new ServerStyleSheet(); // seet를 생성해준다.
+    const page = context.renderPage((App) => (props) => sheet.collectStyles(<App {...props} />)); // seet가 App을 감싸줘야한다.
+    const styleTags = sheet.getStyleElement(); // styleTages도 생성해준다. 
+    return { ...page, helmet: Helmet.renderStatic(), styleTags } // styleTags를 넣어준다. 
+  }
+
+  render() {
+    ...생략
+
+    return (
+      <html {...htmlAttrs}>
+        <head>
+          {/* 마지막으로 head태그 안에 stayleTags를 넣어줘야한다. 그러면 style-compoents가 SSR이 된다. */}
+          {this.props.styleTags} 
+          {Object.values(helmet).map(el => el.toComponent())}
+        </head>
+        <body {...bodyAttrs}>
+          <Main />
+          <NextScript />
+        </body>
+      </html>
+    );
+  }
+}
+
+MyDocument.propTypes = {
+  helmet: PropTypes.object.isRequired,
+  styleTags: PropTypes.object.isRequired // 추가해주기
+};
+
+export default MyDocument;
+```
+
+이거는 공식문서에 이렇게 하라고 나와있으므로, 공식에 의거하여 따라하면 된다. <br><br>
+
+방금 styled-components가 SSR이 적용되는 거 확인하기 위해서 PostCard에서 `CardWrapper`라는 것을 추가하였다. <br>
+`CardWrapper`안에 Card들을 전부 넣었다. <br>
+
+#### \front\components\PostCard.js
+```js
+...생략
+import styled from 'styled-components'; // 추가
+
+// margin-bottom을 추가하였다.
+export const CardWrapper = styled.div`
+  margin-bottom: 20px; 
+`;
+
+const PostCard = ({post}) => {
+
+  ...생략
+  ...생략
+
+  return (
+    <CardWrapper>
+      ...생략
+      ...생략
+    </CardWrapper>
+  )
+};
+...생략
+```
+
+
+마지막에 잘 확인할려면 Postman에 내 주소를 입력하고 보면.... <br>
+
+#### postman확인 결과
+```html
+...생략
+
+<head>
+<!-- 밑에 부부분에 style이랑 방금 추가한 margin-bottom이 잘 적용되어있는 것을 확인할 수가 있다. -->
+	<style data-styled="jjblnC" data-styled-version="4.4.1"> 
+		/* sc-component-id: sc-dVhcbM */
+		.jjblnC {
+			margin-bottom: 20px;
+		}
+	</style>
+	
+  ...생략
+	<title data-react-helmet="true">NodeBird</title>
+</head>
+...생략
+```
+
+아.. 그런데, postman에 preview를 보면 antd-css를 못 불러오고있다. <br>
+antd-css를 불러오면 깔끔한데, 실제 검색엔진을 postman으로 판단하기 힘들다. <br>
+> 하지만, styled-components는 SSR가 잘 된다!! <br><br>
+
+
+> 방금 이미지(ImageZoom.js)도 styled-components 시켰는데 왜 안되는거임?? <br>
+>> 이미지가 렌더링을 해야하만 볼 수 있기때문에 아직아직 안되는 것이였다.  <br>
+>> 그래서 확인하기 위해서 메인페이지의 카드에 다가 margin-bottom을 넣어서 확인시켜주었다. <br>
+
 
 

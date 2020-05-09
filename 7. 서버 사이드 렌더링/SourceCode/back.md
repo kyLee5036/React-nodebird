@@ -16,6 +16,7 @@
 + [reactHelmet SSR](#reactHelmet-SSR)
 + [styled Components](#styled-Components)
 + [styled Components SSR](#styled-Components-SSR)
++ [Router push로 검색 기능구현, 팔로워 팔로잉 클릭시 페이지 이동, 자잘한 에러 및 Tip](#Router-push로-검색-기능구현,-팔로워-팔로잉-클릭시-페이지-이동,-자잘한-에러-및-Tip)
 
 
 
@@ -1702,6 +1703,11 @@ module.exports = router;
 코드없음
 
 ## styled Components SSR
+[위로가기](#서버-사이드-렌더링)
+
+코드없음
+
+## Router push로 검색 기능구현, 팔로워 팔로잉 클릭시 페이지 이동, 자잘한 에러 및 Tip
 [위로가기](#서버-사이드-렌더링)
 
 코드없음

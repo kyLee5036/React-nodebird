@@ -16,6 +16,7 @@
 + [reactHelmet SSR](#reactHelmet-SSR)
 + [styled Components](#styled-Components)
 + [styled Components SSR](#styled-Components-SSR)
++ [Router push로 검색 기능구현, 팔로워 팔로잉 클릭시 페이지 이동, 자잘한 에러 및 Tip](#Router-push로-검색-기능구현,-팔로워-팔로잉-클릭시-페이지-이동,-자잘한-에러-및-Tip)
 
 
 
@@ -4324,4 +4325,292 @@ antd-css를 불러오면 깔끔한데, 실제 검색엔진을 postman으로 판�
 >> 그래서 확인하기 위해서 메인페이지의 카드에 다가 margin-bottom을 넣어서 확인시켜주었다. <br>
 
 
+## Router push로 검색 기능구현, 팔로워 팔로잉 클릭시 페이지 이동, 자잘한 에러 및 Tip
+[위로가기](#서버-사이드-렌더링)
+
+### 해시태그 검색 구현
+
+검색창을 아직 구현을 안했기때문에, 검색창을 지금부터 구현을 하겠다. <br>
+#### \front\components\AppLayout.js
+```js
+...생략
+import Router from 'next/router'; // 추가
+...생략
+
+const AppLayout = ({ children }) => {
+  const { me } = useSelector(state => state.user);
+
+  const onSearch = (value) => {
+    Router.push({ pathname: '/hashtag', query: {tag: value} }, `/hashtag/${value}`);
+    // pathname: '/hashtag', query: {tag: value} } : 내부적으로 접근
+    // `/hashtag/${value}` : 겉으로 이 주소로 보인다.
+    // 왜냐하면? 밑에 설명이 있음..
+
+    // 외부로 하는 주소는 : `/hashtag/${value}`
+    // 내부로 하는 주소는 : pathname: '/hashtag', query: {tag: value} }
+  };
+
+  return (
+    <div>
+      <Menu mode="horizontal">
+        <Menu.Item key="home"><Link href="/"><a>노드버드</a></Link></Menu.Item>
+        <Menu.Item key="profile"><Link href="/profile"><a>프로필</a></Link></Menu.Item>
+          <Menu.Item key="mail">
+            <Input.Search 
+              enterButton 
+              style={{ verticalAlign : 'middle' }}
+              onSearch={onSearch} // onSearch 추가하기
+            />
+        </Menu.Item>
+      </Menu>
+      ...생략
+    </div>
+  );
+};
+
+...생략
+
+export default AppLayout;
+```
+
+#### \front\server.js
+```js
+// 이 이유는
+// 동적 라우팅할 때에는 서버쪽 주소랑 프론트 주소가 다르기 떄문에,
+server.get('/hashtag/:tag', (req, res) => {
+  return app.render(req, res, '/hashtag', { tag: req.params.tag });
+});
+// 외부로 하는 주소는 : '/hashtag/:tag'
+// 내부로 하는 주소는 : app.render(req, res, '/hashtag', { tag: req.params.tag });
+```
+
+#### \front\reducers\post.js (reudcer도 건드려줘야한다.)
+
+```js
+case LOAD_MAIN_POSTS_REQUEST:
+case LOAD_HASHTAG_POSTS_REQUEST:
+case LOAD_USER_POSTS_REQUEST: {
+  // draft.mainPosts = action.lastId === 0 ? [] : draft.mainPosts;
+  draft.mainPosts = !action.lastId ? [] : draft.mainPosts; // 수정해준다.
+  draft.hasMorePost = action.lastId ? draft.hasMorePost : true;
+  break;
+}
+```
+
+### 팔로잉, 팔로워 클릭 시 프로필 페이지 이동 
+
+#### 
+```js
+import React, { useCallback } from 'react';
+import Link from 'next/link'; // 추가
+...생략
+
+const UserProfile = () => {
+  ...생략
+
+  return (
+    <Card
+    actions={[
+      <Link href="/profile" key="twit"> // 이렇게 추가
+        <a>
+          <div>짹짹<br />{me.Posts.length}</div>
+        </a>
+      </Link>,
+      <Link href="/profile" key="following"> // 이렇게 추가
+        <a>
+          <div>팔로잉<br />{me.Followings.length}</div>
+        </a>
+      </Link>,
+      <Link href="/profile" key="follower"> // 이렇게 추가
+        <a>
+          <div>팔로워<br />{me.Followers.length}</div>
+        </a>
+      </Link>,
+    ]}
+    >
+      ...생략
+    </Card> 
+  )
+}
+
+export default UserProfile;
+```
+
+에러가 나와서.. 이 부분을 추가한다. <br>
+
+#### \front\reducers\user.js
+```js
+case LOAD_FOLLOWERS_REQUEST: {
+  draft.followerList = !action.offset ? [] : draft.followerList; // 이 부분을 추가시켜줘야한다.
+
+  draft.hasMoreFollower = action.offset ? draft.hasMoreFollower : true;
+  break;
+}
+
+...생략
+
+case LOAD_FOLLOWINGS_REQUEST: {
+  draft.followingList = !action.offset ? [] : draft.followingList; // 이 부분을 추가시켜줘야한다.
+
+  draft.hasMoreFollowing = action.offset ? draft.hasMoreFollowing : true;
+  break;
+}
+```
+<br><br>
+자잘한 에러들 수정할 것이다. <br>
+> Warning: Failed prop type: The prop `pageProps` is marked as required in `NodeBird`, but its value is `undefined`. <br>
+> in NodeBird (created by withReduxSaga(NodeBird)) <br>
+> in withReduxSaga(NodeBird) (created by withRedux(withReduxSaga(NodeBird))) <br>
+> in withRedux(withReduxSaga(NodeBird)) <br>
+> in Suspense <br>
+>> pageProps: PropTypes.object.isRequired 이 부분에 값이 안 들어올 수도 있다는 의미이니까 기본값 추가해주면 된다. <br> 
+
+#### \front\pages\_app.js
+```js
+...생략
+
+const NodeBird = ({ Component, store, pageProps }) => {
+  ...생략
+};
+
+NodeBird.propTypes = {
+  Component: PropTypes.elementType.isRequired,
+  store: PropTypes.object.isRequired,
+  pageProps: PropTypes.object.isRequired, // 실제로 값을 무조건 넣어줘야하는데, 안 들어올 수가 있다.
+};
+
+NodeBird.getInitialProps = async (context) => {
+  ...생략
+  if (Component.getInitialProps) {
+    pageProps = await Component.getInitialProps(ctx) || {}; // 여기에 간단하게 기본값을 넣어주면 된다.
+  }
+  return { pageProps };
+};
+
+...생략
+
+export default WithRedux(configureStore)(WithReduxSaga(NodeBird));
+```
+
+### key에다가 고유한 값 넣어주기
+> encountered two children with the same key ~~~~ <br>
+
+
+key값을 고유한 값을 주기위해서 이하처럼 id에다가 key를 넣어준다. id는 고유한 값을 가졌기떄문에이다. <br>
+만약에, id가 없다면 생성일이라도 해줘도 괜찮지만 <br>
+겹칠수도 있으니까 생성일 + 고유한 값 이렇게 해준다. <br>
+
+#### \front\components\PostCard.js
+```js
+...생략
+
+export const CardWrapper = styled.div`
+  margin-bottom: 20px;
+`;
+
+const PostCard = ({post}) => {
+
+  ...생략
+
+  return (
+    <CardWrapper>
+      <Card
+        // 여기에다가 key를 넣어주지말고 반복문에 key를 넣어줘야한다.
+        // key={+post.createdAt} // 삭제해주기
+        cover={post.Images && post.Images[0] && <PostImages images={post.Images} />}
+        actions={[
+          ...생략
+        ]}
+        ...생략
+      >
+        ...생략
+      </Card>
+      ...생략 
+    </CardWrapper>
+  )
+};
+
+...생략
+```
+
+#### \front\pages\hashtag.js
+```js
+...생략
+const Hashtag = ({ tag }) => {
+  ....생략
+
+  return (
+    <div>
+      {mainPosts.map(c => (
+        // 여기에다가 c.id를 추가해주었따. 고유한 값을 넣어주기 위해
+        <PostCard key={c.id} post={c} />
+      ))}
+    </div>
+  );
+};
+...생략
+```
+
+#### \front\pages\index.js
+```js
+...생략
+const Home = () => {
+  ...생략
+
+  return (
+    <div>
+      {me && <PostForm />}
+      {mainPosts.map((c, i) => {
+        return (
+          // 여기에다가 c.id를 추가해주었따. 고유한 값을 넣어주기 위해
+          <PostCard key={c.id} post={c} />
+        );
+      })}
+    </div>
+  );
+};
+...생략
+```
+
+#### \front\pages\user.js
+```js
+const User = ({ id }) => {
+  ...생략
+
+  return (
+    <div>
+      ...생략
+      <div>
+        {mainPosts.map(c => (
+          // 여기에다가 c.id를 추가해주었따. 고유한 값을 넣어주기 위해
+          <PostCard key={c.id} post={c} /> 
+        ))}
+      </div>
+    </div>
+  );
+};
+
+...생략
+```
+
+### 자잘한 Tip
+```js
+// 앞에다가 +를 붙여주면 형변환이다. 객체를 숫자로 형변환시켜는 연산자이다.
+new Date(); // Sat May 09 2020 19:09:15 GMT+0900 (대한민국 표준시)
++new Date(); // 1589018860032
+
+// 서로 다른 플러스
+1 + 2 // 위, 아래 서로 다른 + 이다. (다항 플러스)
++5 // 위, 아래 서로 다른 + 이다. (단한 플러스)
+```
+
+```js
+function a () {
+  console.log('hello');
+}
+
+// 호출하는 법
+a``; // a함수를 호출하는 것이다. (새로운 기능이다.)
+a(); // a``랑 같은 것이다
+```
 

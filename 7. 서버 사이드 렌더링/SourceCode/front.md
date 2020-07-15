@@ -17,6 +17,7 @@
 + [styled Components](#styled-Components)
 + [styled Components SSR](#styled-Components-SSR)
 + [Router push로 검색 기능구현, 팔로워 팔로잉 클릭시 페이지 이동, 자잘한 에러 및 Tip](#Router-push로-검색-기능구현,-팔로워-팔로잉-클릭시-페이지-이동,-자잘한-에러-및-Tip)
++ [폴더 구조와 _error.js](#폴더-구조와-_error.js)
 
 
 
@@ -6595,3 +6596,43 @@ const configureStore = (initalState, options) => {
 export default WithRedux(configureStore)(WithReduxSaga(NodeBird));
 ```
 
+## 폴더 구조와 _error.js
+[위로가기](#서버-사이드-렌더링)
+
+#### \front\pages\_erros.js
+```js
+import React from 'react';
+import Error from 'next/error';
+import PropTypes from 'prop-types';
+
+const MyError = ({ statusCode }) => {
+  return (
+    <div>
+      <h1>{statusCode}에러 발생</h1>
+      <Error statusCode={statusCode} />
+    </div>
+  );
+};
+
+
+MyError.propTypes = {
+  statusCode: PropTypes.number,
+}
+
+MyError.defaultProps = {
+  statusCode: 400,
+}
+
+MyError.getInitialprops = async (context) => {
+  const statusCode = 
+    context.res 
+      ? context.res.statusCode 
+      : context.err 
+      ? context.err.statusCode 
+      : null;
+      
+  return { statusCode };
+}
+
+export default MyError;
+```

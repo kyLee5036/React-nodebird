@@ -1,22 +1,33 @@
 # 서버 사이드 렌더링
 
-+ [서버 사이드 렌더링 SRR](#서버-사이드-렌더링-SRR)
-+ [SSR을 위해 쿠키 넣어주기](#SSR을-위해-쿠키-넣어주기)
-+ [리덕스 사가 액션 로딩하기](#리덕스-사가-액션-로딩하기)
-+ [SSR에서 내 정보 처리하기](#SSR에서-내-정보-처리하기)
-+ [회원가입 리다이렉션과 포스트 제거](#회원가입-리다이렉션과-포스트-제거)
-+ [페이지네이션](#페이지네이션)
-+ [더보기 버튼](#더보기-버튼)
-+ [인피니트 스크롤링](#인피니트-스크롤링)
-+ [쓰로틀링(throttling)](#쓰로틀링(throttling))
-+ [immer로 불변성 쉽게 쓰기](#immer로-불변성-쉽게-쓰기)
-+ [프론트 단에서 리덕스 액션 호출 막기](#프론트-단에서-리덕스-액션-호출-막기)
-+ [개별 포스트 불러오기](#개별-포스트-불러오기)
-+ [reactHelmet으로 head 태그 조작하기](#reactHelmet으로-head-태그-조작하기)
-+ [reactHelmet SSR](#reactHelmet-SSR)
-+ [styled Components](#styled-Components)
-+ [styled Components SSR](#styled-Components-SSR)
-+ [Router push로 검색 기능구현, 팔로워 팔로잉 클릭시 페이지 이동, 자잘한 에러 및 Tip](#Router-push로-검색-기능구현,-팔로워-팔로잉-클릭시-페이지-이동,-자잘한-에러-및-Tip)
+- [서버 사이드 렌더링](#서버-사이드-렌더링)
+  - [서버 사이드 렌더링 SRR](#서버-사이드-렌더링-srr)
+  - [SSR을 위해 쿠키 넣어주기](#ssr을-위해-쿠키-넣어주기)
+  - [리덕스 사가 액션 로딩하기](#리덕스-사가-액션-로딩하기)
+  - [SSR에서 내 정보 처리하기](#ssr에서-내-정보-처리하기)
+      - [\back\routes\user.js](#backroutesuserjs)
+  - [회원가입 리다이렉션과 포스트 제거](#회원가입-리다이렉션과-포스트-제거)
+      - [\back\routes\post.js](#backroutespostjs)
+  - [페이지네이션](#페이지네이션)
+      - [\back\routes\user.js](#backroutesuserjs-1)
+  - [더보기 버튼](#더보기-버튼)
+  - [인피니트 스크롤링](#인피니트-스크롤링)
+      - [\back\routes\hashtag.js](#backrouteshashtagjs)
+      - [\back\routes\posts.js](#backroutespostsjs)
+      - [\back\routes\user.js](#backroutesuserjs-2)
+  - [쓰로틀링(throttling)](#쓰로틀링throttling)
+      - [\back\routes\hashtag.js](#backrouteshashtagjs-1)
+      - [\back\routes\user.js](#backroutesuserjs-3)
+  - [immer로 불변성 쉽게 쓰기](#immer로-불변성-쉽게-쓰기)
+  - [프론트 단에서 리덕스 액션 호출 막기](#프론트-단에서-리덕스-액션-호출-막기)
+  - [개별 포스트 불러오기](#개별-포스트-불러오기)
+      - [\back\routes\post.js](#backroutespostjs-1)
+  - [reactHelmet으로 head 태그 조작하기](#reacthelmet으로-head-태그-조작하기)
+  - [reactHelmet SSR](#reacthelmet-ssr)
+  - [styled Components](#styled-components)
+  - [styled Components SSR](#styled-components-ssr)
+  - [Router push로 검색 기능구현, 팔로워 팔로잉 클릭시 페이지 이동, 자잘한 에러 및 Tip](#router-push로-검색-기능구현-팔로워-팔로잉-클릭시-페이지-이동-자잘한-에러-및-tip)
+  - [폴더 구조와 _error.js](#폴더-구조와-_errorjs)
 
 
 
@@ -1712,3 +1723,7 @@ module.exports = router;
 
 코드없음
 
+## 폴더 구조와 _error.js
+[위로가기](#서버-사이드-렌더링)
+
+코드없음

@@ -17,6 +17,7 @@
 + [styled Components](#styled-Components)
 + [styled Components SSR](#styled-Components-SSR)
 + [Router push로 검색 기능구현, 팔로워 팔로잉 클릭시 페이지 이동, 자잘한 에러 및 Tip](#Router-push로-검색-기능구현,-팔로워-팔로잉-클릭시-페이지-이동,-자잘한-에러-및-Tip)
++ [폴더 구조와 _error.js](#폴더-구조와-_error.js)
 
 
 
@@ -4614,3 +4615,65 @@ a``; // a함수를 호출하는 것이다. (새로운 기능이다.)
 a(); // a``랑 같은 것이다
 ```
 
+## 폴더 구조와 _error.js
+[위로가기](#서버-사이드-렌더링)
+
+
+컴포넌트 분리과정은 과정이 많아서 일단 생략하겠다. <br>
+
+> Tip) 대부분 dispatch가 있는 것들은 container에 다 들어간다. <br>
+
+에러가 나올 경우에는 `_erros.js`가 있다. <br>
+
+#### \front\pages\_erros.js
+```js
+import Error from 'next/error';
+
+export default ({ statusCode }) => {
+  return (
+    <div>
+      <h1>에러 발생</h1>
+      <Error statusCode={statusCode} />
+    </div>
+  );
+};
+
+```
+
+#### \front\pages\_erros.js
+```js
+import React from 'react';
+import Error from 'next/error';
+import PropTypes from 'prop-types';
+
+const MyError = ({ statusCode }) => {
+  return (
+    <div>
+      <h1>{statusCode}에러 발생</h1>
+      <Error statusCode={statusCode} />
+    </div>
+  );
+};
+
+
+MyError.propTypes = {
+  statusCode: PropTypes.number,
+}
+
+MyError.defaultProps = {
+  statusCode: 400,
+}
+
+MyError.getInitialprops = async (context) => {
+  const statusCode = 
+    context.res 
+      ? context.res.statusCode 
+      : context.err 
+      ? context.err.statusCode 
+      : null;
+      
+  return { statusCode };
+}
+
+export default MyError;
+```

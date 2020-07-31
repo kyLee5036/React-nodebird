@@ -2,6 +2,7 @@
   
   - [favicon 서빙과 prefetch](#favicon-서빙과-prefetch)
   - [next.config.js](#next.config.js)
+  - [next bundle analyzer](#next-bundle-analyzer)
   
 
 
@@ -136,5 +137,92 @@ module.exports = {
     };
   },
 };
+
+```
+
+## next bundle analyzer
+[위로가기](#AWS에-배포하기)
+
+#### \front\next.config.js
+```js
+const withBundleAnalyzer = require('@zeit/next-bundle-analyzer');
+
+module.exports = withBundleAnalyzer({
+  analyzeServer: ['server', 'both'].includes(process.env.BUNDLE_ANALYZE),
+  analyzeBrowser: ['browser', 'both'].includes(process.env.BUNDLE_ANALYZE),
+  bundleAnalyzerConfig: {
+    server: {
+      analyzerMode: 'static',
+      reportFilename: '../bundles/server.html'
+    },
+    browser: {
+      analyzerMode: 'static',
+      reportFilename: '../bundles/client.html'
+    }
+  },
+  distDir: '.next',
+  webpack(config) {
+    console.log('rules', config.module.rules[0]);
+    const prod = process.env.NODE_ENV === 'production';
+    return {
+      ...config,
+      mode: prod ? 'production' : 'development',
+      devtool: prod ? 'hidden-source-map' : 'eval',
+    };
+  },
+});
+
+```
+
+#### \front\package.json
+```js
+{
+  "name": "react-nodebird-front",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "cross-env BUNDLE_ANALYZE=both next build",
+    "start": "cross-env NODE_ENV=production next start"
+  },
+  "author": "LEEKY",
+  "license": "MIT",
+  "dependencies": {
+    "@zeit/next-bundle-analyzer": "^0.1.2",
+    "antd": "^3.26.13",
+    "axios": "^0.19.2",
+    "cookie-parser": "^1.4.5",
+    "cross-env": "^7.0.2",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "express-session": "^1.17.0",
+    "immer": "^6.0.3",
+    "morgan": "^1.10.0",
+    "next": "^8.1.0",
+    "next-redux-saga": "^4.1.2",
+    "next-redux-wrapper": "^5.0.0",
+    "prop-types": "^15.7.2",
+    "react": "^16.13.0",
+    "react-dom": "^16.13.0",
+    "react-helmet": "^5.2.1",
+    "react-redux": "^7.2.0",
+    "react-saga": "^0.3.1",
+    "redux": "^4.0.5",
+    "redux-saga": "^1.1.3",
+    "styled-components": "^4.4.1"
+  },
+  "devDependencies": {
+    "babel-eslint": "^10.1.0",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb": "^17.1.1",
+    "eslint-plugin-import": "^2.20.1",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-react": "^7.19.0",
+    "eslint-plugin-react-hooks": "^2.5.0",
+    "nodemon": "^2.0.2",
+    "webpack": "^4.42.0"
+  }
+}
 
 ```

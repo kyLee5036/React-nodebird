@@ -2,6 +2,7 @@
   
   - [favicon 서빙과 prefetch](#favicon-서빙과-prefetch)
   - [next.config.js](#next.config.js)
+  - [next bundle analyzer](#next-bundle-analyzer)
   
 
 
@@ -141,4 +142,94 @@ module.exports = {
 ```
 > **hidden-source-map** : 소스코드 숨기면서 에러 시 소스맵 제공 <br>
 > **eval** : 빠르게 웹팩 적용 <br>
+
+
+## next bundle analyzer
+[위로가기](#AWS에-배포하기)
+
+webpack을 설정을 할려면 자기의 소스를 먼저 분석을 해야한다. <br>
+
+<pre><code>npm i @zeit/next-bundle-analyzer</code></pre>
+프론트 서버의 패키지들을 분석을 해준다. <br>
+
+공식사이트 참고 : https://github.com/vercel/next-plugins/tree/139d283/packages/next-bundle-analyzer <br>
+
+#### next.config.js
+```js
+const withBundleAnalyzer = require('@zeit/next-bundle-analyzer');
+
+module.exports = withBundleAnalyzer({
+  analyzeServer: ['server', 'both'].includes(process.env.BUNDLE_ANALYZE),
+  analyzeBrowser: ['browser', 'both'].includes(process.env.BUNDLE_ANALYZE),
+  bundleAnalyzerConfig: {
+    server: {
+      analyzerMode: 'static',
+      reportFilename: '../bundles/server.html'
+    },
+    browser: {
+      analyzerMode: 'static',
+      reportFilename: '../bundles/client.html'
+    }
+  },
+  distDir: '.next',
+  webpack(config) {
+    console.log('rules', config.module.rules[0]);
+    const prod = process.env.NODE_ENV === 'production';
+    return {
+      ...config,
+      mode: prod ? 'production' : 'development',
+      devtool: prod ? 'hidden-source-map' : 'eval',
+    };
+  },
+});
+```
+> **next-bundle-analyzer**의 내용은 공식홈페이지 그대로 복사해서 붙여넣었다. <br>
+>> 빌드를 해줄 때 **process.env.BUNDLE_ANALYZE**를 **both**로 만들어주면 프론트, 서버 둘 다 분석을 해준다. <br>
+>> 그러기 위해서는 환경변수를 설정해줘야한다. 환경변수 설정은 밑에 package.json에 있다. <br>
+
+#### package.json
+
+```js
+{
+  "name": "react-nodebird-front",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "BUNDLE_ANALYZE=both next build", // 환경변수 변경 (리눅스, 맥에서만 가능)
+    "start": "NODE_ENV=production next start" // 환경변수 변경 (리눅스, 맥에서만 가능)
+  },
+  ....생략
+}
+```
+> 하지만 window에서는 환경변수 변경하고 사용하면 되지 않는다.!! <br>
+>> 해결방안 : **cross-env**를 설치해준다. <br>
+<pre><code>npm i cross-env</code></pre>
+
+#### package.json
+
+```js
+{
+  "name": "react-nodebird-front",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "cross-env BUNDLE_ANALYZE=both next build", // 환경변수 변경 (리눅스, 맥에서만 가능)
+    "start": "cross-env NODE_ENV=production next start" // 환경변수 변경 (리눅스, 맥에서만 가능)
+  },
+  ....생략
+}
+```
+
+그리고 마지막으로, **npm run build**를 하면 소스코드 데이터크기를 분석을 해준다. <br>
+<img src="./../8.%20AWS에%20배포하기/front/public/Webpack%20Bundle%20Analyzer%20.png" width="400px" height="300px">
+
+위와 같은 그림으로 분석을 할 수가 있다. <br>
+하지만, 데이터가 큰 크기를 잘개 쪼개줘야한다. <br>
+> **tree shaking**을 사용한다. (예시: ant design icons tree shaking) <br>
+> tree shaking의 자세한 설명은 다음 시간에 <br>
+
 

@@ -1,6 +1,7 @@
 # AWS에 배포하기
   
   - [favicon 서빙과 prefetch](#favicon-서빙과-prefetch)
+  - [next.config.js](#next.config.js)
   
 
 
@@ -116,4 +117,24 @@ const UserProfile = () => {
 }
 
 export default UserProfile;
+```
+
+## next.config.js
+[위로가기](#AWS에-배포하기)
+
+#### next.config.js
+```js
+module.exports = {
+  distDir: '.next',
+  webpack(config) {
+    console.log('rules', config.module.rules[0]);
+    const prod = process.env.NODE_ENV === 'production';
+    return {
+      ...config,
+      mode: prod ? 'production' : 'development',
+      devtool: prod ? 'hidden-source-map' : 'eval',
+    };
+  },
+};
+
 ```

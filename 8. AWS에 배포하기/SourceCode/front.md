@@ -3,6 +3,7 @@
   - [favicon 서빙과 prefetch](#favicon-서빙과-prefetch)
   - [next.config.js](#next.config.js)
   - [next bundle analyzer](#next-bundle-analyzer)
+  - [tree shaking 예제와 gzip](#tree-shaking-예제와-gzip)
   
 
 
@@ -224,5 +225,49 @@ module.exports = withBundleAnalyzer({
     "webpack": "^4.42.0"
   }
 }
+
+```
+
+## tree shaking 예제와 gzip
+[위로가기](#AWS에-배포하기)
+
+#### next.config.js
+```js
+const withBundleAnalyzer = require('@zeit/next-bundle-analyzer');
+const webpack = require('webpack');
+const CompressionPlugin = require('compression-webpack-plugin');
+
+module.exports = withBundleAnalyzer({
+  distDir: '.next',
+  webpack(config) {
+    const prod = process.env.NODE_ENV === 'production';
+    const plugins = [
+      ...config.plugins,
+      new webpack.ContextReplacementPlugin(/moment[/\\]locale$/, /^\.\/ko$/),
+    ];
+    if (prod) {
+      plugins.push(new CompressionPlugin());
+    }
+    return {
+      ...config,
+      mode: prod ? 'production' : 'development',
+      devtool: prod ? 'hidden-source-map' : 'eval',
+      module: {
+        ...config.module,
+        rules: [
+          ...config.module.rules,
+          {
+            loader: 'webpack-ant-icon-loader',
+            enforce: 'pre',
+            include: [
+              require.resolve('@ant-design/icons/lib/dist'),
+            ],
+          },
+        ],
+      },
+      plugins,
+    };
+  },
+});
 
 ```

@@ -3,6 +3,7 @@
   - [favicon 서빙과 prefetch](#favicon-서빙과-prefetch)
   - [next.config.js](#next.config.js)
   - [next bundle analyzer](#next-bundle-analyzer)
+  - [tree shaking 예제와 gzip](#tree-shaking-예제와-gzip)
   
 
 
@@ -187,7 +188,7 @@ module.exports = withBundleAnalyzer({
 >> 빌드를 해줄 때 **process.env.BUNDLE_ANALYZE**를 **both**로 만들어주면 프론트, 서버 둘 다 분석을 해준다. <br>
 >> 그러기 위해서는 환경변수를 설정해줘야한다. 환경변수 설정은 밑에 package.json에 있다. <br>
 
-#### package.json
+#### package.json(BUNDLE_ANALYZE=both 적용)
 
 ```js
 {
@@ -207,7 +208,7 @@ module.exports = withBundleAnalyzer({
 >> 해결방안 : **cross-env**를 설치해준다. <br>
 <pre><code>npm i cross-env</code></pre>
 
-#### package.json
+#### package.json (BUNDLE_ANALYZE=both + cross-env 적용)
 
 ```js
 {
@@ -233,3 +234,168 @@ module.exports = withBundleAnalyzer({
 > tree shaking의 자세한 설명은 다음 시간에 <br>
 
 
+## tree shaking 예제와 gzip
+[위로가기](#AWS에-배포하기)
+
+날짜 라이브러리 중에서 **moment**를 많이 사용한다. <br>
+<pre><code>npm i moment</code></pre>
+
+> moment 이 외에도, luxon, date-fns가 있다. <br>
+
+#### \front\components\PostCard.js
+```js
+...생략
+import moment from 'moment'; // 추가
+
+moment.locale('ko'); // 추가 : 국적 선택가능(한글 지원)
+
+...생략
+
+const PostCard = ({post}) => {
+  ...생략
+
+  return (
+    <CardWrapper>
+      ...생략
+        {post.RetweetId && post.Retweet
+          ? (
+            ...생략
+              ...생략
+              // 추가
+              // 추가
+              <span style={{ float: 'right' }}>{moment(post.createdAt).format('YYYY.MM.DD.')}</span> // 추가
+            </Card>
+          )
+          : ...생략
+      </Card>
+      ...생략 
+    </CardWrapper>
+  )
+};
+...생략
+
+```
+
+여기서 moment의 데이터가 많이 나오게된다. 그래서 데이터 크기를 줄여준다. <br>
+
+#### next.config.js
+```js
+const withBundleAnalyzer = require('@zeit/next-bundle-analyzer');
+const webpack = require('webpack'); // 추가
+
+module.exports = withBundleAnalyzer({
+  ...생략
+  distDir: '.next',
+  webpack(config) {
+    const prod = process.env.NODE_ENV === 'production';
+    return {
+      ...config,
+      // ...생략
+      plugin: [
+        ...config.plugin,
+        new webpack.ContextReplacementPlugin(/moment[/\\]local$/, /^\.\/ko$/), // 추가
+        // 위에 정보는 moment의 사이트에서 webpack설정이 있으니까 참고한 것이다.
+      ]
+    };
+  },
+});
+
+```
+
+#### package.json
+
+```js
+{
+  ...생략
+  "scripts": {
+    "dev": "nodemon",
+    "build": "cross-env BUNDLE_ANALYZE=both next build",
+    "prestart": "npm run build",
+    "start": "cross-env NODE_ENV=production next start"
+  },
+  ...생략
+}
+
+```
+
+> 빌드하는 과정이 너무 시간이 걸린다. <br>
+>> 그래서 build하고 start하는 과정이 너무 걸리니까, **prestart**가 있다. <br>
+>> **prestart**는 start하기 전에 시작하는 명령어이다. <br>
+>> 참고로 **poststart**도 있다. start 이후에 실행된다. <br><br>
+
+
+참고로 이것도 추천한다.
+<pre><code>npm i compression-webpack-plugin</code></pre>
+
+#### next.config.js
+```js
+// ...생략
+const CompressionPlugin = require('compression-webpack-plugin');
+
+module.exports = withBundleAnalyzer({
+  // ...생략
+  distDir: '.next',
+  webpack(config) {
+    // ...생략
+    const prod = process.env.NODE_ENV === 'production';
+    return {
+      // ...생략
+      plugin: [
+        ...config.plugins,
+        new webpack.ContextReplacementPlugin(/moment[/\\]local$/, /^\.\/ko$/),
+        prod && new CompressionPlugin(), // 배포 할 때만 사용하도록 한다.
+      ]
+    };
+  },
+});
+
+```
+
+> **CompressionPlugin**의 활용은 확장자 .gz를 만들어준다. <br>
+>> **main.js를 main.js.gz**로 해준다. 그리고 용량은 3분의 1을 줄여준다. <br>
+>> 용량은 최대한 압축해주고 1MB 이하로 해주는게 좋다. 같은 일을하면서 용량을 줄여주는 큰 장점
+
+#### next.config.js
+```js
+const withBundleAnalyzer = require('@zeit/next-bundle-analyzer');
+const webpack = require('webpack');
+const CompressionPlugin = require('compression-webpack-plugin');
+
+module.exports = withBundleAnalyzer({
+  analyzeServer: ['server', 'both'].includes(process.env.BUNDLE_ANALYZE),
+  analyzeBrowser: ['browser', 'both'].includes(process.env.BUNDLE_ANALYZE),
+  bundleAnalyzerConfig: {
+    server: {
+      analyzerMode: 'static',
+      reportFilename: '../bundles/server.html'
+    },
+    browser: {
+      analyzerMode: 'static',
+      reportFilename: '../bundles/client.html'
+    }
+  },
+  distDir: '.next',
+  webpack(config) {
+    console.log('rules', config.module.rules[0]);
+    const prod = process.env.NODE_ENV === 'production';
+    const plugins = [
+      ...config.plugins,
+      new webpack.ContextReplacementPlugin(/moment[/\\]local$/, /^\.\/ko$/),
+      prod && new CompressionPlugin(),
+    ]
+    if (prod) { // 배포 환경일 떄만 설정 -> 이렇게 해준 이유는 개발환경일 떄 오류가 나서..
+      plugins.push(new CompressionPlugin());
+    }
+    return {
+      ...config,
+      mode: prod ? 'production' : 'development',
+      devtool: prod ? 'hidden-source-map' : 'eval',
+      plugins,
+    };
+  },
+});
+```
+
+> 웹팩 소스코드 다시 고쳐준다.
+>> 왜냐하면, 방금 전은 배포할 때에만 설정을 해주었는데, 개발환경일 떄에도 신경써줘야하기 떄문에
+>> 소스코드 수정이 있었다.

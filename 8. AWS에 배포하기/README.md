@@ -5,8 +5,9 @@
   - [next bundle analyzer](#next-bundle-analyzer)
   - [tree shaking 예제와 gzip](#tree-shaking-예제와-gzip)
   - [최적화 예제 1](#최적화-예제-1)
-  
-
+  - [최적화 예제 2](#최적화-예제-2)
+  - [배포전 마지막 준비(IE, 에러 표시)](#배포전-마지막-준비(IE,-에러-표시))
+  - [next bundle analyzer 버전 수정](#next-bundle-analyzer-버전-수정)
 
 
 
@@ -410,7 +411,7 @@ module.exports = withBundleAnalyzer({
 >> 그 이유는, memo가 얕은 비교 하기 때문이다. <br>
 
 
-#### D:\_React\_ReactStudy_inflearn\React-nodebird\8. AWS에 배포하기\front\components\PostCard.js
+#### \front\components\PostCard.js
 ```js
 import React, { useState, useCallback, useEffect, memo } from 'react'; // memo추가 
 ...생략
@@ -438,3 +439,97 @@ useEffect(()> => {
 }, [post, ])
 ```
 
+
+## 배포전 마지막 준비(IE, 에러 표시)
+[위로가기](#AWS에-배포하기)
+
+개발환경이 끝났으면 **npm start**로 실행해준다. <br>
+```js
+"scripts": {
+  "dev": "nodemon",
+  "build": "cross-env BUNDLE_ANALYZE=both next build",
+  "prestart": "npm run build",
+  "start": "cross-env NODE_ENV=production next start -p 3060"
+},
+```
+**-p 3060**는 포트번호를 바꿔준다. <br>
+
+#### \front\pages\_document.js
+```js
+...생략
+class MyDocument extends Document {
+  ...생략
+
+  render() {
+  ...생략
+
+    return (
+      <html {...htmlAttrs}>
+        <head>
+          {this.props.styleTags}
+          {Object.values(helmet).map(el => el.toComponent())}
+        </head>
+        <body {...bodyAttrs}>
+
+          <Main />
+          // 이 부분을 추가해준다.
+          {process.env.NODE_ENV === 'production'
+          && <script src="https://polyfill.io/v3/polyfill.min.js?features=es6,es7,es8,es9,NodeList.prototype.forEach&flags=gated" />}
+
+          <NextScript />
+        </body>
+      </html>
+    );
+  }
+}
+...생략
+
+```
+
+**인터넷 익스플로우**를 지원하기 위해서 코드를 추가해줘야한다.
+> 최신 코드를 사용할 수 있도록 해준다.
+> https://polyfill.io/v3/
+
+
+## next bundle analyzer 버전 수정
+[위로가기](#AWS에-배포하기)
+
+위에 있는 next bundle analyzer이 버전이 수정해졌다.
+<pre><code>npm i @next/bundle-analyzer</code></pre>
+
+#### \front\next.config.js
+```js
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true', // 수정
+});
+const webpack = require('webpack');
+const CompressionPlugin = require('compression-webpack-plugin');
+
+module.exports = withBundleAnalyzer({
+  // 여기에 있던 소스코드를 삭제해준다. 그리고 위 withBundleAnalyzer에다가 설정을 해준다.
+
+  distDir: '.next',
+  webpack(config) {
+    /// 생략
+  },
+});
+
+```
+
+#### \front\package.json
+```js
+{
+  "name": "react-nodebird-front",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "cross-env ANALYZE=true next build", // 수정 
+    "prestart": "npm run build",
+    "start": "cross-env NODE_ENV=production next start"
+  },
+  ...생략
+}
+
+```

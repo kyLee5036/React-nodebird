@@ -219,8 +219,8 @@ module.exports = withBundleAnalyzer({
   "main": "index.js",
   "scripts": {
     "dev": "nodemon",
-    "build": "cross-env BUNDLE_ANALYZE=both next build", // 환경변수 변경 (리눅스, 맥에서만 가능)
-    "start": "cross-env NODE_ENV=production next start" // 환경변수 변경 (리눅스, 맥에서만 가능)
+    "build": "cross-env BUNDLE_ANALYZE=both next build", // 환경변수 변경 (리눅스, 맥, 윈도우에서 명령어 사용가능)
+    "start": "cross-env NODE_ENV=production next start" // 환경변수 변경 (리눅스, 맥, 윈도우에서 명령어 사용가능)
   },
   ....생략
 }

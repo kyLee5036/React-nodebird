@@ -4,6 +4,7 @@
   - [next.config.js](#next.config.js)
   - [next bundle analyzer](#next-bundle-analyzer)
   - [tree shaking 예제와 gzip](#tree-shaking-예제와-gzip)
+  - [최적화 예제 1](#최적화-예제-1)
   
 
 
@@ -399,3 +400,41 @@ module.exports = withBundleAnalyzer({
 > 웹팩 소스코드 다시 고쳐준다.
 >> 왜냐하면, 방금 전은 배포할 때에만 설정을 해주었는데, 개발환경일 떄에도 신경써줘야하기 떄문에
 >> 소스코드 수정이 있었다.
+
+
+## 최적화 예제 1
+[위로가기](#AWS에-배포하기)
+
+최적화하기를 위해서 **React.memo**를 사용해준다. <br>
+> 주의 점이 있다. memo를 사용해죽지위해서는 props가 깊은 객체이면 안 된다. <br>
+>> 그 이유는, memo가 얕은 비교 하기 때문이다. <br>
+
+
+#### D:\_React\_ReactStudy_inflearn\React-nodebird\8. AWS에 배포하기\front\components\PostCard.js
+```js
+import React, { useState, useCallback, useEffect, memo } from 'react'; // memo추가 
+...생략
+
+const PostCard = memo(({post}) => { // memo추가를 해준다.
+  ...생략
+});
+
+...생략
+
+export default PostCard;
+
+
+```
+
+## 최적화 예제 2
+[위로가기](#AWS에-배포하기)
+
+리렌더링 판단을 하기위해서 **useEffect**와 이하와 같이 사용해서 판단할 수가 있다.
+```js
+const postMemory = useRef(post);
+
+useEffect(()> => {
+  console.log(postMemory.current, post, postMemory.current == post);
+}, [post, ])
+```
+

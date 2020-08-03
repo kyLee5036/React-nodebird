@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState} from 'react';
 import PropTypes from 'prop-types';
 import Slick from 'react-slick';
-
-import { Icon } from 'antd';
 import { Overlay, Header, CloseBtn, SlickWrapper, ImgWrapper, Indicator } from './style';
+import { backUrl } from '../../config/config';
 
 const ImagesZoom = ({ images, onClose }) => {
-  
-  const [currentSlide, setCurrentSlide] = useState(0); 
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   return (
     <Overlay>
@@ -28,20 +26,20 @@ const ImagesZoom = ({ images, onClose }) => {
             {images.map((v) => {
               return (
                 <ImgWrapper>
-                  <img src={`http://localhost:3065/${v.src}`} />
+                  <img src={v.src} />
                 </ImgWrapper>
               );
             })}
           </Slick>
-          <div style={{ textAlign: 'center' }}>
-            <Indicator>
+          <Indicator>
+            <div>
               {currentSlide + 1} / {images.length}
-            </Indicator>
-          </div>
+            </div>
+          </Indicator>
         </div>
       </SlickWrapper>
     </Overlay>
-  )
+  );
 };
 
 ImagesZoom.propTypes = {

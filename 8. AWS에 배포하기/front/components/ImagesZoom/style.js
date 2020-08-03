@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import { Icon } from 'antd';
 
 export const Overlay = styled.div`
   position: fixed;
@@ -15,7 +16,7 @@ export const Header = styled.header`
   position: relative;
   padding: 0;
   text-align: center;
-
+  
   & h1 {
     margin: 0;
     font-size: 17px;

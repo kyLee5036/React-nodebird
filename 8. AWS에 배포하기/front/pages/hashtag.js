@@ -1,12 +1,13 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useDispatch, useSelector } from 'react-redux';
 import { LOAD_HASHTAG_POSTS_REQUEST } from '../reducers/post';
-import PostCard from '../components/PostCard';
+import PostCard from '../containers/PostCard';
 
 const Hashtag = ({ tag }) => {
   const dispatch = useDispatch();
-  const { mainPosts, hasMorePost} = useSelector(state => state.post);
+
+  const { mainPosts, hasMorePost } = useSelector(state => state.post);
 
   const onScroll = useCallback(() => {
     if (window.scrollY + document.documentElement.clientHeight > document.documentElement.scrollHeight - 300) {
@@ -20,12 +21,12 @@ const Hashtag = ({ tag }) => {
     }
   }, [hasMorePost, mainPosts.length, tag]);
 
-  useEffect( () => {
+  useEffect(() => {
     window.addEventListener('scroll', onScroll);
     return () => {
       window.removeEventListener('scroll', onScroll);
-    }
-  }, [mainPosts.length]);
+    };
+  }, [mainPosts.length, hasMorePost, tag]);
 
   return (
     <div>
@@ -41,11 +42,12 @@ Hashtag.propTypes = {
 };
 
 Hashtag.getInitialProps = async (context) => {
-  const tag = context.query.tag;
+  const { tag } = context.query;
+  console.log('hashtag getInitialProps', tag);
   context.store.dispatch({
     type: LOAD_HASHTAG_POSTS_REQUEST,
     data: tag,
-  })
+  });
   return { tag };
 };
 
